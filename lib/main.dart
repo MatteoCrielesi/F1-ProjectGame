@@ -1,122 +1,269 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const F1App());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  // This widget is the root of your application.
+class F1App extends StatelessWidget {
+  const F1App({super.key});
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'F1 Project',
+      debugShowCheckedModeBanner: false,
+      home: const SplashPage(),
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        brightness: Brightness.dark,
+        fontFamily: 'Roboto',
+        scaffoldBackgroundColor: Colors.black,
+        useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
+class SplashPage extends StatefulWidget {
+  const SplashPage({super.key});
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<SplashPage> createState() => _SplashPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
+  late final AnimationController _logoController;
+  late final Animation<double> _logoSlide; // moves logo slightly upward
+  bool _showLoader = false;
+  @override
+  void initState() {
+    super.initState();
+    _logoController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _logoSlide = CurvedAnimation(
+      parent: _logoController,
+      curve: Curves.easeInOutCubic,
+    );
+// Start logo entrance
+    _logoController.forward();
+// After a moment, reveal loader
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) setState(() => _showLoader = true);
     });
   }
 
   @override
+  void dispose() {
+    _logoController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+// Red -> Black vertical gradient to match F1 brand
+    const bg = RadialGradient(
+  center: Alignment(0.0, -0.2), // centro leggermente spostato verso l’alto
+  radius: 1.2, // quanto si espande la sfumatura
+  colors: [
+    Color.fromARGB(255, 196, 192, 192),          // nero dominante al centro
+    Color(0xFF1A0000), // rosso molto scuro
+    Color(0xFF4A0000), // rosso scuro intermedio
+    Color(0xFF8B0000), // rosso più vivo (angoli)
+  ],
+  stops: [
+    0.0, 0.5, 0.8, 1.0, // dove cambiano i colori
+  ],
+);
+
+
+    return Container(
+      decoration: const BoxDecoration(gradient: bg),
+      child: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final logoWidth = math.min(constraints.maxWidth * 0.45, 520.0);
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AnimatedBuilder(
+                    animation: _logoSlide,
+                    builder: (context, child) {
+                      final dy = -30.0 * _logoSlide.value; // move up 30px
+                      return Transform.translate(
+                        offset: Offset(0, dy),
+                        child: child,
+                      );
+                    },
+                    child: SvgPicture.asset(
+                      'assets/f1_logo.svg',
+                      width: logoWidth,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFFE10600),
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                  ),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    child: _showLoader
+                        ? const Padding(
+                            padding: EdgeInsets.only(top: 32),
+                            child: TireLoader(
+                              size: 80,
+                              rotationPeriodMs: 1200,
+                              colorChangePeriodMs: 800,
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
+}
+
+class TireLoader extends StatefulWidget {
+  final double size;
+  final int rotationPeriodMs;
+  final int colorChangePeriodMs;
+  const TireLoader({
+    super.key,
+    this.size = 100,
+    this.rotationPeriodMs = 1200,
+    this.colorChangePeriodMs = 1000,
+  });
+  @override
+  State<TireLoader> createState() => _TireLoaderState();
+}
+
+class _TireLoaderState extends State<TireLoader> with TickerProviderStateMixin {
+  late final AnimationController _rotation;
+  late Timer _colorTimer;
+  int _colorIndex = 0;
+// Pirelli color family: blue, green, orange, white, yellow, red
+  static const List<Color> sidewallColors = <Color>[
+    Color(0xFF00AEEF), // Blue
+    Color(0xFF00A75D), // Green
+    Color(0xFFFFFFFF), // White
+    Color(0xFFFFD100), // Yellow
+    Color(0xFFFF1E00), // Red
+  ];
+  @override
+  void initState() {
+    super.initState();
+    _rotation = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: widget.rotationPeriodMs),
+    )..repeat();
+    _colorTimer = Timer.periodic(
+      Duration(milliseconds: widget.colorChangePeriodMs),
+      (_) => setState(
+          () => _colorIndex = (_colorIndex + 1) % sidewallColors.length),
+    );
+  }
+
+  @override
+  void dispose() {
+    _rotation.dispose();
+    _colorTimer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = sidewallColors[_colorIndex];
+    return SizedBox(
+      width: widget.size,
+      height: widget.size,
+      child: AnimatedBuilder(
+        animation: _rotation,
+        builder: (context, child) {
+          return Transform.rotate(
+            angle: _rotation.value * 2 * math.pi,
+            child: CustomPaint(
+              painter: _TirePainter(color),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _TirePainter extends CustomPainter {
+  final Color highlight;
+  _TirePainter(this.highlight);
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2;
+    final outer = radius;
+    final inner = radius * 0.55;
+    final hub = radius * 0.22;
+    final treadStroke = radius * 0.35;
+    final highlightStroke = radius * 0.08;
+    final blackPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = treadStroke
+      ..color = Colors.black;
+    final darkGrey = Paint()
+      ..style = PaintingStyle.fill
+      ..color = const Color(0xFF3E3E3E);
+    final lightGrey = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = radius * 0.035
+      ..color = const Color(0xFFBFBFBF);
+    final highlightPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = highlightStroke
+      ..color = highlight;
+// Tire sidewall (black ring)
+    canvas.drawCircle(center, (outer - treadStroke / 1.1), blackPaint);
+// Highlight band (partial arc like Pirelli stripe)
+    final arcRect =
+        Rect.fromCircle(center: center, radius: outer - treadStroke * 0.9);
+    const arcSweep = math.pi * 1.2; // 216 degrees
+    canvas.drawArc(arcRect, -math.pi * 0.1, arcSweep, false, highlightPaint);
+// Rim
+    canvas.drawCircle(center, inner, darkGrey);
+// Rim spokes
+    final spokePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = radius * 0.04
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFF9E9E9E);
+    const spokes = 8;
+    for (int i = 0; i < spokes; i++) {
+      final angle = (2 * math.pi / spokes) * i;
+      final p1 =
+          center + Offset(math.cos(angle), math.sin(angle)) * (inner * 0.25);
+      final p2 =
+          center + Offset(math.cos(angle), math.sin(angle)) * (inner * 0.9);
+      canvas.drawLine(p1, p2, spokePaint);
+    }
+// Hub ring detail
+    canvas.drawCircle(center, hub, lightGrey);
+// Small lug holes
+    final lugPaint = Paint()..color = Colors.black;
+    const lugs = 5;
+    for (int i = 0; i < lugs; i++) {
+      final a = (2 * math.pi / lugs) * i;
+      final p = center + Offset(math.cos(a), math.sin(a)) * (hub * 1.4);
+      canvas.drawCircle(p, radius * 0.035, lugPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_TirePainter oldDelegate) =>
+      oldDelegate.highlight != highlight;
 }
