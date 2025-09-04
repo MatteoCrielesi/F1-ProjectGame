@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-// import 'tire_loader.dart'; // <-- commentata
+//import 'tire_loader.dart'; // <-- commentata
 import 'start_lights.dart'; // <-- importato nuovo widget
 
 class SplashPage extends StatefulWidget {
@@ -48,7 +48,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
       center: Alignment(0.0, -0.2),
       radius: 1.2,
       colors: [
-        Color.fromARGB(255, 28, 28, 28),
+        Color.fromARGB(255, 42, 42, 42),
         Color(0xFF1A0000),
         Color(0xFF4A0000),
         Color(0xFF8B0000),
@@ -91,12 +91,14 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                     child: _showLoader
                         ? const Padding(
                             padding: EdgeInsets.only(top: 32),
-                            // child: TireLoader( // <-- commentata
-                            //   size: 80,
-                            //   rotationPeriodMs: 1200,
-                            //   colorChangePeriodMs: 800,
-                            // ),
-                            child: StartLights( // <-- nuovo widget
+                            //child: TireLoader(
+                            //  // <-- commentata
+                            //  size: 80,
+                            //  rotationPeriodMs: 1200,
+                            //  colorChangePeriodMs: 800,
+                            //),
+                            child: StartLights(
+                              // <-- nuovo widget
                               size: 80,
                               lightCount: 5,
                               showStartButton: true,
