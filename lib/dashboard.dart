@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:f1_project/scuderie_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:f1_project/ranking_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -86,7 +87,9 @@ class _DashboardPageState extends State<DashboardPage>
         title: 'Classifiche',
         body: 'Keep up with driver and\nconstructor standings,\nrace by race.',
         onTap: () {
-          debugPrint('Navigate to Classifiche page');
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const RankingPage()),
+          );
         },
       ),
       _InfoCard(

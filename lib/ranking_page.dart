@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class RankingPage extends StatelessWidget {
   const RankingPage({super.key});
 
-  @override
+    @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Formula 1 Classifiche',
@@ -29,6 +29,10 @@ class _ClassifichePageState extends State<ClassifichePage>
     with SingleTickerProviderStateMixin {
   int selectedYear = 2023;
   late final AnimationController _controller;
+
+  // 👇 Add scroll controllers
+  final ScrollController _driverScrollController = ScrollController();
+  final ScrollController _constructorScrollController = ScrollController();
 
   final Map<int, Map<String, Color>> teamColorsByYear = {
     2023: {
@@ -148,6 +152,8 @@ class _ClassifichePageState extends State<ClassifichePage>
 
   @override
   void dispose() {
+    _driverScrollController.dispose();
+    _constructorScrollController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -269,10 +275,12 @@ class _ClassifichePageState extends State<ClassifichePage>
             Container(
               height: 420,
               child: Scrollbar(
+                controller: _driverScrollController,
                 thumbVisibility: true,
                 thickness: 6,
                 radius: const Radius.circular(3),
                 child: ListView.separated(
+                  controller: _driverScrollController,
                   itemCount: drivers.length,
                   separatorBuilder: (_, __) => const Divider(height: 1, thickness: 0.5),
                   itemBuilder: (_, index) {
@@ -307,10 +315,12 @@ class _ClassifichePageState extends State<ClassifichePage>
             Container(
               height: 420,
               child: Scrollbar(
+                controller: _constructorScrollController,
                 thumbVisibility: true,
                 thickness: 6,
                 radius: const Radius.circular(3),
                 child: ListView.separated(
+                  controller: _constructorScrollController,
                   itemCount: constructors.length,
                   separatorBuilder: (_, __) => const Divider(height: 1, thickness: 0.5),
                   itemBuilder: (_, index) {
@@ -326,72 +336,69 @@ class _ClassifichePageState extends State<ClassifichePage>
     );
   }
 
- Widget _buildAnimatedRow(int rank, String title, String team, int points, Map<String, Color> teamColors) {
-  final baseColor = teamColors[team] ?? Colors.grey;
-  final isDark = baseColor.computeLuminance() < 0.5;
-  final textColor = isDark ? Colors.white : Colors.black87;
+  Widget _buildAnimatedRow(int rank, String title, String team, int points, Map<String, Color> teamColors) {
+    final baseColor = teamColors[team] ?? Colors.grey;
+    final isDark = baseColor.computeLuminance() < 0.5;
+    final textColor = isDark ? Colors.white : Colors.black87;
 
-  return AnimatedSwitcher(
-    duration: const Duration(milliseconds: 500),
-    transitionBuilder: (child, animation) =>
-        FadeTransition(opacity: animation, child: child),
-    child: AnimatedBuilder(
-      key: ValueKey('$rank-$title-$team-$points-${selectedYear}'), // chiave unica per triggerare il fade
-      animation: _controller,
-      builder: (context, child) {
-        // Pulsazione più veloce e meno scura
-        final pulse = 0.8 + 0.2 * _controller.value;
-        final animatedColor = HSLColor.fromColor(baseColor)
-            .withLightness((HSLColor.fromColor(baseColor).lightness * pulse).clamp(0.0, 1.0))
-            .toColor();
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 500),
+      transitionBuilder: (child, animation) =>
+          FadeTransition(opacity: animation, child: child),
+      child: AnimatedBuilder(
+        key: ValueKey('$rank-$title-$team-$points-${selectedYear}'),
+        animation: _controller,
+        builder: (context, child) {
+          final pulse = 0.8 + 0.2 * _controller.value;
+          final animatedColor = HSLColor.fromColor(baseColor)
+              .withLightness((HSLColor.fromColor(baseColor).lightness * pulse).clamp(0.0, 1.0))
+              .toColor();
 
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
-          margin: const EdgeInsets.symmetric(vertical: 2.0),
-          decoration: BoxDecoration(
-            color: animatedColor,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 24,
-                child: Text(
-                  rank.toString(),
-                  style: TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 14),
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+            margin: const EdgeInsets.symmetric(vertical: 2.0),
+            decoration: BoxDecoration(
+              color: animatedColor,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 24,
+                  child: Text(
+                    rank.toString(),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 14),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: textColor)),
-                    if (title != team)
-                      Text(team, style: TextStyle(fontSize: 11, color: textColor.withOpacity(0.8))),
-                  ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: textColor)),
+                      if (title != team)
+                        Text(team, style: TextStyle(fontSize: 11, color: textColor.withOpacity(0.8))),
+                    ],
+                  ),
                 ),
-              ),
-              Container(
-                width: 60,
-                padding: const EdgeInsets.only(right: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(points.toString(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
-                    const Text('points', style: TextStyle(fontSize: 9, color: Colors.white70)),
-                  ],
+                Container(
+                  width: 60,
+                  padding: const EdgeInsets.only(right: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(points.toString(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
+                      const Text('points', style: TextStyle(fontSize: 9, color: Colors.white70)),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        );
-      },
-    ),
-  );
-}
-
-
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
 
 class Driver {
@@ -419,4 +426,3 @@ class Constructor {
     required this.points,
   });
 }
-
