@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-//import 'tire_loader.dart'; // <-- commentata
-import 'start_lights.dart'; // <-- importato nuovo widget
+import 'start_lights.dart';
+import 'dashboard.dart'; 
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -89,19 +89,24 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                     switchInCurve: Curves.easeOut,
                     switchOutCurve: Curves.easeIn,
                     child: _showLoader
-                        ? const Padding(
-                            padding: EdgeInsets.only(top: 32),
-                            //child: TireLoader(
-                            //  // <-- commentata
-                            //  size: 80,
-                            //  rotationPeriodMs: 1200,
-                            //  colorChangePeriodMs: 800,
-                            //),
+                        ? Padding(
+                            padding: const EdgeInsets.only(top: 32),
                             child: StartLights(
-                              // <-- nuovo widget
                               size: 80,
                               lightCount: 5,
                               showStartButton: true,
+                              onSequenceComplete: () async {
+                                await Future.delayed(
+                                  const Duration(milliseconds: 700),
+                                );
+
+                                if (!mounted) return;
+                                Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute(
+                                    builder: (_) => const DashboardPage(),
+                                  ),
+                                );
+                              },
                             ),
                           )
                         : const SizedBox.shrink(),
