@@ -4,6 +4,16 @@ import 'package:flutter/material.dart';
 import 'scuderia.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dashboard.dart';
+import 'ferrari_page.dart';
+import 'mercedes_page.dart';
+import 'redbull_page.dart';
+import 'mclaren_page.dart';
+import 'alpine_page.dart';
+import 'astonmartin_page.dart';
+import 'haas_page.dart';
+import 'williams_page.dart';
+import 'kicksauber_page.dart';
+import 'racingbulls_page.dart';
 
 class _Header extends StatelessWidget {
   const _Header();
@@ -106,6 +116,7 @@ class _ScuderiePageState extends State<ScuderiePage> {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          mainAxisSize: MainAxisSize.min, // Risolve il problema di layout!
           children: [
             Image.asset(s.logo, width: 60, height: 60, fit: BoxFit.contain),
             const SizedBox(height: 12),
@@ -118,12 +129,10 @@ class _ScuderiePageState extends State<ScuderiePage> {
               ),
             ),
             const SizedBox(height: 8),
-            Expanded(
-              child: Text(
-                s.descrizione,
-                style: const TextStyle(fontSize: 14, color: Colors.white70),
-                textAlign: TextAlign.center,
-              ),
+            Text(
+              s.descrizione,
+              style: const TextStyle(fontSize: 14, color: Colors.white70),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -230,7 +239,32 @@ class _ScuderiePageState extends State<ScuderiePage> {
                                   child: SizedBox(
                                     width: 260,
                                     height: 260,
-                                    child: _buildCard(s, colore),
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        if (s.nome == "Ferrari") {
+                                          Navigator.push(context, MaterialPageRoute(builder: (_) => const FerrariPage()));
+                                        } else if (s.nome == "Mercedes") {
+                                          Navigator.push(context, MaterialPageRoute(builder: (_) => const MercedesPage()));
+                                        } else if (s.nome == "Red Bull Racing") {
+                                          Navigator.push(context, MaterialPageRoute(builder: (_) => const RedBullPage()));
+                                        } else if (s.nome == "McLaren") {
+                                          Navigator.push(context, MaterialPageRoute(builder: (_) => const McLarenPage()));
+                                        } else if (s.nome == "Alpine") {
+                                          Navigator.push(context, MaterialPageRoute(builder: (_) => const AlpinePage()));
+                                        } else if (s.nome == "Aston Martin") {
+                                          Navigator.push(context, MaterialPageRoute(builder: (_) => const AstonMartinPage()));
+                                        } else if (s.nome == "Haas") {
+                                          Navigator.push(context, MaterialPageRoute(builder: (_) => const HaasPage()));
+                                        } else if (s.nome == "Williams") {
+                                          Navigator.push(context, MaterialPageRoute(builder: (_) => const WilliamsPage()));
+                                        } else if (s.nome == "Kick Sauber") {
+                                          Navigator.push(context, MaterialPageRoute(builder: (_) => const KickSauberPage()));
+                                        } else if (s.nome == "Racing Bulls") {
+                                          Navigator.push(context, MaterialPageRoute(builder: (_) => const RacingBullsPage()));
+                                      } 
+                                    },
+                                      child: _buildCard(s, colore),
+                                    ),
                                   ),
                                 );
                               }).toList(),
@@ -244,7 +278,7 @@ class _ScuderiePageState extends State<ScuderiePage> {
                               ),
                             ],
                           ),
-                        ),
+                        ),  
                       ),
                     ),
                     const SizedBox(height: 24),
