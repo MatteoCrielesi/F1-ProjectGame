@@ -456,22 +456,29 @@ class _ClassifichePageState extends State<ClassifichePage>
 class _Header extends StatelessWidget {
   const _Header();
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SvgPicture.asset('assets/f1_logo.svg', height: 24),
-        const SizedBox(width: 12),
-        Text(
-          'Formula 1',
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge
-              ?.copyWith(fontWeight: FontWeight.w700, color: Colors.white),
-        ),
-      ],
-    );
-  }
+ Widget build(BuildContext context) {
+  return Row(
+    children: [
+      SvgPicture.asset(
+        'assets/f1_logo.svg',
+        height: 24,
+        color: const Color.fromARGB(255, 2, 71, 150), // Colore blu scuro
+      ),
+      const SizedBox(width: 12),
+      Text(
+        'Formula 1',
+        style: Theme.of(context)
+            .textTheme
+            .titleLarge
+            ?.copyWith(
+              fontWeight: FontWeight.w700, 
+              color: const Color.fromARGB(255, 255, 255, 255), // Colore blu scuro
+            ),
+      ),
+    ],
+  );
+}
+
 }
 
 // 🏎 Modelli
