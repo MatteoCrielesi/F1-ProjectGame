@@ -43,7 +43,7 @@ class _ScuderiePageState extends State<ScuderiePage> {
     Scuderia("Aston Martin", "Team emergente con ambizioni crescenti, un mix di eleganza e performance.", "assets/logos/astonmartin.png"),
     Scuderia("Alpine", "Il progetto francese con Renault, in cerca di stabilità e crescita costante.", "assets/logos/alpine.png"),
     Scuderia("Ferrari", "La scuderia storica italiana con più titoli mondiali, simbolo di passione e velocità.", "assets/logos/ferrari.png"),
-    Scuderia("Mercedes", "Dominante nell’era ibrida, sinonimo di precisione e innovazione tecnologica.", "assets/logos/mercedes.png"),
+    Scuderia("Mercedes", "Dominante nell'era ibrida, sinonimo di precisione e innovazione tecnologica.", "assets/logos/mercedes.png"),
     Scuderia("Red Bull Racing", "Team campione con Verstappen, noto per la sua strategia aggressiva e sviluppo audace.", "assets/logos/redbull.png"),
     Scuderia("Haas", "Team americano con spirito combattivo e voglia di sorprendere.", "assets/logos/haas.png"),
     Scuderia("Racing Bulls", "Giovane scuderia con ambizioni e supporto Red Bull.", "assets/logos/racingbulls.png"),
@@ -141,107 +141,119 @@ class _ScuderiePageState extends State<ScuderiePage> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.black, Colors.green],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      body: Stack(
+        children: [
+          // Barra verde in alto
+          Positioned(
+            top: 0, left: 0, right: 0,
+            child: Container(height: 3, color: const Color.fromARGB(255, 45, 123, 47)),
           ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          Padding(
+            padding: const EdgeInsets.only(top: 3), // Spazio per la barra verde
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.black, Colors.green],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: SafeArea(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _Header(),
-                    const SizedBox(height: 8),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white10,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        padding: const EdgeInsets.all(12),
-                        minimumSize: const Size(40, 40),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const _Header(),
+                          const SizedBox(height: 8),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white10,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              padding: const EdgeInsets.all(12),
+                              minimumSize: const Size(40, 40),
+                            ),
+                            onPressed: () {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (context) => const DashboardPage()),
+                              );
+                            },
+                            child: const Icon(Icons.arrow_back),
+                          ),
+                        ],
                       ),
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const DashboardPage()),
-                        );
-                      },
-                      child: const Icon(Icons.arrow_back),
                     ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      "TEAMS",
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "Esplora tutte le scuderie, le formazioni e le livree della stagione attuale.",
+                      style: TextStyle(fontSize: 16, color: Colors.white70),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+                    Expanded(
+                      child: AnimatedOpacity(
+                        opacity: showLoghi ? 1 : 0,
+                        duration: const Duration(milliseconds: 700),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            key: ValueKey<int>(index),
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                                onPressed: () {
+                                  setState(() {
+                                    index = (index - cardsPerPage + scuderie.length) % scuderie.length;
+                                  });
+                                },
+                              ),
+                              ...visibili.map((s) {
+                                final colore = coloriScuderia[s.nome] ?? Colors.grey[800]!;
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  child: SizedBox(
+                                    width: 260,
+                                    height: 260,
+                                    child: _buildCard(s, colore),
+                                  ),
+                                );
+                              }).toList(),
+                              IconButton(
+                                icon: const Icon(Icons.arrow_forward_ios, color: Colors.white),
+                                onPressed: () {
+                                  setState(() {
+                                    index = (index + cardsPerPage) % scuderie.length;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                "TEAMS",
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                "Esplora tutte le scuderie, le formazioni e le livree della stagione attuale.",
-                style: TextStyle(fontSize: 16, color: Colors.white70),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              Expanded(
-                child: AnimatedOpacity(
-                  opacity: showLoghi ? 1 : 0,
-                  duration: const Duration(milliseconds: 700),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      key: ValueKey<int>(index),
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                          onPressed: () {
-                            setState(() {
-                              index = (index - cardsPerPage + scuderie.length) % scuderie.length;
-                            });
-                          },
-                        ),
-                        ...visibili.map((s) {
-                          final colore = coloriScuderia[s.nome] ?? Colors.grey[800]!;
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: SizedBox(
-                              width: 260,
-                              height: 260,
-                              child: _buildCard(s, colore),
-                            ),
-                          );
-                        }).toList(),
-                        IconButton(
-                          icon: const Icon(Icons.arrow_forward_ios, color: Colors.white),
-                          onPressed: () {
-                            setState(() {
-                              index = (index + cardsPerPage) % scuderie.length;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
