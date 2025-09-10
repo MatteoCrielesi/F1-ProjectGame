@@ -285,7 +285,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// 🔥 Special card for Scuderie with hover logos
+/// Special card for Scuderie with hover logos
 class _ScuderieCard extends StatefulWidget {
   const _ScuderieCard({
     required this.title,
@@ -339,6 +339,10 @@ class _ScuderieCardState extends State<_ScuderieCard> {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: widget.onTap,
+        onLongPress: () {
+          _pickRandomLogo();
+          setState(() => _hovering = true);
+        },
         child: Container(
           decoration: BoxDecoration(
             color: const Color.fromARGB(85, 255, 4, 0),
@@ -390,7 +394,7 @@ class _ScuderieCardState extends State<_ScuderieCard> {
   }
 }
 
-/// 🔥 Special card for Rankings with slide-up text and podium
+/// Special card for Rankings with slide-up text and podium
 class _RankingsCard extends StatefulWidget {
   const _RankingsCard({
     required this.title,
