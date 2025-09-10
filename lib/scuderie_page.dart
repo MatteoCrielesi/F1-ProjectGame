@@ -12,7 +12,7 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        SvgPicture.asset('assets/f1_logo.svg', height: 24),
+        SvgPicture.asset('assets/f1_logo.svg', height: 24, color: const Color.fromARGB(255, 45, 123, 47)),
         const SizedBox(width: 12),
         Text(
           'Formula 1',
