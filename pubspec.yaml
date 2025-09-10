@@ -30,4 +30,35 @@ flutter:
     - assets/logos/racingbulls.png
     - assets/logos/kicksauber.png
     - assets/logos/williams.png
-  
+
+    - assets/macchine/mclaren.png
+    - assets/macchine/astonmartin.png
+    - assets/macchine/alpine.png
+    - assets/macchine/ferrari.png
+    - assets/macchine/mercedes.png
+    - assets/macchine/redbull.png
+    - assets/macchine/haas.png
+    - assets/macchine/racingbulls.png
+    - assets/macchine/kicksauber.png
+    - assets/macchine/williams.png
+
+    - assets/piloti/norris.png
+    - assets/piloti/alonso.png
+    - assets/piloti/ocon.png
+    - assets/piloti/leclerc.png
+    - assets/piloti/sainz.png
+    - assets/piloti/hamilton.png
+    - assets/piloti/russell.png
+    - assets/piloti/verstappen.png
+    - assets/piloti/tsunoda.png
+    - assets/piloti/bortoleto.png
+    - assets/piloti/colapinto.png
+    - assets/piloti/gasly.png
+    - assets/piloti/piastri.png
+    - assets/piloti/antonelli.png
+    - assets/piloti/bearman.png
+    - assets/piloti/hadjar.png
+    - assets/piloti/hulkenberg.png
+    - assets/piloti/lawson.png
+    - assets/piloti/stroll.png
+    - assets/piloti/albon.png
