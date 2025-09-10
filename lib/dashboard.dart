@@ -76,7 +76,8 @@ class _DashboardPageState extends State<DashboardPage>
     final cards = <Widget>[
       _ScuderieCard(
         title: 'Scuderie',
-        body: 'Explore all teams, lineups,\nand liveries for the\ncurrent season.',
+        body:
+            'Explore all teams, lineups,\nand liveries for the\ncurrent season.',
         onTap: () {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const ScuderiePage()),
@@ -109,17 +110,29 @@ class _DashboardPageState extends State<DashboardPage>
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF0D0D0D), Color(0xFF1A0000), Color(0xFF2B0000)],
+                colors: [
+                  Color(0xFF0D0D0D),
+                  Color(0xFF1A0000),
+                  Color(0xFF2B0000),
+                ],
               ),
             ),
           ),
-          Positioned(top: 0, left: 0, right: 0, child: Container(height: 3, color: const Color(0xFFE10600))),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(height: 3, color: const Color(0xFFE10600)),
+          ),
           AnimatedBuilder(
             animation: _sweep,
             builder: (context, _) {
               if (_buttonCenterY == null) return const SizedBox.shrink();
               return CustomPaint(
-                painter: _SweepPainter(progress: _sweep.value, overrideY: _buttonCenterY),
+                painter: _SweepPainter(
+                  progress: _sweep.value,
+                  overrideY: _buttonCenterY,
+                ),
                 size: Size.infinite,
               );
             },
@@ -143,7 +156,14 @@ class _DashboardPageState extends State<DashboardPage>
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: cards
-                                .map((w) => Expanded(child: Padding(padding: const EdgeInsets.all(12), child: w)))
+                                .map(
+                                  (w) => Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: w,
+                                    ),
+                                  ),
+                                )
                                 .toList(),
                           );
                         } else if (isTablet) {
@@ -158,7 +178,8 @@ class _DashboardPageState extends State<DashboardPage>
                           return ListView.separated(
                             itemCount: cards.length,
                             itemBuilder: (_, i) => cards[i],
-                            separatorBuilder: (_, __) => const SizedBox(height: 16),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 16),
                           );
                         }
                       },
@@ -171,8 +192,13 @@ class _DashboardPageState extends State<DashboardPage>
                       style: OutlinedButton.styleFrom(
                         backgroundColor: const Color(0xFF131313),
                         foregroundColor: const Color(0xFFFF0600),
-                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 22),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                          horizontal: 22,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
                       ),
                       onPressed: () {
                         debugPrint('Navigate to Calendario page');
@@ -204,14 +230,21 @@ class _SweepPainter extends CustomPainter {
     final segmentWidth = size.width * 0.25;
     final travelWidth = size.width + segmentWidth;
     final startX = -segmentWidth + progress * travelWidth;
-    final rect = Rect.fromLTWH(startX, y - bandHeight / 10, segmentWidth, bandHeight);
+    final rect = Rect.fromLTWH(
+      startX,
+      y - bandHeight / 10,
+      segmentWidth,
+      bandHeight,
+    );
 
     final shader = const LinearGradient(
       colors: [Colors.transparent, Color(0xFFE10600), Colors.transparent],
       stops: [0.0, 0.5, 1.0],
     ).createShader(rect);
 
-    final paint = Paint()..shader = shader..blendMode = BlendMode.srcOver;
+    final paint = Paint()
+      ..shader = shader
+      ..blendMode = BlendMode.srcOver;
     final rrect = RRect.fromRectAndRadius(rect, Radius.circular(bandHeight));
     canvas.drawRRect(rrect, paint);
 
@@ -219,12 +252,17 @@ class _SweepPainter extends CustomPainter {
       ..color = const Color(0x33E10600)
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
-    canvas.drawLine(Offset(16, y + bandHeight), Offset(size.width - 16, y + bandHeight), basePaint);
+    canvas.drawLine(
+      Offset(16, y + bandHeight),
+      Offset(size.width - 16, y + bandHeight),
+      basePaint,
+    );
   }
 
   @override
   bool shouldRepaint(covariant _SweepPainter oldDelegate) {
-    return oldDelegate.progress != progress || oldDelegate.overrideY != overrideY;
+    return oldDelegate.progress != progress ||
+        oldDelegate.overrideY != overrideY;
   }
 }
 
@@ -238,7 +276,9 @@ class _Header extends StatelessWidget {
         const SizedBox(width: 12),
         Text(
           'Formula 1',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
       ],
     );
@@ -247,7 +287,11 @@ class _Header extends StatelessWidget {
 
 /// 🔥 Special card for Scuderie with hover logos
 class _ScuderieCard extends StatefulWidget {
-  const _ScuderieCard({required this.title, required this.body, required this.onTap});
+  const _ScuderieCard({
+    required this.title,
+    required this.body,
+    required this.onTap,
+  });
 
   final String title;
   final String body;
@@ -256,7 +300,6 @@ class _ScuderieCard extends StatefulWidget {
   @override
   State<_ScuderieCard> createState() => _ScuderieCardState();
 }
-
 
 class _ScuderieCardState extends State<_ScuderieCard> {
   bool _hovering = false;
@@ -273,7 +316,6 @@ class _ScuderieCardState extends State<_ScuderieCard> {
     'assets/logos/williams.png',
     'assets/logos/kicksauber.png',
     'assets/logos/racingbulls.png',
-
   ];
 
   void _pickRandomLogo() {
@@ -310,7 +352,7 @@ class _ScuderieCardState extends State<_ScuderieCard> {
               if (_hovering && _logo != null)
                 Positioned.fill(
                   child: Opacity(
-                    opacity: 0.12, 
+                    opacity: 0.12,
                     child: FittedBox(
                       fit: BoxFit.contain,
                       child: Image.asset(_logo!),
@@ -350,7 +392,11 @@ class _ScuderieCardState extends State<_ScuderieCard> {
 
 /// 🔥 Special card for Rankings with slide-up text and podium
 class _RankingsCard extends StatefulWidget {
-  const _RankingsCard({required this.title, required this.body, required this.onTap});
+  const _RankingsCard({
+    required this.title,
+    required this.body,
+    required this.onTap,
+  });
 
   final String title;
   final String body;
@@ -360,7 +406,8 @@ class _RankingsCard extends StatefulWidget {
   State<_RankingsCard> createState() => _RankingsCardState();
 }
 
-class _RankingsCardState extends State<_RankingsCard> with SingleTickerProviderStateMixin {
+class _RankingsCardState extends State<_RankingsCard>
+    with SingleTickerProviderStateMixin {
   bool _hovering = false;
   late final AnimationController _controller;
   late final Animation<Offset> _slide;
@@ -372,9 +419,10 @@ class _RankingsCardState extends State<_RankingsCard> with SingleTickerProviderS
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-    _slide = Tween<Offset>(begin: Offset.zero, end: const Offset(0, -0.2)).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _slide = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0, -0.2),
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
   }
 
   @override
@@ -416,7 +464,9 @@ class _RankingsCardState extends State<_RankingsCard> with SingleTickerProviderS
                   opacity: _hovering ? 0.15 : 0.0,
                   child: FittedBox(
                     fit: BoxFit.contain,
-                    alignment: isSmall ? Alignment.center : Alignment.bottomCenter,
+                    alignment: isSmall
+                        ? Alignment.center
+                        : Alignment.bottomCenter,
                     child: Image.asset('assets/podium.png'),
                   ),
                 ),
@@ -456,10 +506,13 @@ class _RankingsCardState extends State<_RankingsCard> with SingleTickerProviderS
   }
 }
 
-
 /// Normal card for other sections
 class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.title, required this.body, required this.onTap});
+  const _InfoCard({
+    required this.title,
+    required this.body,
+    required this.onTap,
+  });
 
   final String title;
   final String body;

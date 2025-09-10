@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'splash_page.dart';
 import 'scuderie_page.dart';
 import 'ranking_page.dart';
+import 'tire_loader.dart';
 
 void main() {
   runApp(const F1App());
@@ -16,6 +17,7 @@ class F1App extends StatelessWidget {
       title: 'F1 Project',
       debugShowCheckedModeBanner: false,
       home: const SplashPage(),
+      //home: const TireLoader(),
       //home: const ScuderiePage(),
       //home: const RankingPage(),
       theme: ThemeData(
