@@ -6,7 +6,8 @@ class PostgresService {
   Future<void> connect() async {
     connection = await Connection.open(
       Endpoint(
-        host: 'localhost',
+        host:
+            'localhost', //Computer e andorid (per android 1. download https://developer.android.com/tools/releases/platform-tools?hl=it    2. dopo aver estratto inserire il percorso in variabili d'ambiente PATH 3.    adb reverse tcp:5432 tcp:5432)
         port: 5432,
         database: 'postgres',
         username: 'postgres',
