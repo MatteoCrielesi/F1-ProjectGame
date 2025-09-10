@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:f1_project/dashboard.dart';
 
 class RankingPage extends StatelessWidget {
   const RankingPage({super.key});
 
-    @override
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Formula 1 Classifiche',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0D0D0D),
         visualDensity: VisualDensity.adaptivePlatformDensity,
+        textTheme: Theme.of(context).textTheme.apply(
+              fontFamily: 'Roboto',
+              bodyColor: Colors.white,
+              displayColor: Colors.white,
+            ),
       ),
       home: const ClassifichePage(),
       debugShowCheckedModeBanner: false,
@@ -27,10 +34,9 @@ class ClassifichePage extends StatefulWidget {
 
 class _ClassifichePageState extends State<ClassifichePage>
     with SingleTickerProviderStateMixin {
-  int selectedYear = 2023;
+  int selectedYear = 2024;
   late final AnimationController _controller;
 
-  // 👇 Add scroll controllers
   final ScrollController _driverScrollController = ScrollController();
   final ScrollController _constructorScrollController = ScrollController();
 
@@ -158,11 +164,6 @@ class _ClassifichePageState extends State<ClassifichePage>
     super.dispose();
   }
 
-  Color darken(Color color, [double amount = .1]) {
-    final hsl = HSLColor.fromColor(color);
-    return hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0)).toColor();
-  }
-
   @override
   Widget build(BuildContext context) {
     final drivers = driversByYear[selectedYear]!;
@@ -170,32 +171,60 @@ class _ClassifichePageState extends State<ClassifichePage>
     final teamColors = teamColorsByYear[selectedYear]!;
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 40, 20, 15),
-              color: Colors.blue[900],
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+      body: Stack(
+        children: [
+          // 🌌 Sfondo gradiente nero → blu
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF0D0D0D), Color(0xFF001A33), Color(0xFF002B5C)],
+              ),
+            ),
+          ),
+          // 🔵 Barra blu in alto
+          Positioned(
+            top: 0, left: 0, right: 0,
+            child: Container(height: 3, color: Color(0xFF007BFF)),
+          ),
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 🔝 Header F1 logo + titolo
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: const _Header(),
+                ),
+                // 🔽 Row freccia back + combobox anno
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'RANKINGS',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 1.2,
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white10,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.all(12),
+                          minimumSize: const Size(40, 40),
                         ),
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (context) => const DashboardPage()),
+                          );
+                        },
+                        child: const Icon(Icons.arrow_back),
                       ),
-                      const SizedBox(width: 20),
                       DropdownButton<int>(
-                        dropdownColor: Colors.blue[900],
+                        dropdownColor: Colors.black87,
+                        padding: const EdgeInsets.only(right: 12.0),
                         value: selectedYear,
                         iconEnabledColor: Colors.white,
                         style: const TextStyle(color: Colors.white),
@@ -215,51 +244,53 @@ class _ClassifichePageState extends State<ClassifichePage>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Keep up with driver and constructor standings, race by race.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white.withOpacity(0.9),
+                ),
+                const SizedBox(height: 16),
+                // ✅ Cards scrollabili
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth > 800;
+                        return isWide
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(child: _buildDriverStandings(drivers, teamColors)),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: _buildConstructorStandings(constructors, teamColors)),
+                                ],
+                              )
+                            : Column(
+                                children: [
+                                  Expanded(child: _buildDriverStandings(drivers, teamColors)),
+                                  const SizedBox(height: 12),
+                                  Expanded(child: _buildConstructorStandings(constructors, teamColors)),
+                                ],
+                              );
+                      },
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 16),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isWide = constraints.maxWidth > 800;
-                  return isWide
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(child: _buildDriverStandings(drivers, teamColors)),
-                            const SizedBox(width: 10),
-                            Expanded(child: _buildConstructorStandings(constructors, teamColors)),
-                          ],
-                        )
-                      : Column(
-                          children: [
-                            _buildDriverStandings(drivers, teamColors),
-                            const SizedBox(height: 10),
-                            _buildConstructorStandings(constructors, teamColors),
-                          ],
-                        );
-                },
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
+  // 🏁 Driver Standings
   Widget _buildDriverStandings(List<Driver> drivers, Map<String, Color> teamColors) {
     return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      color: const Color(0xFF131313),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: Color(0xFF007BFF), width: 1),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -269,11 +300,14 @@ class _ClassifichePageState extends State<ClassifichePage>
               padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
               child: Text(
                 'Driver Championship',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue[900]),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF007BFF),
+                ),
               ),
             ),
-            Container(
-              height: 420,
+            Expanded(
               child: Scrollbar(
                 controller: _driverScrollController,
                 thumbVisibility: true,
@@ -282,7 +316,11 @@ class _ClassifichePageState extends State<ClassifichePage>
                 child: ListView.separated(
                   controller: _driverScrollController,
                   itemCount: drivers.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1, thickness: 0.5),
+                  separatorBuilder: (_, __) => const Divider(
+                    height: 1,
+                    thickness: 0.5,
+                    color: Colors.white24,
+                  ),
                   itemBuilder: (_, index) {
                     final d = drivers[index];
                     return _buildAnimatedRow(d.rank, d.name, d.team, d.points, teamColors);
@@ -296,10 +334,15 @@ class _ClassifichePageState extends State<ClassifichePage>
     );
   }
 
+  // 🏁 Constructor Standings
   Widget _buildConstructorStandings(List<Constructor> constructors, Map<String, Color> teamColors) {
     return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      color: const Color(0xFF131313),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: Color(0xFF007BFF), width: 1),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -309,11 +352,14 @@ class _ClassifichePageState extends State<ClassifichePage>
               padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
               child: Text(
                 'Constructor Championship',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue[900]),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF007BFF),
+                ),
               ),
             ),
-            Container(
-              height: 420,
+            Expanded(
               child: Scrollbar(
                 controller: _constructorScrollController,
                 thumbVisibility: true,
@@ -322,7 +368,11 @@ class _ClassifichePageState extends State<ClassifichePage>
                 child: ListView.separated(
                   controller: _constructorScrollController,
                   itemCount: constructors.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1, thickness: 0.5),
+                  separatorBuilder: (_, __) => const Divider(
+                    height: 1,
+                    thickness: 0.5,
+                    color: Colors.white24,
+                  ),
                   itemBuilder: (_, index) {
                     final c = constructors[index];
                     return _buildAnimatedRow(c.rank, c.name, c.name, c.points, teamColors);
@@ -336,6 +386,7 @@ class _ClassifichePageState extends State<ClassifichePage>
     );
   }
 
+  // 🟦 Riga animata standings
   Widget _buildAnimatedRow(int rank, String title, String team, int points, Map<String, Color> teamColors) {
     final baseColor = teamColors[team] ?? Colors.grey;
     final isDark = baseColor.computeLuminance() < 0.5;
@@ -349,7 +400,7 @@ class _ClassifichePageState extends State<ClassifichePage>
         key: ValueKey('$rank-$title-$team-$points-${selectedYear}'),
         animation: _controller,
         builder: (context, child) {
-          final pulse = 0.8 + 0.2 * _controller.value;
+          final pulse = 0.85 + 0.15 * _controller.value;
           final animatedColor = HSLColor.fromColor(baseColor)
               .withLightness((HSLColor.fromColor(baseColor).lightness * pulse).clamp(0.0, 1.0))
               .toColor();
@@ -401,28 +452,40 @@ class _ClassifichePageState extends State<ClassifichePage>
   }
 }
 
+// 🏁 Header stile Dashboard
+class _Header extends StatelessWidget {
+  const _Header();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SvgPicture.asset('assets/f1_logo.svg', height: 24),
+        const SizedBox(width: 12),
+        Text(
+          'Formula 1',
+          style: Theme.of(context)
+              .textTheme
+              .titleLarge
+              ?.copyWith(fontWeight: FontWeight.w700, color: Colors.white),
+        ),
+      ],
+    );
+  }
+}
+
+// 🏎 Modelli
 class Driver {
   final int rank;
   final String name;
   final int points;
   final String team;
-
-  const Driver({
-    required this.rank,
-    required this.name,
-    required this.points,
-    required this.team,
-  });
+  const Driver({required this.rank, required this.name, required this.points, required this.team});
 }
 
 class Constructor {
   final int rank;
   final String name;
   final int points;
-
-  const Constructor({
-    required this.rank,
-    required this.name,
-    required this.points,
-  });
+  const Constructor({required this.rank, required this.name, required this.points});
 }
