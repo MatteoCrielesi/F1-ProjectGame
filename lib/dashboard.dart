@@ -192,6 +192,7 @@ class _DashboardPageState extends State<DashboardPage>
                       style: OutlinedButton.styleFrom(
                         backgroundColor: const Color(0xFF131313),
                         foregroundColor: const Color(0xFFFF0600),
+                        side: const BorderSide(color: Color(0xFFFF0600)),
                         padding: const EdgeInsets.symmetric(
                           vertical: 14,
                           horizontal: 22,
@@ -301,9 +302,14 @@ class _ScuderieCard extends StatefulWidget {
   State<_ScuderieCard> createState() => _ScuderieCardState();
 }
 
-class _ScuderieCardState extends State<_ScuderieCard> {
+class _ScuderieCardState extends State<_ScuderieCard>
+    with SingleTickerProviderStateMixin {
   bool _hovering = false;
   String? _logo;
+
+  late final AnimationController _controller;
+  late final Animation<Offset> _textSlide;
+  late final Animation<Offset> _imageSlide;
 
   final List<String> _logos = [
     'assets/logos/ferrari.png',
@@ -318,6 +324,31 @@ class _ScuderieCardState extends State<_ScuderieCard> {
     'assets/logos/racingbulls.png',
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+
+    _textSlide = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0.2, 0), // verso destra
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _imageSlide = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(-0.2, 0), // verso sinistra
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   void _pickRandomLogo() {
     final rand = math.Random();
     setState(() {
@@ -328,6 +359,7 @@ class _ScuderieCardState extends State<_ScuderieCard> {
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
+    final isPhone = mq.size.width < 600;
     final isSmall = mq.size.width < 400;
 
     return MouseRegion(
@@ -336,12 +368,19 @@ class _ScuderieCardState extends State<_ScuderieCard> {
         setState(() => _hovering = true);
       },
       onExit: (_) => setState(() => _hovering = false),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+      child: GestureDetector(
         onTap: widget.onTap,
         onLongPress: () {
           _pickRandomLogo();
           setState(() => _hovering = true);
+          if (isPhone) _controller.forward();
+
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) {
+              setState(() => _hovering = false);
+              if (isPhone) _controller.reverse();
+            }
+          });
         },
         child: Container(
           decoration: BoxDecoration(
@@ -354,37 +393,47 @@ class _ScuderieCardState extends State<_ScuderieCard> {
             alignment: Alignment.center,
             children: [
               if (_hovering && _logo != null)
-                Positioned.fill(
-                  child: Opacity(
-                    opacity: 0.12,
-                    child: FittedBox(
-                      fit: BoxFit.contain,
-                      child: Image.asset(_logo!),
+                SlideTransition(
+                  position: isPhone
+                      ? _imageSlide
+                      : AlwaysStoppedAnimation(Offset.zero),
+                  child: Positioned.fill(
+                    child: Opacity(
+                      opacity: 0.12,
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        child: Image.asset(_logo!),
+                      ),
                     ),
                   ),
                 ),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    widget.title,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: isSmall ? 16 : 18,
-                      fontWeight: FontWeight.w800,
+              SlideTransition(
+                position: isPhone
+                    ? _textSlide
+                    : AlwaysStoppedAnimation(Offset.zero),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      widget.title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: isSmall ? 16 : 18,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    widget.body,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.85),
-                      fontSize: isSmall ? 13 : 15,
-                      height: 1.3,
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.body,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: isSmall ? 13 : 15,
+                        height: 1.3,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -414,7 +463,8 @@ class _RankingsCardState extends State<_RankingsCard>
     with SingleTickerProviderStateMixin {
   bool _hovering = false;
   late final AnimationController _controller;
-  late final Animation<Offset> _slide;
+  late final Animation<Offset> _textSlide;
+  late final Animation<Offset> _imageSlide;
 
   @override
   void initState() {
@@ -423,9 +473,15 @@ class _RankingsCardState extends State<_RankingsCard>
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-    _slide = Tween<Offset>(
+
+    _textSlide = Tween<Offset>(
       begin: Offset.zero,
-      end: const Offset(0, -0.2),
+      end: const Offset(0.2, 0), // testo a destra
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _imageSlide = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(-0.2, 0), // immagine a sinistra
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
   }
 
@@ -438,20 +494,30 @@ class _RankingsCardState extends State<_RankingsCard>
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
+    final isPhone = mq.size.width < 600;
     final isSmall = mq.size.width < 400;
 
     return MouseRegion(
       onEnter: (_) {
         setState(() => _hovering = true);
-        if (!isSmall) _controller.forward();
       },
       onExit: (_) {
         setState(() => _hovering = false);
-        if (!isSmall) _controller.reverse();
       },
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: widget.onTap,
+        onLongPress: () {
+          setState(() => _hovering = true);
+          if (isPhone) _controller.forward();
+
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) {
+              setState(() => _hovering = false);
+              if (isPhone) _controller.reverse();
+            }
+          });
+        },
         child: Container(
           decoration: BoxDecoration(
             color: const Color.fromARGB(85, 255, 4, 0),
@@ -462,22 +528,27 @@ class _RankingsCardState extends State<_RankingsCard>
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Podium image
-              Positioned.fill(
-                child: Opacity(
-                  opacity: _hovering ? 0.15 : 0.0,
-                  child: FittedBox(
-                    fit: BoxFit.contain,
-                    alignment: isSmall
-                        ? Alignment.center
-                        : Alignment.bottomCenter,
-                    child: Image.asset('assets/podium.png'),
+              SlideTransition(
+                position: isPhone
+                    ? _imageSlide
+                    : AlwaysStoppedAnimation(Offset.zero),
+                child: Positioned.fill(
+                  child: Opacity(
+                    opacity: _hovering ? 0.15 : 0.0,
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      alignment: isSmall
+                          ? Alignment.center
+                          : Alignment.bottomCenter,
+                      child: Image.asset('assets/podium.png'),
+                    ),
                   ),
                 ),
               ),
-              // Text with optional slide
               SlideTransition(
-                position: _slide,
+                position: isPhone
+                    ? _textSlide
+                    : AlwaysStoppedAnimation(Offset.zero),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -540,7 +611,13 @@ class _StatisticsCardState extends State<_StatisticsCard>
   }
 
   void _startFireworks() {
-    _controller.repeat();
+    _controller.forward(from: 0);
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        if (mounted) setState(() => _hovering = false);
+        _controller.reset();
+      }
+    });
   }
 
   void _stopFireworks() {
@@ -570,6 +647,10 @@ class _StatisticsCardState extends State<_StatisticsCard>
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: widget.onTap,
+        onLongPress: () {
+          setState(() => _hovering = true);
+          _startFireworks();
+        },
         child: Container(
           decoration: BoxDecoration(
             color: const Color.fromARGB(85, 255, 4, 0),
@@ -639,7 +720,7 @@ class _MultipleFireworksPainter extends CustomPainter {
       final peakY = size.height * (0.3 + 0.3 * _rand.nextDouble());
 
       if (progress < 0.4) {
-        // 🚀 Razzo che sale
+        // Razzo che sale
         final t = progress / 0.4;
         final y = startY - (startY - peakY) * t;
         paint.color = Colors.orangeAccent;
@@ -649,7 +730,7 @@ class _MultipleFireworksPainter extends CustomPainter {
           paint..style = PaintingStyle.fill,
         );
       } else {
-        // 💥 Esplosione
+        // Esplosione
         final t = (progress - 0.4) / 0.6;
         final center = Offset(baseX, peakY);
         final maxRadius = size.shortestSide * 0.4;
@@ -675,57 +756,57 @@ class _MultipleFireworksPainter extends CustomPainter {
   }
 }
 
-/// Normal card for other sections
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({
-    required this.title,
-    required this.body,
-    required this.onTap,
-  });
+// /// Normal card for other sections
+// class _InfoCard extends StatelessWidget {
+//   const _InfoCard({
+//     required this.title,
+//     required this.body,
+//     required this.onTap,
+//   });
 
-  final String title;
-  final String body;
-  final VoidCallback onTap;
+//   final String title;
+//   final String body;
+//   final VoidCallback onTap;
 
-  @override
-  Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final isSmall = mq.size.width < 400;
+//   @override
+//   Widget build(BuildContext context) {
+//     final mq = MediaQuery.of(context);
+//     final isSmall = mq.size.width < 400;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color.fromARGB(85, 255, 4, 0),
-          border: Border.all(color: const Color.fromARGB(255, 255, 6, 0)),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: isSmall ? 16 : 18,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              body,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.85),
-                fontSize: isSmall ? 13 : 15,
-                height: 1.3,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+//     return InkWell(
+//       borderRadius: BorderRadius.circular(16),
+//       onTap: onTap,
+//       child: Container(
+//         decoration: BoxDecoration(
+//           color: const Color.fromARGB(85, 255, 4, 0),
+//           border: Border.all(color: const Color.fromARGB(255, 255, 6, 0)),
+//           borderRadius: BorderRadius.circular(16),
+//         ),
+//         padding: const EdgeInsets.all(20),
+//         child: Column(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             Text(
+//               title,
+//               textAlign: TextAlign.center,
+//               style: TextStyle(
+//                 fontSize: isSmall ? 16 : 18,
+//                 fontWeight: FontWeight.w800,
+//               ),
+//             ),
+//             const SizedBox(height: 10),
+//             Text(
+//               body,
+//               textAlign: TextAlign.center,
+//               style: TextStyle(
+//                 color: Colors.white.withOpacity(0.85),
+//                 fontSize: isSmall ? 13 : 15,
+//                 height: 1.3,
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
