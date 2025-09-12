@@ -285,7 +285,6 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// 🔥 Special card for Scuderie with hover logos
 class _ScuderieCard extends StatefulWidget {
   const _ScuderieCard({
     required this.title,

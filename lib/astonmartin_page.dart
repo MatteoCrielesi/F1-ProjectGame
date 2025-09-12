@@ -8,9 +8,8 @@ class AstonMartinPage extends StatelessWidget {
     const Color coloreAstonMartin = Color(0xFF006F62);
 
     return Scaffold(
-      backgroundColor: coloreAstonMartin,
       appBar: AppBar(
-        backgroundColor: coloreAstonMartin,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         title: const Text(
           'Aston Martin Aramco F1 Team',
@@ -18,55 +17,92 @@ class AstonMartinPage extends StatelessWidget {
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // 💚 Logo Aston Martin
-            Image.asset('assets/logos/astonmartin.png', width: 100, height: 100),
+      extendBodyBehindAppBar: true,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              coloreAstonMartin.withOpacity(0.7),
+              Colors.black,
+              Colors.black,
+              coloreAstonMartin.withOpacity(0.7),
+            ],
+            stops: const [0.0, 0.15, 0.85, 1.0],
+          ),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            double screenWidth = constraints.maxWidth;
 
-            const SizedBox(height: 24),
+            double logoSize = screenWidth * 0.2;
+            double carWidth = screenWidth * 0.9;
+            double driverImgWidth = screenWidth * 0.25;
+            double spacing = screenWidth * 0.05;
 
-            // 🏎️ Macchina Aston Martin
-            const Text(
-              'Vettura 2025',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 12),
-            Image.asset('assets/macchine/astonmartin.png', width: double.infinity),
+            if (logoSize > 120) logoSize = 120;
+            if (driverImgWidth > 160) driverImgWidth = 160;
 
-            const SizedBox(height: 32),
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(16, kToolbarHeight + 24, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Image.asset('assets/logos/astonmartin.png', width: logoSize, height: logoSize),
 
-            // 🧑‍✈️ Piloti Aston Martin
-            const Text(
-              'Piloti',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Column(
-                  children: [
-                    Image.asset('assets/piloti/alonso.png', width: 120),
-                    const SizedBox(height: 8),
-                    const Text('Fernando Alonso', style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-                const SizedBox(width: 24),
-                Column(
-                  children: [
-                    Image.asset('assets/piloti/stroll.png', width: 120),
-                    const SizedBox(height: 8),
-                    const Text('Lance Stroll', style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(height: 24),
+
+                  const Text(
+                    'Vettura 2025',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  Image.asset('assets/macchine/astonmartin.png', width: carWidth, fit: BoxFit.contain),
+
+                  const SizedBox(height: 32),
+
+                  const Text(
+                    'Piloti',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  screenWidth < 600
+                      ? Column(
+                          children: [
+                            _buildDriver('assets/piloti/alonso.png', 'Fernando Alonso', driverImgWidth),
+                            SizedBox(height: spacing),
+                            _buildDriver('assets/piloti/stroll.png', 'Lance Stroll', driverImgWidth),
+                          ],
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildDriver('assets/piloti/alonso.png', 'Fernando Alonso', driverImgWidth),
+                            SizedBox(width: spacing),
+                            _buildDriver('assets/piloti/stroll.png', 'Lance Stroll', driverImgWidth),
+                          ],
+                        ),
+                ],
+              ),
+            );
+          },
         ),
       ),
+    );
+  }
+
+  Widget _buildDriver(String image, String name, double width) {
+    return Column(
+      children: [
+        Image.asset(image, width: width),
+        const SizedBox(height: 8),
+        Text(name, style: const TextStyle(color: Colors.white)),
+      ],
     );
   }
 }

@@ -30,6 +30,17 @@ flutter:
     - assets/logos/racingbulls.png
     - assets/logos/kicksauber.png
     - assets/logos/williams.png
+    - assets/logos/bar.png
+    - assets/logos/brawn.png
+    - assets/logos/honda.png
+    - assets/logos/tyrrell.png
+    - assets/logos/lotus.png
+    - assets/logos/benetton.png
+    - assets/logos/renault.png
+    - assets/logos/toleman.png
+    - assets/logos/minardi.png
+    - assets/logos/tororosso.png
+    - assets/logos/alphatauri.png
 
     - assets/macchine/mclaren.png
     - assets/macchine/astonmartin.png
