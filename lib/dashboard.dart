@@ -93,7 +93,7 @@ class _DashboardPageState extends State<DashboardPage>
           );
         },
       ),
-      _InfoCard(
+      _StatisticsCard(
         title: 'Statistiche',
         body: 'Dive into pace, poles,\npodiums, and fastest lap\nmetrics.',
         onTap: () {
@@ -507,6 +507,171 @@ class _RankingsCardState extends State<_RankingsCard>
         ),
       ),
     );
+  }
+}
+
+class _StatisticsCard extends StatefulWidget {
+  const _StatisticsCard({
+    required this.title,
+    required this.body,
+    required this.onTap,
+  });
+
+  final String title;
+  final String body;
+  final VoidCallback onTap;
+
+  @override
+  State<_StatisticsCard> createState() => _StatisticsCardState();
+}
+
+class _StatisticsCardState extends State<_StatisticsCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  bool _hovering = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    );
+  }
+
+  void _startFireworks() {
+    _controller.repeat();
+  }
+
+  void _stopFireworks() {
+    _controller.stop();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final isSmall = mq.size.width < 400;
+
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() => _hovering = true);
+        _startFireworks();
+      },
+      onExit: (_) {
+        setState(() => _hovering = false);
+        _stopFireworks();
+      },
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: widget.onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color.fromARGB(85, 255, 4, 0),
+            border: Border.all(color: const Color.fromARGB(255, 255, 6, 0)),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (_hovering)
+                Positioned.fill(
+                  child: AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, _) {
+                      return CustomPaint(
+                        painter: _MultipleFireworksPainter(_controller.value),
+                      );
+                    },
+                  ),
+                ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    widget.title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: isSmall ? 16 : 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    widget.body,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.85),
+                      fontSize: isSmall ? 13 : 15,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MultipleFireworksPainter extends CustomPainter {
+  final double progress;
+  final math.Random _rand = math.Random();
+
+  _MultipleFireworksPainter(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..strokeWidth = 2;
+
+    // Disegna più fuochi (3-5 contemporanei)
+    for (int f = 0; f < 4; f++) {
+      final baseX = size.width * (0.2 + 0.6 * _rand.nextDouble());
+      final startY = size.height;
+      final peakY = size.height * (0.3 + 0.3 * _rand.nextDouble());
+
+      if (progress < 0.4) {
+        // 🚀 Razzo che sale
+        final t = progress / 0.4;
+        final y = startY - (startY - peakY) * t;
+        paint.color = Colors.orangeAccent;
+        canvas.drawCircle(
+          Offset(baseX, y),
+          3,
+          paint..style = PaintingStyle.fill,
+        );
+      } else {
+        // 💥 Esplosione
+        final t = (progress - 0.4) / 0.6;
+        final center = Offset(baseX, peakY);
+        final maxRadius = size.shortestSide * 0.4;
+
+        for (int i = 0; i < 20; i++) {
+          final angle = (2 * math.pi / 20) * i;
+          final dx = center.dx + maxRadius * t * math.cos(angle);
+          final dy = center.dy + maxRadius * t * math.sin(angle);
+
+          paint
+            ..color = Colors.primaries[(i + f) % Colors.primaries.length]
+                .withOpacity(1 - t)
+            ..strokeWidth = 2 * (1 - t);
+          canvas.drawLine(center, Offset(dx, dy), paint);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MultipleFireworksPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
 
