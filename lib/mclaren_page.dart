@@ -39,34 +39,32 @@ class McLarenPage extends StatelessWidget {
             double carWidth = screenWidth * 0.9;
             double driverImgWidth = screenWidth * 0.25;
             double spacing = screenWidth * 0.05;
+
             if (logoSize > 120) logoSize = 120;
             if (driverImgWidth > 160) driverImgWidth = 160;
+
+            bool showAllDates = screenWidth > 550;
+            double minBarWidth = 40;
 
             return SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(16, kToolbarHeight + 24, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Image.asset('assets/logos/mclaren.png', width: logoSize, height: logoSize, color: coloreMcLaren),
-
+                  Image.asset('assets/logos/mclaren.png', width: logoSize, height: logoSize, color: Colors.white),
                   const SizedBox(height: 24),
-
                   const Text(
                     'Vettura 2025',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   const SizedBox(height: 12),
-
                   Image.asset('assets/macchine/mclaren.png', width: carWidth, fit: BoxFit.contain),
-
                   const SizedBox(height: 32),
-
                   const Text(
                     'Piloti',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   const SizedBox(height: 12),
-
                   screenWidth < 600
                       ? Column(
                           children: [
@@ -83,55 +81,43 @@ class McLarenPage extends StatelessWidget {
                             _buildDriver('assets/piloti/piastri.png', 'Oscar Piastri', driverImgWidth),
                           ],
                         ),
-
                   const SizedBox(height: 40),
-
-                  // --- TIMELINE McLAREN ---
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text('1950', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        Text('1960', style: TextStyle(color: Colors.white)),
-                        Text('1970', style: TextStyle(color: Colors.white)),
-                        Text('1980', style: TextStyle(color: Colors.white)),
-                        Text('1990', style: TextStyle(color: Colors.white)),
-                        Text('2000', style: TextStyle(color: Colors.white)),
-                        Text('2010', style: TextStyle(color: Colors.white)),
-                        Text('2020', style: TextStyle(color: Colors.white)),
-                        Text('2024', style: TextStyle(color: Colors.white)),
-                      ],
+                      children: showAllDates
+                          ? const [
+                              Text('1950', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              Text('1960', style: TextStyle(color: Colors.white)),
+                              Text('1970', style: TextStyle(color: Colors.white)),
+                              Text('1980', style: TextStyle(color: Colors.white)),
+                              Text('1990', style: TextStyle(color: Colors.white)),
+                              Text('2000', style: TextStyle(color: Colors.white)),
+                              Text('2010', style: TextStyle(color: Colors.white)),
+                              Text('2020', style: TextStyle(color: Colors.white)),
+                              Text('2024', style: TextStyle(color: Colors.white)),
+                            ]
+                          : const [
+                              Text('1950', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              Text('2024', style: TextStyle(color: Colors.white)),
+                            ],
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: Container(
-                      height: 40,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: coloreMcLaren,
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 12),
-                          Image.asset('assets/logos/mclaren.png', height: 30, color: Colors.white),
-                          const SizedBox(width: 14),
-                          const Text(
-                            'McLaren',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 22,
-                            ),
-                          ),
-                        ],
-                      ),
+                  // Timeline barra colorata con solo logo per evitare tagli
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    height: 40,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: coloreMcLaren,
+                      borderRadius: BorderRadius.circular(22),
                     ),
+                    alignment: Alignment.centerLeft,
+                    child: Image.asset('assets/logos/mclaren.png', height: 28, fit: BoxFit.contain),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
                 ],
               ),
             );

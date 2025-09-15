@@ -35,38 +35,38 @@ class HaasPage extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             double screenWidth = constraints.maxWidth;
-            double logoSize = screenWidth * 0.2;
-            double carWidth = screenWidth * 0.9;
-            double driverImgWidth = screenWidth * 0.25;
+            double logoSize = screenWidth * 0.2 > 120 ? 120 : screenWidth * 0.2;
+            double driverImgWidth = screenWidth * 0.25 > 160 ? 160 : screenWidth * 0.25;
             double spacing = screenWidth * 0.05;
-            if (logoSize > 120) logoSize = 120;
-            if (driverImgWidth > 160) driverImgWidth = 160;
+            bool showAllDates = screenWidth > 500;
 
             return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(16, kToolbarHeight + 24, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, kToolbarHeight + 24, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Image.asset('assets/logos/haas.png', width: logoSize, height: logoSize),
-
                   const SizedBox(height: 24),
-
                   const Text(
                     'Vettura 2025',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 12),
-
-                  Image.asset('assets/macchine/haas.png', width: carWidth, fit: BoxFit.contain),
-
+                  Image.asset('assets/macchine/haas.png', width: screenWidth * 0.9, fit: BoxFit.contain),
                   const SizedBox(height: 32),
-
                   const Text(
                     'Piloti',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 12),
-
                   screenWidth < 600
                       ? Column(
                           children: [
@@ -83,79 +83,56 @@ class HaasPage extends StatelessWidget {
                             _buildDriver('assets/piloti/bearman.png', 'Oliver Bearman', driverImgWidth),
                           ],
                         ),
-
                   const SizedBox(height: 40),
-
-                  // --- TIMELINE HAAS ---
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text('2016', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        Text('2024', style: TextStyle(color: Colors.white)),
-                      ],
+                      children: showAllDates
+                          ? const [
+                              Text('2016', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              Text('2017', style: TextStyle(color: Colors.white)),
+                              Text('2018', style: TextStyle(color: Colors.white)),
+                              Text('2019', style: TextStyle(color: Colors.white)),
+                              Text('2020', style: TextStyle(color: Colors.white)),
+                              Text('2021', style: TextStyle(color: Colors.white)),
+                              Text('2022', style: TextStyle(color: Colors.white)),
+                              Text('2023', style: TextStyle(color: Colors.white)),
+                              Text('2024', style: TextStyle(color: Colors.white)),
+                            ]
+                          : const [
+                              Text('2016', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              Text('2024', style: TextStyle(color: Colors.white)),
+                            ],
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  _buildTimelineBar(
-                    coloreHaas,
-                    'Haas F1 Team',
-                    'assets/logos/haas.png',
-                    left: 0.0,
-                    widthFactor: 1.0,
+                  // Timeline barra sola (colore e logo)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: coloreHaas,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Row(
+                      children: [
+                        Image.asset(
+                          'assets/logos/haas.png',
+                          height: 36,
+                          fit: BoxFit.contain,
+                          color: Colors.white,
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 24),
-                  // --- fine timeline ---
+                  const SizedBox(height: 28),
                 ],
               ),
             );
           },
         ),
       ),
-    );
-  }
-
-  Widget _buildTimelineBar(Color color, String name, String logoAsset, {required double left, required double widthFactor}) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        double totalWidth = constraints.maxWidth;
-        return Container(
-          width: totalWidth,
-          height: 40,
-          child: Stack(
-            children: [
-              Positioned(
-                left: totalWidth * left,
-                child: Container(
-                  height: 40,
-                  width: totalWidth * widthFactor,
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 10),
-                      Image.asset(logoAsset, height: 28),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Haas F1 Team',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 

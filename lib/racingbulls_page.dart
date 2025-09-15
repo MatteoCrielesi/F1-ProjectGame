@@ -6,9 +6,9 @@ class RacingBullsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Colori timeline
-    const Color coloreMinardi     = Color(0xFF191919);
-    const Color coloreToroRosso   = Color(0xFF003399);
-    const Color coloreAlphaTauri  = Color(0xFF242944);
+    const Color coloreMinardi = Color(0xFF191919);
+    const Color coloreToroRosso = Color(0xFF003399);
+    const Color coloreAlphaTauri = Color(0xFF242944);
     const Color coloreRacingBulls = Color(0xFF00205B);
 
     return Scaffold(
@@ -33,7 +33,7 @@ class RacingBullsPage extends StatelessWidget {
               Colors.black,
               coloreRacingBulls.withOpacity(0.7),
             ],
-            stops: const [0.0, 0.15, 0.85, 1.0],
+            stops: const [0.0, 0.1, 0.9, 1.0],
           ),
         ),
         child: SafeArea(
@@ -53,49 +53,65 @@ class RacingBullsPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Image.asset('assets/logos/racingbulls.png', width: logoSize, height: logoSize),
+                    Image.asset('assets/logos/racingbulls.png',
+                        width: logoSize, height: logoSize),
                     const SizedBox(height: 24),
 
                     const Text(
                       'Vettura 2025',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
                     ),
                     const SizedBox(height: 12),
 
-                    Image.asset('assets/macchine/racingbulls.png', width: carWidth, fit: BoxFit.contain),
+                    Image.asset('assets/macchine/racingbulls.png',
+                        width: carWidth, fit: BoxFit.contain),
                     const SizedBox(height: 32),
 
                     const Text(
                       'Piloti',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
                     ),
                     const SizedBox(height: 12),
 
                     w < 600
                         ? Column(
                             children: [
-                              _buildDriver('assets/piloti/hadjar.png', 'Isack Hadjar', driverImgWidth),
+                              _buildDriver('assets/piloti/hadjar.png',
+                                  'Isack Hadjar', driverImgWidth),
                               SizedBox(height: spacing),
-                              _buildDriver('assets/piloti/lawson.png', 'Liam Lawson', driverImgWidth),
+                              _buildDriver('assets/piloti/lawson.png',
+                                  'Liam Lawson', driverImgWidth),
                             ],
                           )
                         : Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              _buildDriver('assets/piloti/hadjar.png', 'Isack Hadjar', driverImgWidth),
+                              _buildDriver('assets/piloti/hadjar.png',
+                                  'Isack Hadjar', driverImgWidth),
                               SizedBox(width: spacing),
-                              _buildDriver('assets/piloti/lawson.png', 'Liam Lawson', driverImgWidth),
+                              _buildDriver('assets/piloti/lawson.png',
+                                  'Liam Lawson', driverImgWidth),
                             ],
                           ),
 
                     const SizedBox(height: 40),
 
+                    // Date timeline
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 18),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: const [
-                          Text('1985', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          Text('1985',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
                           Text('1995', style: TextStyle(color: Colors.white)),
                           Text('2005', style: TextStyle(color: Colors.white)),
                           Text('2010', style: TextStyle(color: Colors.white)),
@@ -106,73 +122,49 @@ class RacingBullsPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
 
-                    // Timeline a cascata, ultima barra calcolata dinamicamente
+                    // Timeline a cascata stile Alpine
                     LayoutBuilder(
                       builder: (context, constraints) {
                         double w = constraints.maxWidth;
                         double h = 200;
-
-                        double leftMinardi = 0.00;
-                        double widthMinardi = 0.54;
-                        double topMinardi = 0.0;
-
-                        double leftToroRosso = leftMinardi + widthMinardi;
-                        double widthToroRosso = 0.28;
-                        double topToroRosso = h * 0.30;
-
-                        double leftAlphaTauri = leftToroRosso + widthToroRosso;
-                        double widthAlphaTauri = 0.10;
-                        double topAlphaTauri = h * 0.60;
-
-                        double leftRacingBulls = leftAlphaTauri + widthAlphaTauri;
-                        double computedWidthRacingBulls = w - (w * leftRacingBulls);
-                        double topRacingBulls = h * 0.85;
-
-                        double minWidthPx = 36;
-                        double widthRacingBulls =
-                            computedWidthRacingBulls < minWidthPx ? minWidthPx : computedWidthRacingBulls;
 
                         return Container(
                           width: w,
                           height: h,
                           child: Stack(
                             children: [
-                              // Minardi
                               Positioned(
-                                left: w * leftMinardi,
-                                top: topMinardi,
+                                left: w * 0.00,
+                                top: 0,
                                 child: _logoTimelineBar(
-                                  width: w * widthMinardi,
+                                  width: w * 0.45,
                                   color: coloreMinardi,
                                   logoAsset: 'assets/logos/minardi.png',
                                 ),
                               ),
-                              // Toro Rosso
                               Positioned(
-                                left: w * leftToroRosso,
-                                top: topToroRosso,
+                                left: w * 0.45,
+                                top: h * 0.28,
                                 child: _logoTimelineBar(
-                                  width: w * widthToroRosso,
+                                  width: w * 0.22,
                                   color: coloreToroRosso,
                                   logoAsset: 'assets/logos/tororosso.png',
                                 ),
                               ),
-                              // AlphaTauri
                               Positioned(
-                                left: w * leftAlphaTauri,
-                                top: topAlphaTauri,
+                                left: w * 0.67,
+                                top: h * 0.55,
                                 child: _logoTimelineBar(
-                                  width: w * widthAlphaTauri,
+                                  width: w * 0.15,
                                   color: coloreAlphaTauri,
                                   logoAsset: 'assets/logos/alphatauri.png',
                                 ),
                               ),
-                              // Racing Bulls - larghezza dinamica e colore corretto
                               Positioned(
-                                left: w * leftRacingBulls,
-                                top: topRacingBulls,
+                                left: w * 0.82,
+                                top: h * 0.80,
                                 child: _logoTimelineBar(
-                                  width: widthRacingBulls,
+                                  width: w * 0.18,
                                   color: coloreRacingBulls,
                                   logoAsset: 'assets/logos/racingbulls.png',
                                 ),
@@ -208,7 +200,7 @@ class RacingBullsPage extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.only(left: 10),
-        child: Image.asset(logoAsset, height: 22),
+        child: Image.asset(logoAsset, height: 22, fit: BoxFit.contain),
       ),
     );
   }

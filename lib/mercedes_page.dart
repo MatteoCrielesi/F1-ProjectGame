@@ -6,11 +6,11 @@ class MercedesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Colori timeline
-    const Color coloreTyrrell   = Color(0xFF314462);
-    const Color coloreBAR       = Color(0xFF878787);
-    const Color coloreHonda     = Color(0xFFDB2423);
-    const Color coloreBrawn     = Color(0xFFECECEC);
-    const Color coloreMercedes  = Color(0xFF00D2BE);
+    const Color coloreTyrrell = Color(0xFF314462);
+    const Color coloreBAR = Color(0xFF878787);
+    const Color coloreHonda = Color(0xFFDB2423);
+    const Color coloreBrawn = Color(0xFFECECEC);
+    const Color coloreMercedes = Color(0xFF00D2BE);
 
     return Scaffold(
       appBar: AppBar(
@@ -34,70 +34,20 @@ class MercedesPage extends StatelessWidget {
               Colors.black,
               coloreMercedes.withOpacity(0.7),
             ],
-            stops: const [0.0, 0.15, 0.85, 1.0],
+            stops: const [0.0, 0.1, 0.9, 1.0],
           ),
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final w = constraints.maxWidth;
-            final barHeight = 40.0;
-            final spacing = 8.0;
-            final minBarWidth = 40.0; // larghezza minima per evitare tagli
-            final h = barHeight * 5 + spacing * 4;
-            final logoSize = w * 0.2 > 120 ? 120 : w * 0.2;
-            final carWidth = w * 0.9;
-            final driverImgWidth = w * 0.25 < 160 ? w * 0.25 : 160;
-            final pilotiSpacing = w * 0.05;
-            final showAllDates = w > 480;
+            double w = constraints.maxWidth;
+            double logoSize = w * 0.2;
+            double carWidth = w * 0.9;
+            double driverImgWidth = w * 0.25;
+            double spacing = w * 0.05;
+            if (logoSize > 120) logoSize = 120;
+            if (driverImgWidth > 160) driverImgWidth = 160;
 
-            // Punti timeline dalla grafica
-            final bars = [
-              // Tyrrell: 1970-1998
-              _timelineBar(
-                left: w * 0.06,
-                top: 0,
-                width: w * 0.42 < minBarWidth ? minBarWidth : w * 0.42,
-                color: coloreTyrrell,
-                logoAsset: 'assets/logos/tyrrell.png',
-                barHeight: barHeight,
-              ),
-              // BAR: 1999-2005
-              _timelineBar(
-                left: w * 0.35,
-                top: barHeight + spacing,
-                width: w * 0.34 < minBarWidth ? minBarWidth : w * 0.34,
-                color: coloreBAR,
-                logoAsset: 'assets/logos/bar.png',
-                barHeight: barHeight,
-              ),
-              // Honda: 2006-2008
-              _timelineBar(
-                left: w * 0.54,
-                top: (barHeight + spacing) * 2,
-                width: w * 0.24 < minBarWidth ? minBarWidth : w * 0.24,
-                color: coloreHonda,
-                logoAsset: 'assets/logos/honda.png',
-                barHeight: barHeight,
-              ),
-              // Brawn GP: 2009
-              _timelineBar(
-                left: w * 0.74,
-                top: (barHeight + spacing) * 3,
-                width: w * 0.18 < minBarWidth ? minBarWidth : w * 0.18,
-                color: coloreBrawn,
-                logoAsset: 'assets/logos/brawn.png',
-                barHeight: barHeight,
-              ),
-              // Mercedes: 2010-2024
-              _timelineBar(
-                left: w * 0.82,
-                top: (barHeight + spacing) * 4,
-                width: w * 0.15 < minBarWidth ? minBarWidth : w * 0.15,
-                color: coloreMercedes,
-                logoAsset: 'assets/logos/mercedes.png',
-                barHeight: barHeight,
-              ),
-            ];
+            bool showAllDates = w > 400;
 
             return SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(16, kToolbarHeight + 24, 16, 16),
@@ -122,7 +72,7 @@ class MercedesPage extends StatelessWidget {
                       ? Column(
                           children: [
                             _buildDriver('assets/piloti/russell.png', 'George Russell', driverImgWidth),
-                            SizedBox(height: pilotiSpacing),
+                            SizedBox(height: spacing),
                             _buildDriver('assets/piloti/antonelli.png', 'Andrea Kimi Antonelli', driverImgWidth),
                           ],
                         )
@@ -130,11 +80,12 @@ class MercedesPage extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             _buildDriver('assets/piloti/russell.png', 'George Russell', driverImgWidth),
-                            SizedBox(width: pilotiSpacing),
+                            SizedBox(width: spacing),
                             _buildDriver('assets/piloti/antonelli.png', 'Andrea Kimi Antonelli', driverImgWidth),
                           ],
                         ),
                   const SizedBox(height: 40),
+                  // Date timeline
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Row(
@@ -156,10 +107,49 @@ class MercedesPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Container(
-                    width: w,
-                    height: h,
-                    child: Stack(children: bars),
+                  // TIMELINE stile Alpine
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      double w = constraints.maxWidth;
+                      double h = 250;
+                      return Container(
+                        width: w,
+                        height: h,
+                        child: Stack(
+                          children: [
+                            Positioned(
+                              left: w * 0.00,
+                              top: 0,
+                              child: _logoTimelineBar(w * 0.20, coloreTyrrell, 'assets/logos/tyrrell.png'),
+                            ),
+                            Positioned(
+                              left: w * 0.20,
+                              top: h * 0.22,
+                              child: _logoTimelineBar(w * 0.18, coloreBAR, 'assets/logos/bar.png'),
+                            ),
+                            Positioned(
+                              left: w * 0.38,
+                              top: h * 0.44,
+                              child: _logoTimelineBar(w * 0.16, coloreHonda, 'assets/logos/honda.png'),
+                            ),
+                            Positioned(
+                              left: w * 0.54,
+                              top: h * 0.66,
+                              child: _logoTimelineBar(w * 0.12, coloreBrawn, 'assets/logos/brawn.png'),
+                            ),
+                            Positioned(
+                              left: w * 0.66,
+                              top: h * 0.80,
+                              child: _logoTimelineBar(
+                                (w * 0.30) < 40 ? 40 : (w * 0.30),
+                                coloreMercedes,
+                                'assets/logos/mercedes.png',
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 28),
                 ],
@@ -171,29 +161,18 @@ class MercedesPage extends StatelessWidget {
     );
   }
 
-  Widget _timelineBar({
-    required double left,
-    required double top,
-    required double width,
-    required Color color,
-    required String logoAsset,
-    required double barHeight,
-  }) {
-    return Positioned(
-      left: left,
-      top: top,
-      child: Container(
-        width: width,
-        height: barHeight,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(barHeight / 2),
-        ),
-        alignment: Alignment.centerLeft,
-        child: Padding(
-          padding: const EdgeInsets.only(left: 10),
-          child: Image.asset(logoAsset, height: barHeight * 0.7, fit: BoxFit.contain),
-        ),
+  Widget _logoTimelineBar(double width, Color color, String logoAsset) {
+    return Container(
+      width: width < 40 ? 40 : width,
+      height: 32,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 10),
+        child: Image.asset(logoAsset, height: 22, fit: BoxFit.contain),
       ),
     );
   }
