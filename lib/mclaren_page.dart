@@ -88,8 +88,7 @@ class McLarenPage extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: showAllDates
                           ? const [
-                              Text('1950', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                              Text('1960', style: TextStyle(color: Colors.white)),
+                              Text('1966', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                               Text('1970', style: TextStyle(color: Colors.white)),
                               Text('1980', style: TextStyle(color: Colors.white)),
                               Text('1990', style: TextStyle(color: Colors.white)),
@@ -105,7 +104,6 @@ class McLarenPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // Timeline barra colorata con solo logo per evitare tagli
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     height: 40,
@@ -115,7 +113,7 @@ class McLarenPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(22),
                     ),
                     alignment: Alignment.centerLeft,
-                    child: Image.asset('assets/logos/mclaren.png', height: 28, fit: BoxFit.contain),
+                    child: Image.asset('assets/logos/mclaren_swoosh.png', height: 28, fit: BoxFit.contain),
                   ),
                   const SizedBox(height: 28),
                 ],

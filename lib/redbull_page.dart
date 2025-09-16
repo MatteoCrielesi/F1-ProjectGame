@@ -5,10 +5,9 @@ class RedBullPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Colori timeline storica
-    const Color coloreStewart   = Color(0xFF6A7695);  // Stewart GP
-    const Color coloreJaguar    = Color(0xFF1E6B52);  // Jaguar Racing
-    const Color coloreRedBull   = Color(0xFF1E41FF);  // Red Bull Racing
+    const Color coloreStewart   = Color(0xFF6A7695); 
+    const Color coloreJaguar    = Color(0xFF1E6B52); 
+    const Color coloreRedBull   = Color(0xFF1E41FF);  
 
     return Scaffold(
       appBar: AppBar(
@@ -84,7 +83,6 @@ class RedBullPage extends StatelessWidget {
                         ),
                   const SizedBox(height: 40),
 
-                  // Date responsive come Alpine
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Row(
@@ -104,7 +102,6 @@ class RedBullPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  // Timeline multiriga in stile Alpine
                   LayoutBuilder(
                     builder: (context, constraints) {
                       double w = constraints.maxWidth;
@@ -114,7 +111,6 @@ class RedBullPage extends StatelessWidget {
                         height: h,
                         child: Stack(
                           children: [
-                            // Stewart GP (1997–1999)
                             Positioned(
                               left: w * 0.00,
                               top: 0,
@@ -124,7 +120,6 @@ class RedBullPage extends StatelessWidget {
                                 logoAsset: 'assets/logos/stewart.png',
                               ),
                             ),
-                            // Jaguar Racing (2000–2004)
                             Positioned(
                               left: w * 0.16,
                               top: h * 0.34,
@@ -134,7 +129,6 @@ class RedBullPage extends StatelessWidget {
                                 logoAsset: 'assets/logos/jaguar.png',
                               ),
                             ),
-                            // Red Bull Racing (2005–2024)
                             Positioned(
                               left: w * 0.33,
                               top: h * 0.68,

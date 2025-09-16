@@ -107,7 +107,6 @@ class HaasPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // Timeline barra sola (colore e logo)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     height: 48,

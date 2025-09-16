@@ -34,7 +34,7 @@ class ClassifichePage extends StatefulWidget {
 
 class _ClassifichePageState extends State<ClassifichePage>
     with SingleTickerProviderStateMixin {
-  int selectedYear = 2024;
+  int selectedYear = 2025;
   late final AnimationController _controller;
 
   final ScrollController _driverScrollController = ScrollController();
@@ -54,6 +54,19 @@ class _ClassifichePageState extends State<ClassifichePage>
       'Haas': const Color.fromARGB(241, 117, 117, 117),
     },
     2024: {
+      'Red Bull Racing': const Color.fromARGB(255, 11, 70, 137),
+      'Ferrari': const Color.fromARGB(255, 212, 44, 44),
+      'Mercedes': const Color.fromARGB(255, 0, 161, 155),
+      'McLaren': const Color.fromARGB(255, 253, 148, 19),
+      'Aston Martin': const Color.fromARGB(255, 2, 102, 50),
+      'Alpine': const Color.fromARGB(255, 255, 153, 240),
+      'Williams': const Color.fromARGB(255, 63, 168, 255),
+      'RB': const Color.fromARGB(255, 22, 28, 95),
+      'Sauber': const Color.fromARGB(255, 0, 255, 60),
+      'Haas': const Color.fromARGB(241, 117, 117, 117),
+    },
+
+     2025: {
       'Red Bull Racing': const Color.fromARGB(255, 11, 70, 137),
       'Ferrari': const Color.fromARGB(255, 212, 44, 44),
       'Mercedes': const Color.fromARGB(255, 0, 161, 155),
@@ -118,6 +131,30 @@ class _ClassifichePageState extends State<ClassifichePage>
       const Driver(rank: 23, name: 'Logan Sargeant', points: 0, team: 'Williams'),
       const Driver(rank: 24, name: 'Jack Doohan', points: 0, team: 'Alpine'),
     ],
+
+    2025: [
+      const Driver(rank: 1, name: 'Oscar Piastri', points: 324, team: 'McLaren'),
+      const Driver(rank: 2, name: 'Lando Norris', points: 293, team: 'McLaren'),
+      const Driver(rank: 3, name: 'Max Verstappen', points: 230, team: 'Red Bull Racing'),
+      const Driver(rank: 4, name: 'George Russell', points: 194, team: 'Mercedes'),
+      const Driver(rank: 5, name: 'Charles Leclerc', points: 163, team: 'Ferrari'),
+      const Driver(rank: 6, name: 'Lewis Hamilton', points: 117, team: 'Ferrari'),
+      const Driver(rank: 7, name: 'Alexander Albon', points: 70, team: 'Williams'),
+      const Driver(rank: 8, name: 'Andrea Kimi Antonelli', points: 66, team: 'Mercedes'),
+      const Driver(rank: 9, name: 'Isack Hadjar', points: 38, team: 'RB'),
+      const Driver(rank: 10, name: 'Nico Hulkenberg', points: 37, team: 'Sauber'),
+      const Driver(rank: 11, name: 'Lance Stroll', points: 32, team: 'Aston Martin'),
+      const Driver(rank: 12, name: 'Fernando Alonso', points: 30, team: 'Aston Martin'),
+      const Driver(rank: 13, name: 'Esteban Ocon', points: 28, team: 'Haas'),
+      const Driver(rank: 14, name: 'Pierre Gasly', points: 20, team: 'Alpine'),
+      const Driver(rank: 15, name: 'Liam Lawson', points: 20, team: 'RB'),
+      const Driver(rank: 16, name: 'Gabriel Bortoleto', points: 18, team: 'Sauber'),
+      const Driver(rank: 17, name: 'Oliver Bearman', points: 16, team: 'Haas'),
+      const Driver(rank: 18, name: 'Carlos Sains', points: 16, team: 'Williams'),
+      const Driver(rank: 19, name: 'Yuki Tsunoda', points: 12, team: 'Red Bull Racing'),
+      const Driver(rank: 20, name: 'Franco Colapinto', points: 0, team: 'Alpine'),
+      const Driver(rank: 21, name: 'Jack Doohan', points: 0, team: 'Alpine'),
+    ],
   };
 
   Map<int, List<Constructor>> constructorsByYear = {
@@ -145,7 +182,21 @@ class _ClassifichePageState extends State<ClassifichePage>
       const Constructor(rank: 9, name: 'Williams', points: 17),
       const Constructor(rank: 10, name: 'Sauber', points: 4),
     ],
+
+    2025: [
+      const Constructor(rank: 1, name: 'McLaren', points: 617),
+      const Constructor(rank: 2, name: 'Ferrari', points: 280),
+      const Constructor(rank: 3, name: 'Mercedes', points: 260),
+      const Constructor(rank: 4, name: 'Red Bull Racing', points: 239),
+      const Constructor(rank: 5, name: 'Williams', points: 86),
+      const Constructor(rank: 6, name: 'Aston Martin', points: 62),
+      const Constructor(rank: 7, name: 'RB', points: 61),
+      const Constructor(rank: 8, name: 'Sauber', points: 55),
+      const Constructor(rank: 9, name: 'Haas', points: 44),
+      const Constructor(rank: 10, name: 'Alpine', points: 20),
+    ],
   };
+  
 
   @override
   void initState() {
@@ -397,7 +448,7 @@ class _ClassifichePageState extends State<ClassifichePage>
       transitionBuilder: (child, animation) =>
           FadeTransition(opacity: animation, child: child),
       child: AnimatedBuilder(
-        key: ValueKey('$rank-$title-$team-$points-${selectedYear}'),
+        key: ValueKey('$rank-$title-$team-$points-$selectedYear'),
         animation: _controller,
         builder: (context, child) {
           final pulse = 0.85 + 0.15 * _controller.value;
@@ -456,7 +507,8 @@ class _ClassifichePageState extends State<ClassifichePage>
 class _Header extends StatelessWidget {
   const _Header();
 
- Widget build(BuildContext context) {
+ @override
+  Widget build(BuildContext context) {
   return Row(
     children: [
       SvgPicture.asset(

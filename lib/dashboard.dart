@@ -1,8 +1,10 @@
 import 'dart:math' as math;
 import 'package:f1_project/scuderie_page.dart';
 import 'package:flutter/material.dart';
+import 'package:f1_project/stats_page.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:f1_project/ranking_page.dart';
+import 'package:f1_project/calendario.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -94,12 +96,15 @@ class _DashboardPageState extends State<DashboardPage>
         },
       ),
       _StatisticsCard(
-        title: 'Statistiche',
-        body: 'Dive into pace, poles,\npodiums, and fastest lap\nmetrics.',
-        onTap: () {
-          debugPrint('Navigate to Statistiche page');
-        },
-      ),
+  title: 'Statistiche',
+  body: 'Dive into pace, poles,\npodiums, and fastest lap\nmetrics.',
+  onTap: () {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => StatistichePage()),
+    );
+  },
+),
+
     ];
 
     return Scaffold(
@@ -202,9 +207,11 @@ class _DashboardPageState extends State<DashboardPage>
                         ),
                       ),
                       onPressed: () {
-                        debugPrint('Navigate to Calendario page');
-                      },
-                      child: const Text('Race Calendar'),
+                        Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const CalendarioPage()),
+                      );
+                    },
+                    child: const Text('Race Calendar'),
                     ),
                   ),
                   const SizedBox(height: 16),

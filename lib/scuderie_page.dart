@@ -30,9 +30,9 @@ class _Header extends StatelessWidget {
         Text(
           'Formula 1',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
         ),
       ],
     );
@@ -121,8 +121,10 @@ class _ScuderiePageState extends State<ScuderiePage> {
   void initState() {
     super.initState();
     timer = Timer.periodic(const Duration(seconds: 6), (timer) async {
+      if (!mounted) return;
       setState(() => showLoghi = false);
       await Future.delayed(const Duration(milliseconds: 200));
+      if (!mounted) return;
       setState(() {
         index = (index + 1) % scuderie.length;
         showLoghi = true;
@@ -186,14 +188,12 @@ class _ScuderiePageState extends State<ScuderiePage> {
     final int cardsPerPage = screenWidth < 500
         ? 1
         : screenWidth < 900
-        ? 2
-        : 3;
+            ? 2
+            : 3;
     final visibili = List.generate(
       cardsPerPage,
       (i) => scuderie[(index + i) % scuderie.length],
     );
-    //final int totalGroups = (scuderie.length / cardsPerPage).ceil();
-    //final int currentGroup = (index / cardsPerPage).floor();
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -290,21 +290,14 @@ class _ScuderiePageState extends State<ScuderiePage> {
                                 ),
                                 onPressed: () {
                                   setState(() {
-                                    index =
-                                        (index -
-                                            cardsPerPage +
-                                            scuderie.length) %
-                                        scuderie.length;
+                                    index = (index - cardsPerPage + scuderie.length) % scuderie.length;
                                   });
                                 },
                               ),
                               ...visibili.map((s) {
-                                final colore =
-                                    coloriScuderia[s.nome] ?? Colors.grey[800]!;
+                                final colore = coloriScuderia[s.nome] ?? Colors.grey[800]!;
                                 return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
                                   child: SizedBox(
                                     width: 260,
                                     height: 260,
@@ -313,82 +306,52 @@ class _ScuderiePageState extends State<ScuderiePage> {
                                         if (s.nome == "Ferrari") {
                                           Navigator.push(
                                             context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const FerrariPage(),
-                                            ),
+                                            MaterialPageRoute(builder: (_) => const FerrariPage()),
                                           );
                                         } else if (s.nome == "Mercedes") {
                                           Navigator.push(
                                             context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const MercedesPage(),
-                                            ),
+                                            MaterialPageRoute(builder: (_) => const MercedesPage()),
                                           );
-                                        } else if (s.nome ==
-                                            "Red Bull Racing") {
+                                        } else if (s.nome == "Red Bull Racing") {
                                           Navigator.push(
                                             context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const RedBullPage(),
-                                            ),
+                                            MaterialPageRoute(builder: (_) => const RedBullPage()),
                                           );
                                         } else if (s.nome == "McLaren") {
                                           Navigator.push(
                                             context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const McLarenPage(),
-                                            ),
+                                            MaterialPageRoute(builder: (_) => const McLarenPage()),
                                           );
                                         } else if (s.nome == "Alpine") {
                                           Navigator.push(
                                             context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const AlpinePage(),
-                                            ),
+                                            MaterialPageRoute(builder: (_) => const AlpinePage()),
                                           );
                                         } else if (s.nome == "Aston Martin") {
                                           Navigator.push(
                                             context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const AstonMartinPage(),
-                                            ),
+                                            MaterialPageRoute(builder: (_) => const AstonMartinPage()),
                                           );
                                         } else if (s.nome == "Haas") {
                                           Navigator.push(
                                             context,
-                                            MaterialPageRoute(
-                                              builder: (_) => const HaasPage(),
-                                            ),
+                                            MaterialPageRoute(builder: (_) => const HaasPage()),
                                           );
                                         } else if (s.nome == "Williams") {
                                           Navigator.push(
                                             context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const WilliamsPage(),
-                                            ),
+                                            MaterialPageRoute(builder: (_) => const WilliamsPage()),
                                           );
                                         } else if (s.nome == "Kick Sauber") {
                                           Navigator.push(
                                             context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const KickSauberPage(),
-                                            ),
+                                            MaterialPageRoute(builder: (_) => const KickSauberPage()),
                                           );
                                         } else if (s.nome == "Racing Bulls") {
                                           Navigator.push(
                                             context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const RacingBullsPage(),
-                                            ),
+                                            MaterialPageRoute(builder: (_) => const RacingBullsPage()),
                                           );
                                         }
                                       },
@@ -396,7 +359,7 @@ class _ScuderiePageState extends State<ScuderiePage> {
                                     ),
                                   ),
                                 );
-                              }).toList(),
+                              }),
                               IconButton(
                                 icon: const Icon(
                                   Icons.arrow_forward_ios,
@@ -404,9 +367,7 @@ class _ScuderiePageState extends State<ScuderiePage> {
                                 ),
                                 onPressed: () {
                                   setState(() {
-                                    index =
-                                        (index + cardsPerPage) %
-                                        scuderie.length;
+                                    index = (index + cardsPerPage) % scuderie.length;
                                   });
                                 },
                               ),
