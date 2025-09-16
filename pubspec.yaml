@@ -63,3 +63,28 @@ flutter:
     - assets/piloti/lawson.png
     - assets/piloti/stroll.png
     - assets/piloti/albon.png
+
+    - assets/circuiti/abudhabi.svg
+    - assets/circuiti/australia.svg
+    - assets/circuiti/austria.svg
+    - assets/circuiti/azerbaijan.svg
+    - assets/circuiti/bahrain.svg
+    - assets/circuiti/belgium.svg
+    - assets/circuiti/brazil.svg
+    - assets/circuiti/canada.svg
+    - assets/circuiti/greatbritain.svg
+    - assets/circuiti/hungary.svg
+    - assets/circuiti/italyimola.svg
+    - assets/circuiti/italymonza.svg
+    - assets/circuiti/japan.svg
+    - assets/circuiti/mexico.svg
+    - assets/circuiti/monaco.svg
+    - assets/circuiti/netherlands.svg
+    - assets/circuiti/qatar.svg
+    - assets/circuiti/saudiarabia.svg
+    - assets/circuiti/shanghai.svg
+    - assets/circuiti/singapore.svg
+    - assets/circuiti/spain.svg
+    - assets/circuiti/usacota.svg
+    - assets/circuiti/usamiami.svg
+    - assets/circuiti/usavegas.svg
