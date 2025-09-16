@@ -448,7 +448,7 @@ class _ClassifichePageState extends State<ClassifichePage>
       transitionBuilder: (child, animation) =>
           FadeTransition(opacity: animation, child: child),
       child: AnimatedBuilder(
-        key: ValueKey('$rank-$title-$team-$points-${selectedYear}'),
+        key: ValueKey('$rank-$title-$team-$points-$selectedYear'),
         animation: _controller,
         builder: (context, child) {
           final pulse = 0.85 + 0.15 * _controller.value;
@@ -507,7 +507,8 @@ class _ClassifichePageState extends State<ClassifichePage>
 class _Header extends StatelessWidget {
   const _Header();
 
- Widget build(BuildContext context) {
+ @override
+  Widget build(BuildContext context) {
   return Row(
     children: [
       SvgPicture.asset(

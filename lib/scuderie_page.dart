@@ -359,7 +359,7 @@ class _ScuderiePageState extends State<ScuderiePage> {
                                     ),
                                   ),
                                 );
-                              }).toList(),
+                              }),
                               IconButton(
                                 icon: const Icon(
                                   Icons.arrow_forward_ios,

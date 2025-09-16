@@ -6,7 +6,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final db = PostgresService();
-  await db.connect();
 
   final pilota = await db.getPilota();
   print(pilota);
