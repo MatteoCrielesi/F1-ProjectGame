@@ -31,6 +31,27 @@ flutter:
     - assets/logos/racingbulls.png
     - assets/logos/kicksauber.png
     - assets/logos/williams.png
+    - assets/logos/bar.png
+    - assets/logos/brawn.png
+    - assets/logos/honda.png
+    - assets/logos/tyrrell.png
+    - assets/logos/lotus.png
+    - assets/logos/benetton.png
+    - assets/logos/renault.png
+    - assets/logos/toleman.png
+    - assets/logos/minardi.png
+    - assets/logos/tororosso.png
+    - assets/logos/alphatauri.png
+    - assets/logos/jordan.png
+    - assets/logos/midland.png
+    - assets/logos/spyker.png
+    - assets/logos/forceindia.png
+    - assets/logos/racingpoint.png
+    - assets/logos/stewart.png
+    - assets/logos/jaguar.png
+    - assets/logos/sauber.png
+    - assets/logos/bmw.png
+    - assets/logos/alfaromeo.png
 
     - assets/macchine/mclaren.png
     - assets/macchine/astonmartin.png
@@ -63,3 +84,28 @@ flutter:
     - assets/piloti/lawson.png
     - assets/piloti/stroll.png
     - assets/piloti/albon.png
+
+    - assets/circuiti/abudhabi.svg
+    - assets/circuiti/australia.svg
+    - assets/circuiti/austria.svg
+    - assets/circuiti/azerbaijan.svg
+    - assets/circuiti/bahrain.svg
+    - assets/circuiti/belgium.svg
+    - assets/circuiti/brazil.svg
+    - assets/circuiti/canada.svg
+    - assets/circuiti/greatbritain.svg
+    - assets/circuiti/hungary.svg
+    - assets/circuiti/italyimola.svg
+    - assets/circuiti/italymonza.svg
+    - assets/circuiti/japan.svg
+    - assets/circuiti/mexico.svg
+    - assets/circuiti/monaco.svg
+    - assets/circuiti/netherlands.svg
+    - assets/circuiti/qatar.svg
+    - assets/circuiti/saudiarabia.svg
+    - assets/circuiti/shanghai.svg
+    - assets/circuiti/singapore.svg
+    - assets/circuiti/spain.svg
+    - assets/circuiti/usacota.svg
+    - assets/circuiti/usamiami.svg
+    - assets/circuiti/usavegas.svg

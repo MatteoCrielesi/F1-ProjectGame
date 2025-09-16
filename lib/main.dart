@@ -7,8 +7,8 @@ void main() async {
 
   final db = PostgresService();
 
-  final users = await db.getPilota();
-  print(users);
+  final pilota = await db.getPilota();
+  print(pilota);
   runApp(const F1App());
 }
 
@@ -21,9 +21,6 @@ class F1App extends StatelessWidget {
       title: 'F1 Project',
       debugShowCheckedModeBanner: false,
       home: const SplashPage(),
-      //home: const TireLoader(),
-      //home: const ScuderiePage(),
-      //home: const RankingPage(),
       theme: ThemeData(
         brightness: Brightness.dark,
         fontFamily: 'Roboto',
