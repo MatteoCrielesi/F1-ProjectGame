@@ -1,7 +1,9 @@
+// lib/game_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'dashboard.dart';
-import 'game/game_canvas.dart';
+import 'game/screens/game_screen.dart';
+import 'game/models/circuit.dart';
+import 'game/models/car.dart';
 
 class GamePage extends StatefulWidget {
   const GamePage({super.key});
@@ -13,25 +15,11 @@ class GamePage extends StatefulWidget {
 class _GamePageState extends State<GamePage> {
   final PageController _pageController = PageController(viewportFraction: 0.5);
   int _currentPage = 0;
-  String? _selectedCircuit;
-  Color? _selectedTeamColor;
+  Circuit? _selectedCircuit;
+  CarModel? _selectedCar;
 
-  final List<Map<String, String>> circuits = [
-    {"name": "Abudhabi", "asset": "assets/circuiti/abudhabi.svg"},
-  ];
-
-  final List<Map<String, dynamic>> teams = [
-    {"name": "McLaren", "color": Color(0xFFFF8700)},
-    {"name": "Aston Martin", "color": Color(0xFF006F62)},
-    {"name": "Alpine", "color": Color.fromARGB(255, 243, 34, 229)},
-    {"name": "Ferrari", "color": Color(0xFFDC0000)},
-    {"name": "Mercedes", "color": Color(0xFF00D2BE)},
-    {"name": "Red Bull Racing", "color": Color(0xFF1E41FF)},
-    {"name": "Haas", "color": Color(0xFFB6BABD)},
-    {"name": "Racing Bulls", "color": Color(0xFF00205B)},
-    {"name": "Kick Sauber", "color": Color.fromARGB(255, 0, 255, 8)},
-    {"name": "Williams", "color": Color(0xFF005AFF)},
-  ];
+  final List<Circuit> circuits = allCircuits; // from game/models/circuit.dart
+  final List<CarModel> teams = allCars; // from game/models/car.dart
 
   bool _teamSelected = false;
 
@@ -110,144 +98,183 @@ class _GamePageState extends State<GamePage> {
                         } else if (_selectedCircuit != null && _teamSelected) {
                           setState(() {
                             _teamSelected = false;
-                            _selectedTeamColor = null;
+                            _selectedCar = null;
                           });
                         } else {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const DashboardPage(),
-                            ),
-                          );
+                          Navigator.pop(context);
                         }
                       },
                       child: const Icon(Icons.arrow_back),
                     ),
                   ),
                   const SizedBox(height: 20),
-                  if (_selectedCircuit == null)
-                    Expanded(
-                      child: PageView.builder(
-                        controller: _pageController,
-                        itemCount: circuits.length,
-                        onPageChanged: (index) {
-                          setState(() => _currentPage = index);
-                        },
-                        itemBuilder: (context, index) {
-                          final circuit = circuits[index];
-                          final double scale = (_currentPage == index)
-                              ? 1.0
-                              : 0.85;
-
-                          return AnimatedScale(
-                            scale: scale,
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOut,
-                            child: GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _selectedCircuit = circuit["asset"];
-                                  _currentPage = index;
-                                });
-                              },
-                              child: SizedBox(
-                                height:
-                                    MediaQuery.of(context).size.height * 0.3,
-                                child: Card(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  color: const Color.fromARGB(120, 255, 6, 0),
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 8,
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        circuit["name"]!,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Expanded(
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(12.0),
-                                          child: FittedBox(
-                                            fit: BoxFit.contain,
-                                            child: SvgPicture.asset(
-                                              circuit["asset"]!,
-                                              colorFilter: null,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    )
-                  else if (!_teamSelected)
-                    Expanded(
-                      child: Container(
-                        color: Colors.black54,
-                        child: Center(
-                          child: Wrap(
-                            spacing: 12,
-                            runSpacing: 12,
-                            alignment: WrapAlignment.center,
-                            children: teams.map((team) {
-                              return GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _teamSelected = true;
-                                    _selectedTeamColor = team['color'];
-                                  });
-                                },
-                                child: Container(
-                                  width: 100,
-                                  height: 100,
-                                  decoration: BoxDecoration(
-                                    color: team['color'],
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      team['name'],
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    Expanded(
-                      child: GameCanvas(
-                        circuitAsset: _selectedCircuit!,
-                        //playerColor: _selectedTeamColor ?? Colors.white, // <-- commentata provvisoria
-                      ),
-                    ),
+                  Expanded(
+                    child: _selectedCircuit == null
+                        ? _buildCircuitPicker()
+                        : !_teamSelected
+                            ? _buildTeamPicker()
+                            : _buildStartCard(),
+                  ),
                 ],
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCircuitPicker() {
+    return PageView.builder(
+      controller: _pageController,
+      itemCount: circuits.length,
+      onPageChanged: (index) => setState(() => _currentPage = index),
+      itemBuilder: (context, index) {
+        final circuit = circuits[index];
+        final double scale = (_currentPage == index) ? 1.0 : 0.85;
+
+        return AnimatedScale(
+          scale: scale,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedCircuit = circuit;
+                _currentPage = index;
+              });
+            },
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height * 0.3,
+              child: Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                color: const Color.fromARGB(120, 255, 6, 0),
+                margin: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 8,
+                ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 6),
+                    Text(
+                      circuit.displayName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          child: SvgPicture.asset(
+                            circuit.svgPath,
+                            width: 240,
+                            height: 120,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTeamPicker() {
+    return Container(
+      color: Colors.black54,
+      child: Center(
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          alignment: WrapAlignment.center,
+          children: teams.map((team) {
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _teamSelected = true;
+                  _selectedCar = team;
+                });
+              },
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: team.color,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Text(
+                    team.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStartCard() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Circuito: ${_selectedCircuit!.displayName}',
+            style: const TextStyle(color: Colors.white, fontSize: 18),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: 120,
+            height: 80,
+            decoration: BoxDecoration(
+              color: _selectedCar?.color ?? Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Text(
+                _selectedCar?.name ?? '',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              // apri schermo di gioco
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => GameScreen(
+                    circuit: _selectedCircuit!,
+                    car: _selectedCar!,
+                  ),
+                ),
+              );
+            },
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12),
+              child: Text('Inizia Gara'),
+            ),
+          )
         ],
       ),
     );
