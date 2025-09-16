@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'splash_page.dart';
-import 'scuderie_page.dart';
-import 'ranking_page.dart';
-import 'tire_loader.dart';
 import 'postgres_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final db = PostgresService();
-  await db.connect();
 
   final users = await db.getPilota();
   print(users);

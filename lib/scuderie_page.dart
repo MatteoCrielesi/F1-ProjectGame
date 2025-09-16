@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'scuderia.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -267,7 +266,7 @@ class _ScuderiePageState extends State<ScuderiePage> {
                                     ),
                                   ),
                                 );
-                              }).toList(),
+                              }),
                               IconButton(
                                 icon: const Icon(Icons.arrow_forward_ios, color: Colors.white),
                                 onPressed: () {
