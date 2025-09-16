@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'splash_page.dart';
 import 'postgres_service.dart';
+import 'game_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +22,8 @@ class F1App extends StatelessWidget {
     return MaterialApp(
       title: 'F1 Project',
       debugShowCheckedModeBanner: false,
-      home: const SplashPage(),
+      //home: const SplashPage(),
+      home: const GamePage(),
       theme: ThemeData(
         brightness: Brightness.dark,
         fontFamily: 'Roboto',
