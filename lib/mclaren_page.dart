@@ -104,7 +104,6 @@ class McLarenPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // Timeline barra colorata con solo logo per evitare tagli
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     height: 40,

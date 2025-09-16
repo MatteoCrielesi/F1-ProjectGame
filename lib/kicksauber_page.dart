@@ -110,7 +110,6 @@ class KickSauberPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // Timeline multiriga stile Alpine
                   LayoutBuilder(
                     builder: (context, constraints) {
                       double w = constraints.maxWidth;
@@ -120,7 +119,6 @@ class KickSauberPage extends StatelessWidget {
                         height: h,
                         child: Stack(
                           children: [
-                            // Sauber (1993–2005)
                             Positioned(
                               left: w * 0.00,
                               top: 0,
@@ -130,7 +128,6 @@ class KickSauberPage extends StatelessWidget {
                                 logoAsset: 'assets/logos/sauber.png',
                               ),
                             ),
-                            // BMW Sauber (2006–2009)
                             Positioned(
                               left: w * 0.28,
                               top: h * 0.28,
@@ -140,7 +137,6 @@ class KickSauberPage extends StatelessWidget {
                                 logoAsset: 'assets/logos/bmw.png',
                               ),
                             ),
-                            // Sauber (2010–2018)
                             Positioned(
                               left: w * 0.43,
                               top: h * 0.52,
@@ -150,7 +146,6 @@ class KickSauberPage extends StatelessWidget {
                                 logoAsset: 'assets/logos/sauber.png',
                               ),
                             ),
-                            // Alfa Romeo (2019–2023)
                             Positioned(
                               left: w * 0.65,
                               top: h * 0.74,
@@ -160,7 +155,6 @@ class KickSauberPage extends StatelessWidget {
                                 logoAsset: 'assets/logos/alfaromeo.png',
                               ),
                             ),
-                            // Kick Sauber (2024– )
                             Positioned(
                               left: w * 0.81,
                               top: h * 0.89,

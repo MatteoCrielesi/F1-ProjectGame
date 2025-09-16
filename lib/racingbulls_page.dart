@@ -102,7 +102,6 @@ class RacingBullsPage extends StatelessWidget {
 
                     const SizedBox(height: 40),
 
-                    // Date timeline
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 18),
                       child: Row(
@@ -122,7 +121,6 @@ class RacingBullsPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
 
-                    // Timeline a cascata stile Alpine
                     LayoutBuilder(
                       builder: (context, constraints) {
                         double w = constraints.maxWidth;

@@ -5,7 +5,6 @@ class MercedesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Colori timeline
     const Color coloreTyrrell = Color(0xFF314462);
     const Color coloreBAR = Color(0xFF878787);
     const Color coloreHonda = Color(0xFFDB2423);
@@ -85,7 +84,6 @@ class MercedesPage extends StatelessWidget {
                           ],
                         ),
                   const SizedBox(height: 40),
-                  // Date timeline
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Row(
@@ -107,7 +105,6 @@ class MercedesPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // TIMELINE stile Alpine
                   LayoutBuilder(
                     builder: (context, constraints) {
                       double w = constraints.maxWidth;

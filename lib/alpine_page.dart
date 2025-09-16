@@ -108,7 +108,7 @@ class AlpinePage extends StatelessWidget {
                   LayoutBuilder(
                     builder: (context, constraints) {
                       double w = constraints.maxWidth;
-                      double h = 250; // Aumentata da 120 a 160
+                      double h = 250; 
                       return Container(
                         width: w,
                         height: h,
@@ -141,7 +141,7 @@ class AlpinePage extends StatelessWidget {
                             ),
                             Positioned(
                               left: w * 0.72,
-                              top: h * 0.85, // Ridotto da 0.89 a 0.85
+                              top: h * 0.85, 
                               child: _logoTimelineBar(
                                 (w * 0.27) < 40 ? 40 : (w * 0.27),
                                 coloreAlpine,
