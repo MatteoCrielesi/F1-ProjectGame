@@ -93,7 +93,7 @@ class _DashboardPageState extends State<DashboardPage>
           );
         },
       ),
-      _InfoCard(
+      _StatisticsCard(
         title: 'Statistiche',
         body: 'Dive into pace, poles,\npodiums, and fastest lap\nmetrics.',
         onTap: () {
@@ -192,6 +192,7 @@ class _DashboardPageState extends State<DashboardPage>
                       style: OutlinedButton.styleFrom(
                         backgroundColor: const Color(0xFF131313),
                         foregroundColor: const Color(0xFFFF0600),
+                        side: const BorderSide(color: Color(0xFFFF0600)),
                         padding: const EdgeInsets.symmetric(
                           vertical: 14,
                           horizontal: 22,
@@ -285,7 +286,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// 🔥 Special card for Scuderie with hover logos
+/// Special card for Scuderie with hover logos
 class _ScuderieCard extends StatefulWidget {
   const _ScuderieCard({
     required this.title,
@@ -301,9 +302,14 @@ class _ScuderieCard extends StatefulWidget {
   State<_ScuderieCard> createState() => _ScuderieCardState();
 }
 
-class _ScuderieCardState extends State<_ScuderieCard> {
+class _ScuderieCardState extends State<_ScuderieCard>
+    with SingleTickerProviderStateMixin {
   bool _hovering = false;
   String? _logo;
+
+  late final AnimationController _controller;
+  late final Animation<Offset> _textSlide;
+  late final Animation<Offset> _imageSlide;
 
   final List<String> _logos = [
     'assets/logos/ferrari.png',
@@ -318,6 +324,31 @@ class _ScuderieCardState extends State<_ScuderieCard> {
     'assets/logos/racingbulls.png',
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+
+    _textSlide = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0.2, 0), // verso destra
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _imageSlide = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(-0.2, 0), // verso sinistra
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   void _pickRandomLogo() {
     final rand = math.Random();
     setState(() {
@@ -328,6 +359,7 @@ class _ScuderieCardState extends State<_ScuderieCard> {
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
+    final isPhone = mq.size.width < 600;
     final isSmall = mq.size.width < 400;
 
     return MouseRegion(
@@ -336,9 +368,20 @@ class _ScuderieCardState extends State<_ScuderieCard> {
         setState(() => _hovering = true);
       },
       onExit: (_) => setState(() => _hovering = false),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+      child: GestureDetector(
         onTap: widget.onTap,
+        onLongPress: () {
+          _pickRandomLogo();
+          setState(() => _hovering = true);
+          if (isPhone) _controller.forward();
+
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) {
+              setState(() => _hovering = false);
+              if (isPhone) _controller.reverse();
+            }
+          });
+        },
         child: Container(
           decoration: BoxDecoration(
             color: const Color.fromARGB(85, 255, 4, 0),
@@ -350,13 +393,283 @@ class _ScuderieCardState extends State<_ScuderieCard> {
             alignment: Alignment.center,
             children: [
               if (_hovering && _logo != null)
-                Positioned.fill(
+                SlideTransition(
+                  position: isPhone
+                      ? _imageSlide
+                      : AlwaysStoppedAnimation(Offset.zero),
+                  child: Positioned.fill(
+                    child: Opacity(
+                      opacity: 0.12,
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        child: Image.asset(_logo!),
+                      ),
+                    ),
+                  ),
+                ),
+              SlideTransition(
+                position: isPhone
+                    ? _textSlide
+                    : AlwaysStoppedAnimation(Offset.zero),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      widget.title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: isSmall ? 16 : 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.body,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: isSmall ? 13 : 15,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Special card for Rankings with slide-up text and podium
+class _RankingsCard extends StatefulWidget {
+  const _RankingsCard({
+    required this.title,
+    required this.body,
+    required this.onTap,
+  });
+
+  final String title;
+  final String body;
+  final VoidCallback onTap;
+
+  @override
+  State<_RankingsCard> createState() => _RankingsCardState();
+}
+
+class _RankingsCardState extends State<_RankingsCard>
+    with SingleTickerProviderStateMixin {
+  bool _hovering = false;
+  late final AnimationController _controller;
+  late final Animation<Offset> _textSlide;
+  late final Animation<Offset> _imageSlide;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+
+    _textSlide = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0.2, 0), // testo a destra
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _imageSlide = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(-0.2, 0), // immagine a sinistra
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final isPhone = mq.size.width < 600;
+    final isSmall = mq.size.width < 400;
+
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() => _hovering = true);
+      },
+      onExit: (_) {
+        setState(() => _hovering = false);
+      },
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: widget.onTap,
+        onLongPress: () {
+          setState(() => _hovering = true);
+          if (isPhone) _controller.forward();
+
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) {
+              setState(() => _hovering = false);
+              if (isPhone) _controller.reverse();
+            }
+          });
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color.fromARGB(85, 255, 4, 0),
+            border: Border.all(color: const Color.fromARGB(255, 255, 6, 0)),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              SlideTransition(
+                position: isPhone
+                    ? _imageSlide
+                    : AlwaysStoppedAnimation(Offset.zero),
+                child: Positioned.fill(
                   child: Opacity(
-                    opacity: 0.12,
+                    opacity: _hovering ? 0.15 : 0.0,
                     child: FittedBox(
                       fit: BoxFit.contain,
-                      child: Image.asset(_logo!),
+                      alignment: isSmall
+                          ? Alignment.center
+                          : Alignment.bottomCenter,
+                      child: Image.asset('assets/podium.png'),
                     ),
+                  ),
+                ),
+              ),
+              SlideTransition(
+                position: isPhone
+                    ? _textSlide
+                    : AlwaysStoppedAnimation(Offset.zero),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      widget.title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: isSmall ? 16 : 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.body,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: isSmall ? 13 : 15,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatisticsCard extends StatefulWidget {
+  const _StatisticsCard({
+    required this.title,
+    required this.body,
+    required this.onTap,
+  });
+
+  final String title;
+  final String body;
+  final VoidCallback onTap;
+
+  @override
+  State<_StatisticsCard> createState() => _StatisticsCardState();
+}
+
+class _StatisticsCardState extends State<_StatisticsCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  bool _hovering = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    );
+  }
+
+  void _startFireworks() {
+    _controller.forward(from: 0);
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        if (mounted) setState(() => _hovering = false);
+        _controller.reset();
+      }
+    });
+  }
+
+  void _stopFireworks() {
+    _controller.stop();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final isSmall = mq.size.width < 400;
+
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() => _hovering = true);
+        _startFireworks();
+      },
+      onExit: (_) {
+        setState(() => _hovering = false);
+        _stopFireworks();
+      },
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: widget.onTap,
+        onLongPress: () {
+          setState(() => _hovering = true);
+          _startFireworks();
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color.fromARGB(85, 255, 4, 0),
+            border: Border.all(color: const Color.fromARGB(255, 255, 6, 0)),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (_hovering)
+                Positioned.fill(
+                  child: AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, _) {
+                      return CustomPaint(
+                        painter: _MultipleFireworksPainter(_controller.value),
+                      );
+                    },
                   ),
                 ),
               Column(
@@ -390,173 +703,110 @@ class _ScuderieCardState extends State<_ScuderieCard> {
   }
 }
 
-/// 🔥 Special card for Rankings with slide-up text and podium
-class _RankingsCard extends StatefulWidget {
-  const _RankingsCard({
-    required this.title,
-    required this.body,
-    required this.onTap,
-  });
+class _MultipleFireworksPainter extends CustomPainter {
+  final double progress;
+  final math.Random _rand = math.Random();
 
-  final String title;
-  final String body;
-  final VoidCallback onTap;
+  _MultipleFireworksPainter(this.progress);
 
   @override
-  State<_RankingsCard> createState() => _RankingsCardState();
-}
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..strokeWidth = 2;
 
-class _RankingsCardState extends State<_RankingsCard>
-    with SingleTickerProviderStateMixin {
-  bool _hovering = false;
-  late final AnimationController _controller;
-  late final Animation<Offset> _slide;
+    // Disegna più fuochi (3-5 contemporanei)
+    for (int f = 0; f < 4; f++) {
+      final baseX = size.width * (0.2 + 0.6 * _rand.nextDouble());
+      final startY = size.height;
+      final peakY = size.height * (0.3 + 0.3 * _rand.nextDouble());
 
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _slide = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(0, -0.2),
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+      if (progress < 0.4) {
+        // Razzo che sale
+        final t = progress / 0.4;
+        final y = startY - (startY - peakY) * t;
+        paint.color = Colors.orangeAccent;
+        canvas.drawCircle(
+          Offset(baseX, y),
+          3,
+          paint..style = PaintingStyle.fill,
+        );
+      } else {
+        // Esplosione
+        final t = (progress - 0.4) / 0.6;
+        final center = Offset(baseX, peakY);
+        final maxRadius = size.shortestSide * 0.4;
+
+        for (int i = 0; i < 20; i++) {
+          final angle = (2 * math.pi / 20) * i;
+          final dx = center.dx + maxRadius * t * math.cos(angle);
+          final dy = center.dy + maxRadius * t * math.sin(angle);
+
+          paint
+            ..color = Colors.primaries[(i + f) % Colors.primaries.length]
+                .withOpacity(1 - t)
+            ..strokeWidth = 2 * (1 - t);
+          canvas.drawLine(center, Offset(dx, dy), paint);
+        }
+      }
+    }
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final isSmall = mq.size.width < 400;
-
-    return MouseRegion(
-      onEnter: (_) {
-        setState(() => _hovering = true);
-        if (!isSmall) _controller.forward();
-      },
-      onExit: (_) {
-        setState(() => _hovering = false);
-        if (!isSmall) _controller.reverse();
-      },
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: widget.onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(85, 255, 4, 0),
-            border: Border.all(color: const Color.fromARGB(255, 255, 6, 0)),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Podium image
-              Positioned.fill(
-                child: Opacity(
-                  opacity: _hovering ? 0.15 : 0.0,
-                  child: FittedBox(
-                    fit: BoxFit.contain,
-                    alignment: isSmall
-                        ? Alignment.center
-                        : Alignment.bottomCenter,
-                    child: Image.asset('assets/podium.png'),
-                  ),
-                ),
-              ),
-              // Text with optional slide
-              SlideTransition(
-                position: _slide,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      widget.title,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: isSmall ? 16 : 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      widget.body,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.85),
-                        fontSize: isSmall ? 13 : 15,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  bool shouldRepaint(covariant _MultipleFireworksPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
 
-/// Normal card for other sections
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({
-    required this.title,
-    required this.body,
-    required this.onTap,
-  });
+// /// Normal card for other sections
+// class _InfoCard extends StatelessWidget {
+//   const _InfoCard({
+//     required this.title,
+//     required this.body,
+//     required this.onTap,
+//   });
 
-  final String title;
-  final String body;
-  final VoidCallback onTap;
+//   final String title;
+//   final String body;
+//   final VoidCallback onTap;
 
-  @override
-  Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final isSmall = mq.size.width < 400;
+//   @override
+//   Widget build(BuildContext context) {
+//     final mq = MediaQuery.of(context);
+//     final isSmall = mq.size.width < 400;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color.fromARGB(85, 255, 4, 0),
-          border: Border.all(color: const Color.fromARGB(255, 255, 6, 0)),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: isSmall ? 16 : 18,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              body,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.85),
-                fontSize: isSmall ? 13 : 15,
-                height: 1.3,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+//     return InkWell(
+//       borderRadius: BorderRadius.circular(16),
+//       onTap: onTap,
+//       child: Container(
+//         decoration: BoxDecoration(
+//           color: const Color.fromARGB(85, 255, 4, 0),
+//           border: Border.all(color: const Color.fromARGB(255, 255, 6, 0)),
+//           borderRadius: BorderRadius.circular(16),
+//         ),
+//         padding: const EdgeInsets.all(20),
+//         child: Column(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             Text(
+//               title,
+//               textAlign: TextAlign.center,
+//               style: TextStyle(
+//                 fontSize: isSmall ? 16 : 18,
+//                 fontWeight: FontWeight.w800,
+//               ),
+//             ),
+//             const SizedBox(height: 10),
+//             Text(
+//               body,
+//               textAlign: TextAlign.center,
+//               style: TextStyle(
+//                 color: Colors.white.withOpacity(0.85),
+//                 fontSize: isSmall ? 13 : 15,
+//                 height: 1.3,
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
