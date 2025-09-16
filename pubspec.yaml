@@ -22,6 +22,7 @@ flutter:
     - assets/f1_logo.svg
     - assets/podium.png
     - assets/logos/mclaren.png
+    - assets/logos/mclaren_swoosh.png
     - assets/logos/astonmartin.png
     - assets/logos/alpine.png
     - assets/logos/ferrari.png
