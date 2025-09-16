@@ -121,7 +121,6 @@ class FerrariPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // Solo logo, senza testo
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     height: 48,

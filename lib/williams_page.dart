@@ -110,7 +110,6 @@ class WilliamsPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // Timeline barra unica con logo
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     height: 48,
