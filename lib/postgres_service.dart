@@ -8,7 +8,8 @@ class PostgresService {
     if (_connection == null) {
       _connection = await Connection.open(
         Endpoint(
-          host: 'localhost',
+          host:
+              'localhost', //Computer e andorid (per android 1. download https://developer.android.com/tools/releases/platform-tools?hl=it    2. dopo aver estratto inserire il percorso in variabili d'ambiente PATH 3.    adb reverse tcp:5432 tcp:5432)
           port: 5432,
           database: 'postgres',
           username: 'postgres',
@@ -39,11 +40,7 @@ class PostgresService {
     );
 
     return results.map((row) {
-      return {
-        "id": row[0],
-        "nome": row[1] ?? "N/A",
-        "numero": row[2] ?? 0,
-      };
+      return {"id": row[0], "nome": row[1] ?? "N/A", "numero": row[2] ?? 0};
     }).toList();
   }
 
@@ -83,9 +80,9 @@ class PostgresService {
   }
 
   // 🛑 DNF Totali
-Future<List<Map<String, dynamic>>> getDNFTotals() async {
-  await _ensureConnected();
-  final results = await _connection!.execute('''
+  Future<List<Map<String, dynamic>>> getDNFTotals() async {
+    await _ensureConnected();
+    final results = await _connection!.execute('''
     SELECT 
       pt.nome AS pilota,
       COUNT(*) AS dnf_totali
@@ -96,14 +93,10 @@ Future<List<Map<String, dynamic>>> getDNFTotals() async {
     ORDER BY dnf_totali DESC;
   ''');
 
-  return results.map((row) {
-    return {
-      "pilota": row[0] ?? "N/A",
-      "dnf_totali": row[1] ?? 0,
-    };
-  }).toList();
-}
-
+    return results.map((row) {
+      return {"pilota": row[0] ?? "N/A", "dnf_totali": row[1] ?? 0};
+    }).toList();
+  }
 
   // Pole Positions
   Future<List<Map<String, dynamic>>> getPolePositions() async {
@@ -118,10 +111,7 @@ Future<List<Map<String, dynamic>>> getDNFTotals() async {
     ''');
 
     return results.map((row) {
-      return {
-        "pilota": row[0] ?? "N/A",
-        "numero": row[1] ?? 0,
-      };
+      return {"pilota": row[0] ?? "N/A", "numero": row[1] ?? 0};
     }).toList();
   }
 
@@ -138,10 +128,7 @@ Future<List<Map<String, dynamic>>> getDNFTotals() async {
     ''');
 
     return results.map((row) {
-      return {
-        "pilota": row[0] ?? "N/A",
-        "numero": row[1] ?? 0,
-      };
+      return {"pilota": row[0] ?? "N/A", "numero": row[1] ?? 0};
     }).toList();
   }
 
@@ -161,10 +148,7 @@ Future<List<Map<String, dynamic>>> getDNFTotals() async {
     ''');
 
     return results.map((row) {
-      return {
-        "pilota": row[0] ?? "N/A",
-        "podi_totali": row[1] ?? 0,
-      };
+      return {"pilota": row[0] ?? "N/A", "podi_totali": row[1] ?? 0};
     }).toList();
   }
 }
