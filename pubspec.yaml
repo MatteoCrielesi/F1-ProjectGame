@@ -22,6 +22,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/abudhabi_track.json
+
     - assets/f1_logo.svg
     - assets/podium.png
     - assets/logos/mclaren.png
@@ -117,7 +119,6 @@ flutter:
     - assets/circuiti/abudhabi_mask.png
     - assets/circuiti/australia_mask.png
     - assets/circuiti/austria_mask.png
-    - assets/circuiti/azerbaijan_mask.png
     - assets/circuiti/bahrain_mask.png
     - assets/circuiti/belgium_mask.png
     - assets/circuiti/brazil_mask.png
@@ -126,12 +127,9 @@ flutter:
     - assets/circuiti/hungary_mask.png
     - assets/circuiti/italyimola_mask.png
     - assets/circuiti/italymonza_mask.png
-    - assets/circuiti/japan_mask.png
     - assets/circuiti/mexico_mask.png
-    - assets/circuiti/monaco_mask.png
     - assets/circuiti/netherlands_mask.png
     - assets/circuiti/qatar_mask.png
-    - assets/circuiti/saudiarabia_mask.png
     - assets/circuiti/shanghai_mask.png
     - assets/circuiti/singapore_mask.png
     - assets/circuiti/spain_mask.png

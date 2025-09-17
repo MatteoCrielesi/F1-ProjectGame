@@ -112,8 +112,8 @@ class _GamePageState extends State<GamePage> {
                     child: _selectedCircuit == null
                         ? _buildCircuitPicker()
                         : !_teamSelected
-                            ? _buildTeamPicker()
-                            : _buildStartCard(),
+                        ? _buildTeamPicker()
+                        : _buildStartCard(),
                   ),
                 ],
               ),
@@ -151,10 +151,7 @@ class _GamePageState extends State<GamePage> {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 color: const Color.fromARGB(120, 255, 6, 0),
-                margin: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 8,
-                ),
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 child: Column(
                   children: [
                     const SizedBox(height: 6),
@@ -274,7 +271,7 @@ class _GamePageState extends State<GamePage> {
               padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12),
               child: Text('Inizia Gara'),
             ),
-          )
+          ),
         ],
       ),
     );

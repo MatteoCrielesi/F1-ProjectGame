@@ -1,8 +1,10 @@
+import 'package:f1_project/game/models/test_cars.dart';
 import 'package:flutter/material.dart';
 import 'splash_page.dart';
 import 'postgres_service.dart';
 import 'game_page.dart';
 import 'game_page_1.dart';
+import 'game/screens/game_screen_test.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +26,8 @@ class F1App extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       //home: const SplashPage(),
       //home: const GamePage(),
-      home: const GamePage_1(),
+      //home: const GamePage_1(),
+      home: GameScreenTest(car: redCar),
       theme: ThemeData(
         brightness: Brightness.dark,
         fontFamily: 'Roboto',
