@@ -8,23 +8,14 @@ import '../models/circuit.dart';
 import '../models/car.dart';
 import '../utils/physics.dart';
 
-class BotCar {
-  Offset position;
-  double speed;
-  bool disqualified;
-  Color color;
-
-  BotCar({
-    required this.position,
-    this.speed = 0,
-    this.disqualified = false,
-    required this.color,
-  });
-}
-
 class GameController extends ChangeNotifier {
   Circuit circuit;
   CarModel carModel;
+
+  // display mapping
+  Size displaySize = Size.zero;
+  double displayToMaskScaleX = 1.0;
+  double displayToMaskScaleY = 1.0;
 
   // mask image
   ui.Image? _maskImage;
@@ -32,23 +23,17 @@ class GameController extends ChangeNotifier {
   int maskWidth = 0;
   int maskHeight = 0;
 
-  ui.Image? get maskImage => _maskImage;
-
-  // track points in mask coordinates
+  // track points
   List<Offset> _trackMaskPoints = [];
+  List<Offset> trackPointsDisplay = [];
 
-  // spawn point
-  Offset? _spawnMaskPoint;
-
-  // car state (giocatore)
+  // car state
+  double _progress = 0.0;
   double speed = 0.0;
   bool disqualified = false;
   Offset _lastGoodPos = Offset.zero;
   int _offTrackTicks = 0;
   static const int offTrackRespawnTicks = 40;
-
-  // bot cars
-  final List<BotCar> bots = [];
 
   Timer? _gameTimer;
   int tickMs = 16;
@@ -74,11 +59,27 @@ class GameController extends ChangeNotifier {
       return;
     }
 
+    _updateScale();
     _buildTrackCenterlineFromMask();
-    _initSpawnFromCircuitPercentage();
-    _applySpawnPoint();
-    if (bots.isEmpty) _initBots();
+    if (displaySize != Size.zero) {
+      _mapTrackToDisplay();
+    }
+    _initSpawnAtRedPixel();
     notifyListeners();
+  }
+
+  void updateDisplayLayout({required Size size}) {
+    displaySize = size;
+    _updateScale();
+    if (_trackMaskPoints.isNotEmpty) {
+      _mapTrackToDisplay();
+    }
+  }
+
+  void _updateScale() {
+    if (_maskImage == null || displaySize == Size.zero) return;
+    displayToMaskScaleX = maskWidth / displaySize.width;
+    displayToMaskScaleY = maskHeight / displaySize.height;
   }
 
   // ---------------- build track centerline ----------------
@@ -92,6 +93,7 @@ class GameController extends ChangeNotifier {
       final r = _maskPixels![idx];
       final g = _maskPixels![idx + 1];
       final b = _maskPixels![idx + 2];
+      // grigio = percorso
       return r > 100 && r < 200 && g > 100 && g < 200 && b > 100 && b < 200;
     }
 
@@ -106,40 +108,49 @@ class GameController extends ChangeNotifier {
     debugPrint("Track pixels extracted: ${_trackMaskPoints.length}");
   }
 
-  // ---------------- spawn ----------------
-  void _initSpawnFromCircuitPercentage() {
-    if (maskWidth == 0 || maskHeight == 0) return;
-    _spawnMaskPoint = Offset(
-      maskWidth * circuit.xPercentage,
-      maskHeight * circuit.yPercentage,
-    );
+  // ---------------- map track to display ----------------
+  void _mapTrackToDisplay() {
+    trackPointsDisplay = _trackMaskPoints
+        .map((m) => _maskToDisplay(m))
+        .toList();
   }
 
-  void _applySpawnPoint() {
-    if (_spawnMaskPoint == null) return;
-    _lastGoodPos = _spawnMaskPoint!;
-    speed = 0.0;
-    disqualified = false;
-  }
+  // ---------------- spawn on first red pixel ----------------
+  void _initSpawnAtRedPixel() {
+    if (_maskPixels == null) return;
 
-  void _initBots() {
-    bots.clear();
-    final rand = Random();
-    final spawn = _lastGoodPos;
+    for (int y = 0; y < maskHeight; y++) {
+      for (int x = 0; x < maskWidth; x++) {
+        final idx = (y * maskWidth + x) * 4;
+        final r = _maskPixels![idx];
+        final g = _maskPixels![idx + 1];
+        final b = _maskPixels![idx + 2];
 
-    for (int i = 0; i < 9; i++) {
-      bots.add(
-        BotCar(
-          position:
-              spawn +
-              Offset(rand.nextDouble() * 40 - 20, rand.nextDouble() * 20 - 10),
-          color: allCars[i + 1].color, // 0 è giocatore
-        ),
-      );
+        if (r > 150 && g < 100 && b < 100) {
+          final start = _maskToDisplay(Offset(x.toDouble(), y.toDouble()));
+          _lastGoodPos = start;
+          _progress = 0.0;
+          speed = 0.0;
+          disqualified = false;
+          notifyListeners();
+          return;
+        }
+      }
     }
   }
 
-  Offset get carPosition => _lastGoodPos;
+  Offset _maskToDisplay(Offset mask) {
+    return Offset(
+      (mask.dx / displayToMaskScaleX).clamp(0, displaySize.width),
+      (mask.dy / displayToMaskScaleY).clamp(0, displaySize.height),
+    );
+  }
+
+  Offset get carPosition {
+    if (trackPointsDisplay.isEmpty)
+      return Offset(displaySize.width / 2, displaySize.height / 2);
+    return _lastGoodPos;
+  }
 
   // ---------------- controls ----------------
   void accelerate() {
@@ -154,40 +165,36 @@ class GameController extends ChangeNotifier {
 
   // ---------------- tick ----------------
   void tick() {
-    if (_trackMaskPoints.isEmpty) {
+    if (disqualified || trackPointsDisplay.isEmpty) {
       notifyListeners();
       return;
     }
 
-    _updateCarMovement();
-    _updateBots();
-
-    notifyListeners();
-  }
-
-  void _updateCarMovement() {
-    if (disqualified) return;
-
+    // friction
     speed = Physics.applyFriction(speed);
 
-    Offset pos = _lastGoodPos + Offset(speed, 0);
+    // move car along track
+    Offset pos = _lastGoodPos + Offset(speed, 0); // placeholder, lineare
 
+    // check curve speed rules (placeholder)
     double optimalSpeed = Physics.maxSpeed * 0.7;
     if (speed < optimalSpeed * 0.6) {
-      // troppo piano -> nessun effetto
+      // low speed
     } else if ((speed - optimalSpeed).abs() <= optimalSpeed * 0.15) {
       speed = min(Physics.maxSpeed, speed + 0.3);
     } else if (speed < optimalSpeed * 1.2) {
       speed *= 0.92;
     } else if (speed < optimalSpeed * 1.5) {
       _handleOffTrack();
+      notifyListeners();
       return;
     } else {
       disqualified = true;
+      notifyListeners();
       return;
     }
 
-    if (!_isMaskPointOnTrack(pos)) {
+    if (!_isDisplayPointOnTrack(pos)) {
       _offTrackTicks++;
       speed *= 0.7;
       if (_offTrackTicks >= offTrackRespawnTicks) {
@@ -197,49 +204,24 @@ class GameController extends ChangeNotifier {
       _lastGoodPos = pos;
       _offTrackTicks = 0;
     }
+
+    notifyListeners();
   }
 
-  void _updateBots() {
-    final rand = Random();
-    for (var bot in bots) {
-      if (bot.disqualified) continue;
-
-      bot.speed = Physics.applyFriction(bot.speed);
-      if (rand.nextDouble() < 0.2) {
-        bot.speed = Physics.applyAcceleration(bot.speed);
-      }
-
-      Offset pos = bot.position + Offset(bot.speed, 0);
-
-      double optimalSpeed = Physics.maxSpeed * 0.7;
-      if (bot.speed < optimalSpeed * 0.6) {
-        // nessun effetto
-      } else if ((bot.speed - optimalSpeed).abs() <= optimalSpeed * 0.15) {
-        bot.speed = min(Physics.maxSpeed, bot.speed + 0.2);
-      } else if (bot.speed < optimalSpeed * 1.2) {
-        bot.speed *= 0.92;
-      } else if (bot.speed < optimalSpeed * 1.5) {
-        bot.position = _lastGoodPos;
-        bot.speed = 0.05;
-      } else {
-        bot.disqualified = true;
-        continue;
-      }
-
-      if (_isMaskPointOnTrack(pos)) {
-        bot.position = pos;
-      }
-    }
-  }
-
-  bool _isMaskPointOnTrack(Offset point) {
+  bool _isDisplayPointOnTrack(Offset displayPoint) {
     if (_maskPixels == null) return true;
-    final x = point.dx.toInt().clamp(0, maskWidth - 1);
-    final y = point.dy.toInt().clamp(0, maskHeight - 1);
+    final maskPt = Offset(
+      (displayPoint.dx * displayToMaskScaleX).clamp(0, maskWidth - 1),
+      (displayPoint.dy * displayToMaskScaleY).clamp(0, maskHeight - 1),
+    );
+    final x = maskPt.dx.toInt();
+    final y = maskPt.dy.toInt();
     final idx = (y * maskWidth + x) * 4;
     final r = _maskPixels![idx];
     final g = _maskPixels![idx + 1];
     final b = _maskPixels![idx + 2];
+
+    // grigio = percorso
     return r > 100 && r < 200 && g > 100 && g < 200 && b > 100 && b < 200;
   }
 
@@ -267,43 +249,4 @@ class GameController extends ChangeNotifier {
   void disposeController() {
     stop();
   }
-
-  // ---------------- debug painter ----------------
-  CustomPainter buildDebugPainter() => _GameDebugPainter(this);
-}
-
-class _GameDebugPainter extends CustomPainter {
-  final GameController controller;
-  _GameDebugPainter(this.controller);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint();
-
-    // track centerline
-    paint.color = Colors.grey;
-    paint.strokeWidth = 1;
-    for (var pt in controller._trackMaskPoints) {
-      canvas.drawCircle(pt, 1, paint);
-    }
-
-    // spawn point
-    if (controller._spawnMaskPoint != null) {
-      paint.color = Colors.red;
-      canvas.drawCircle(controller._spawnMaskPoint!, 6, paint);
-    }
-
-    // player car
-    paint.color = Colors.yellow;
-    canvas.drawCircle(controller.carPosition, 8, paint);
-
-    // bot cars
-    for (var bot in controller.bots) {
-      paint.color = bot.color;
-      canvas.drawCircle(bot.position, 6, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _GameDebugPainter oldDelegate) => true;
 }
