@@ -1,4 +1,3 @@
-// lib/game/screens/game_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../controllers/game_controller.dart';
@@ -26,16 +25,14 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     controller = GameController(circuit: widget.circuit, carModel: widget.car);
-    // load mask (async)
     controller.loadMask();
 
-    // start game loop after a small delay to allow layout
+    // start game loop after layout ready
     WidgetsBinding.instance.addPostFrameCallback((_) => _onLayoutReady());
   }
 
   void _onLayoutReady() {
     _updateLayoutToController();
-    // if mask not loaded yet, controller.loadMask will call spawn when ready
     controller.start();
 
     // sometimes layout changes (orientation) — poll few times
@@ -54,8 +51,7 @@ class _GameScreenState extends State<GameScreen> {
     final renderBox = _circuitKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox != null && renderBox.hasSize) {
       final size = renderBox.size;
-      final topLeft = renderBox.localToGlobal(Offset.zero);
-      controller.updateDisplayLayout(size: size, topLeftGlobal: topLeft);
+      controller.updateDisplayLayout(size: size); // solo size, topLeftGlobal rimosso
     }
   }
 
@@ -94,34 +90,23 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                     ),
 
-                    // Car overlay (uses controller.carPos which is in display coords relative to the SVG container)
+                    // Car overlay: puntino colorato
                     AnimatedBuilder(
                       animation: controller,
                       builder: (_, __) {
-                        // we need to convert controller.carPos (display coords relative to svg widget)
-                        // to absolute positioned inside this Stack. Since the svg widget is positioned with padding
-                        // we placed the svg inside the Positioned.fill Container with key => controller already
-                        // received displaySize relative to that container.
-                        final pos = controller.carPos;
-                        // clamp within area
-                        final left = pos.dx;
-                        final top = pos.dy;
+                        final pos = controller.carPosition;
                         return Positioned(
-                          left: left,
-                          top: top,
-                          child: Transform.rotate(
-                            angle: controller.carAngle * (3.1415926535 / 180),
-                            alignment: Alignment.center,
-                            child: Container(
-                              width: 18,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: widget.car.color,
-                                borderRadius: BorderRadius.circular(4),
-                                boxShadow: const [
-                                  BoxShadow(blurRadius: 4, color: Colors.black45, offset: Offset(1, 2)),
-                                ],
-                              ),
+                          left: pos.dx - 5, // centrare il puntino
+                          top: pos.dy - 5,
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: widget.car.color,
+                              shape: BoxShape.circle,
+                              boxShadow: const [
+                                BoxShadow(blurRadius: 2, color: Colors.black38, offset: Offset(1, 1)),
+                              ],
                             ),
                           ),
                         );
@@ -132,7 +117,7 @@ class _GameScreenState extends State<GameScreen> {
               }),
             ),
 
-            // Controls
+            // Controls (accelerate / brake only)
             Container(
               color: Colors.black87,
               padding: const EdgeInsets.all(8),

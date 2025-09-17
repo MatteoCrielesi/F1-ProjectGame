@@ -12,7 +12,6 @@ class GameControls extends StatefulWidget {
 }
 
 class _GameControlsState extends State<GameControls> {
-  // track pressed keys for smoother control
   final Set<LogicalKeyboardKey> _pressed = {};
 
   @override
@@ -29,18 +28,15 @@ class _GameControlsState extends State<GameControls> {
       _pressed.remove(key);
     }
 
-    // map keys
+    // solo su/giù
     if (_pressed.contains(LogicalKeyboardKey.arrowUp) || _pressed.contains(LogicalKeyboardKey.keyW)) {
       widget.controller.accelerate();
+    } else {
+      // optional: you may want to let it coast if not pressed
     }
+
     if (_pressed.contains(LogicalKeyboardKey.arrowDown) || _pressed.contains(LogicalKeyboardKey.keyS)) {
       widget.controller.brake();
-    }
-    if (_pressed.contains(LogicalKeyboardKey.arrowLeft) || _pressed.contains(LogicalKeyboardKey.keyA)) {
-      widget.controller.steerLeft();
-    }
-    if (_pressed.contains(LogicalKeyboardKey.arrowRight) || _pressed.contains(LogicalKeyboardKey.keyD)) {
-      widget.controller.steerRight();
     }
   }
 
@@ -69,26 +65,14 @@ class _GameControlsState extends State<GameControls> {
           ],
         ),
         const SizedBox(height: 8),
-        // steer left / brake / steer right
+        // brake
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ElevatedButton(
-              onPressed: widget.controller.steerLeft,
-              style: ElevatedButton.styleFrom(minimumSize: const Size(56, 48)),
-              child: const Icon(Icons.arrow_back),
-            ),
-            const SizedBox(width: 12),
-            ElevatedButton(
               onPressed: widget.controller.brake,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red[700], minimumSize: const Size(56, 48)),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red[700], minimumSize: const Size(120, 48)),
               child: const Icon(Icons.arrow_downward),
-            ),
-            const SizedBox(width: 12),
-            ElevatedButton(
-              onPressed: widget.controller.steerRight,
-              style: ElevatedButton.styleFrom(minimumSize: const Size(56, 48)),
-              child: const Icon(Icons.arrow_forward),
             ),
           ],
         ),

@@ -1,3 +1,4 @@
+//lib/game/widgets/car_view.dart
 import 'package:flutter/material.dart';
 
 class CarView extends StatelessWidget {

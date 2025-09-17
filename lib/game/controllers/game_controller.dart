@@ -1,5 +1,6 @@
 // lib/game/controllers/game_controller.dart
 import 'dart:async';
+import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
@@ -9,66 +10,69 @@ import '../models/car.dart';
 import '../utils/physics.dart';
 
 class GameController extends ChangeNotifier {
-  // selected
   Circuit circuit;
   CarModel carModel;
 
-  // visual/display mapping (set by CircuitView when layout is ready)
-  Size displaySize = Size.zero; // widget size where svg is drawn
-  Offset displayTopLeftGlobal = Offset.zero; // global offset of the widget
+  // display mapping
+  Size displaySize = Size.zero;
   double displayToMaskScaleX = 1.0;
   double displayToMaskScaleY = 1.0;
 
-  // mask image data
+  // mask image
   ui.Image? _maskImage;
-  Uint8List? _maskPixels; // rgba bytes
+  Uint8List? _maskPixels;
   int maskWidth = 0;
   int maskHeight = 0;
 
-  // car state in display coordinates
-  Offset carPos = Offset.zero; // position in display coordinates (left/top)
-  double carAngle = 0.0; // degrees (0 = right)
+  // track points
+  List<Offset> _trackMaskPoints = [];
+  List<Offset> trackPointsDisplay = [];
+
+  // car state
+  double _progress = 0.0;
   double speed = 0.0;
-
-  // game loop
-  Timer? _gameTimer;
-  int tickMs = 16; // ~60 Hz
-
-  // off-track handling
-  bool _isOffTrack = false;
+  bool disqualified = false;
+  Offset _lastGoodPos = Offset.zero;
   int _offTrackTicks = 0;
-  static const int offTrackRespawnTicks = 40; // after ~40 ticks respawn
-  Offset _lastOnTrackPos = Offset.zero;
+  static const int offTrackRespawnTicks = 40;
+
+  Timer? _gameTimer;
+  int tickMs = 16;
 
   GameController({required this.circuit, required this.carModel});
 
-  // ---------- mask loading ----------
+  // ---------------- mask loading ----------------
   Future<void> loadMask() async {
-    final bytes = await rootBundle.load(circuit.maskPath);
-    final data = bytes.buffer.asUint8List();
-    final codec = await ui.instantiateImageCodec(data);
-    final frame = await codec.getNextFrame();
-    _maskImage = frame.image;
-    maskWidth = _maskImage!.width;
-    maskHeight = _maskImage!.height;
-    final byteData = await _maskImage!.toByteData(format: ui.ImageByteFormat.rawRgba);
-    _maskPixels = byteData!.buffer.asUint8List();
-    // compute scale if display is already known
+    try {
+      final bytes = await rootBundle.load(circuit.maskPath);
+      final data = bytes.buffer.asUint8List();
+      final codec = await ui.instantiateImageCodec(data);
+      final frame = await codec.getNextFrame();
+      _maskImage = frame.image;
+      maskWidth = _maskImage!.width;
+      maskHeight = _maskImage!.height;
+      final byteData = await _maskImage!.toByteData(format: ui.ImageByteFormat.rawRgba);
+      _maskPixels = byteData!.buffer.asUint8List();
+    } catch (e) {
+      debugPrint('Errore caricamento mask: $e');
+      return;
+    }
+
     _updateScale();
-    // compute a reasonable spawn point if display known
+    _buildTrackCenterlineFromMask();
     if (displaySize != Size.zero) {
-      _initSpawnAtCenterTrack();
+      _mapTrackToDisplay();
+      _initSpawnAtRedPixel();
     }
     notifyListeners();
   }
 
-  // Called by CircuitView when SVG widget is laid out and positioned
-  void updateDisplayLayout({required Size size, required Offset topLeftGlobal}) {
+  void updateDisplayLayout({required Size size}) {
     displaySize = size;
-    displayTopLeftGlobal = topLeftGlobal;
     _updateScale();
-    if (_maskImage != null) {
-      _initSpawnAtCenterTrack();
+    if (_trackMaskPoints.isNotEmpty) {
+      _mapTrackToDisplay();
+      _initSpawnAtRedPixel();
     }
   }
 
@@ -78,201 +82,157 @@ class GameController extends ChangeNotifier {
     displayToMaskScaleY = maskHeight / displaySize.height;
   }
 
-  // ---------- spawn: find nearest black pixel to center ----------
-  void _initSpawnAtCenterTrack() {
-    // find center display coords mapped to mask
-    final centerDisplay = Offset(displaySize.width / 2, displaySize.height / 2);
-    final centerMask = _displayToMask(centerDisplay);
-    final start = _findNearestTrackPixel(centerMask.dx.toInt(), centerMask.dy.toInt(), maxRadius: 400);
-    if (start != null) {
-      carPos = _maskToDisplay(Offset(start.dx.toDouble(), start.dy.toDouble()));
-      _lastOnTrackPos = carPos;
-    } else {
-      // fallback: center
-      carPos = centerDisplay;
-      _lastOnTrackPos = carPos;
-    }
-    speed = 0;
-    carAngle = 0;
-    notifyListeners();
-  }
+  // ---------------- build track centerline ----------------
+  void _buildTrackCenterlineFromMask() {
+    _trackMaskPoints.clear();
+    if (_maskPixels == null) return;
 
-  // spiral search for nearest black pixel in mask around (mx,my)
-  Offset? _findNearestTrackPixel(int mx, int my, {int maxRadius = 200}) {
-    if (_maskPixels == null) return null;
-    bool isTrack(int x, int y) {
+    bool isTrackPixel(int x, int y) {
       if (x < 0 || y < 0 || x >= maskWidth || y >= maskHeight) return false;
       final idx = (y * maskWidth + x) * 4;
       final r = _maskPixels![idx];
       final g = _maskPixels![idx + 1];
       final b = _maskPixels![idx + 2];
-      // consider pixel track if dark (close to black)
-      final brightness = (r + g + b) / 3;
-      return brightness < 80; // threshold
+      final brightness = (r + g + b) / 3.0;
+      return brightness < 120;
     }
 
-    if (isTrack(mx, my)) return Offset(mx.toDouble(), my.toDouble());
-
-    for (int r = 1; r <= maxRadius; r++) {
-      for (int dx = -r; dx <= r; dx++) {
-        final xs = [mx + dx, mx - dx];
-        final ys = [my + r, my - r];
-        for (final x in xs) {
-          for (final y in ys) {
-            if (x >= 0 && y >= 0 && x < maskWidth && y < maskHeight) {
-              if (isTrack(x, y)) return Offset(x.toDouble(), y.toDouble());
-            }
-          }
+    // Collect all track pixels
+    for (int y = 0; y < maskHeight; y++) {
+      for (int x = 0; x < maskWidth; x++) {
+        if (isTrackPixel(x, y)) {
+          _trackMaskPoints.add(Offset(x.toDouble(), y.toDouble()));
         }
       }
     }
-    return null;
   }
 
-  // ---------- coordinate transforms ----------
-  // display coords (0..displaySize) -> mask coords (0..maskWidth/height)
-  Offset _displayToMask(Offset display) {
-    final mx = (display.dx * displayToMaskScaleX).clamp(0, maskWidth - 1).toDouble();
-    final my = (display.dy * displayToMaskScaleY).clamp(0, maskHeight - 1).toDouble();
-    return Offset(mx, my);
+  // ---------------- map track to display ----------------
+  void _mapTrackToDisplay() {
+    trackPointsDisplay = _trackMaskPoints.map((m) => _maskToDisplay(m)).toList();
   }
 
-  // mask coords -> display coords
-  Offset _maskToDisplay(Offset mask) {
-    final dx = (mask.dx / displayToMaskScaleX).clamp(0, displaySize.width).toDouble();
-    final dy = (mask.dy / displayToMaskScaleY).clamp(0, displaySize.height).toDouble();
-    return Offset(dx, dy);
-  }
+  // ---------------- spawn on first red pixel ----------------
+  void _initSpawnAtRedPixel() {
+    if (_maskPixels == null) return;
 
-  // ---------- collision / onTrack sampling ----------
-  bool _isOnTrackAtDisplayPoint(Offset displayPoint) {
-    if (_maskPixels == null || displaySize == Size.zero) return true;
-    final maskPt = _displayToMask(displayPoint);
-    final x = maskPt.dx.toInt();
-    final y = maskPt.dy.toInt();
-    if (x < 0 || y < 0 || x >= maskWidth || y >= maskHeight) return false;
-    final idx = (y * maskWidth + x) * 4;
-    final r = _maskPixels![idx];
-    final g = _maskPixels![idx + 1];
-    final b = _maskPixels![idx + 2];
-    final brightness = (r + g + b) / 3;
-    return brightness < 100; // threshold
-  }
+    for (int y = 0; y < maskHeight; y++) {
+      for (int x = 0; x < maskWidth; x++) {
+        final idx = (y * maskWidth + x) * 4;
+        final r = _maskPixels![idx];
+        final g = _maskPixels![idx + 1];
+        final b = _maskPixels![idx + 2];
 
-  // sample multiple points around car (center + front left + front right + rear)
-  bool _isCarOnTrack() {
-    final center = carPos;
-    // define car size in display coords (visual). tweak as needed
-    final carHalfWidth = 10.0;
-    final carHalfLength = 20.0;
-    final angleRad = Physics.degToRad(carAngle);
-
-    List<Offset> samplePoints = [];
-
-    // center
-    samplePoints.add(center);
-
-    // front center
-    final front = Offset(
-      center.dx + Physics.cosDeg(carAngle) * carHalfLength,
-      center.dy + Physics.sinDeg(carAngle) * carHalfLength,
-    );
-    samplePoints.add(front);
-
-    // rear center
-    final rear = Offset(
-      center.dx - Physics.cosDeg(carAngle) * (carHalfLength / 1.6),
-      center.dy - Physics.sinDeg(carAngle) * (carHalfLength / 1.6),
-    );
-    samplePoints.add(rear);
-
-    // front-left
-    final fl = Offset(
-      front.dx - Physics.sinDeg(carAngle) * (carHalfWidth),
-      front.dy + Physics.cosDeg(carAngle) * (carHalfWidth),
-    );
-    // front-right
-    final fr = Offset(
-      front.dx + Physics.sinDeg(carAngle) * (carHalfWidth),
-      front.dy - Physics.cosDeg(carAngle) * (carHalfWidth),
-    );
-    samplePoints.add(fl);
-    samplePoints.add(fr);
-
-    // sample them
-    int onTrackCount = 0;
-    for (final p in samplePoints) {
-      if (_isOnTrackAtDisplayPoint(p)) onTrackCount++;
+        if (r > 150 && g < 100 && b < 100) {
+          final start = _maskToDisplay(Offset(x.toDouble(), y.toDouble()));
+          _progress = 0.0;
+          _lastGoodPos = start;
+          speed = 0.0;
+          disqualified = false;
+          trackPointsDisplay = [start]; // placeholder per spawn
+          notifyListeners();
+          return;
+        }
+      }
     }
-
-    // consider on track if majority of samples are on track
-    return onTrackCount >= (samplePoints.length / 2).ceil();
   }
 
-  // ---------- movement & controls ----------
+  Offset _maskToDisplay(Offset mask) {
+    return Offset(
+      (mask.dx / displayToMaskScaleX).clamp(0, displaySize.width),
+      (mask.dy / displayToMaskScaleY).clamp(0, displaySize.height),
+    );
+  }
+
+  Offset get carPosition {
+    if (trackPointsDisplay.isEmpty) return Offset(displaySize.width / 2, displaySize.height / 2);
+    return _lastGoodPos;
+  }
+
+  // ---------------- controls ----------------
   void accelerate() {
+    if (disqualified) return;
     speed = Physics.applyAcceleration(speed);
   }
 
   void brake() {
+    if (disqualified) return;
     speed = Physics.applyBrake(speed);
   }
 
-  void steerLeft() {
-    carAngle -= Physics.steerSpeedDeg;
-    if (carAngle <= -360) carAngle += 360;
-  }
-
-  void steerRight() {
-    carAngle += Physics.steerSpeedDeg;
-    if (carAngle >= 360) carAngle -= 360;
-  }
-
-  // should be called each tick
+  // ---------------- tick ----------------
   void tick() {
-    // apply friction
+    if (disqualified || trackPointsDisplay.isEmpty) {
+      notifyListeners();
+      return;
+    }
+
+    // friction
     speed = Physics.applyFriction(speed);
 
-    // apply movement based on angle
-    final dx = Physics.cosDeg(carAngle) * speed;
-    final dy = Physics.sinDeg(carAngle) * speed;
-    carPos = Offset(carPos.dx + dx, carPos.dy + dy);
+    // move car along track
+    Offset pos = _lastGoodPos + Offset(speed, 0); // simplified: linear for demo
 
-    // boundary check display
-    if (carPos.dx < 0) carPos = Offset(0, carPos.dy);
-    if (carPos.dy < 0) carPos = Offset(carPos.dx, 0);
-    if (carPos.dx > displaySize.width) carPos = Offset(displaySize.width, carPos.dy);
-    if (carPos.dy > displaySize.height) carPos = Offset(carPos.dx, displaySize.height);
-
-    // on track check
-    final onTrack = _isCarOnTrack();
-    if (onTrack) {
-      _isOffTrack = false;
-      _offTrackTicks = 0;
-      _lastOnTrackPos = carPos;
+    // check curve speed rules (placeholder: can be improved with angle-based curvature)
+    double optimalSpeed = Physics.maxSpeed * 0.7;
+    if (speed < optimalSpeed * 0.6) {
+      // low speed, maintain
+    } else if ((speed - optimalSpeed).abs() <= optimalSpeed * 0.15) {
+      // correct speed -> boost
+      speed = min(Physics.maxSpeed, speed + 0.3);
+    } else if (speed < optimalSpeed * 1.2) {
+      speed *= 0.92;
+    } else if (speed < optimalSpeed * 1.5) {
+      _handleOffTrack();
+      notifyListeners();
+      return;
     } else {
-      // off track handling
-      if (!_isOffTrack) {
-        _isOffTrack = true;
-        _offTrackTicks = 0;
-      } else {
-        _offTrackTicks++;
-        // progressive penalty: slow down
-        speed = speed * 0.85;
-        if (_offTrackTicks >= offTrackRespawnTicks) {
-          // respawn near last on-track
-          carPos = _lastOnTrackPos;
-          speed = 0;
-          _isOffTrack = false;
-          _offTrackTicks = 0;
-        }
+      disqualified = true;
+      notifyListeners();
+      return;
+    }
+
+    // check pixel under car
+    if (!_isDisplayPointOnTrack(pos)) {
+      _offTrackTicks++;
+      speed *= 0.7;
+      if (_offTrackTicks >= offTrackRespawnTicks) {
+        _respawnToLastGood();
       }
+    } else {
+      _lastGoodPos = pos;
+      _offTrackTicks = 0;
     }
 
     notifyListeners();
   }
 
-  // ---------- game loop start/stop ----------
+  bool _isDisplayPointOnTrack(Offset displayPoint) {
+    if (_maskPixels == null) return true;
+    final maskPt = Offset(
+      (displayPoint.dx * displayToMaskScaleX).clamp(0, maskWidth - 1),
+      (displayPoint.dy * displayToMaskScaleY).clamp(0, maskHeight - 1),
+    );
+    final x = maskPt.dx.toInt();
+    final y = maskPt.dy.toInt();
+    final idx = (y * maskWidth + x) * 4;
+    final r = _maskPixels![idx];
+    final g = _maskPixels![idx + 1];
+    final b = _maskPixels![idx + 2];
+    return r < 120 && g < 120 && b < 120; // dark = track
+  }
+
+  void _handleOffTrack() {
+    _respawnToLastGood();
+    speed = 0.05;
+  }
+
+  void _respawnToLastGood() {
+    _offTrackTicks = 0;
+    speed = 0.0;
+  }
+
+  // ---------------- loop control ----------------
   void start() {
     stop();
     _gameTimer = Timer.periodic(Duration(milliseconds: tickMs), (_) => tick());

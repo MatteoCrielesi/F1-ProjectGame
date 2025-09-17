@@ -2,11 +2,11 @@
 import 'dart:math';
 
 class Physics {
-  static const double maxSpeed = 8.0;
-  static const double acceleration = 0.35;
-  static const double brakeForce = 0.8;
-  static const double frictionPerTick = 0.06;
-  static const double steerSpeedDeg = 3.5; // degrees per tick
+  static const double maxSpeed = 10.0; // in display pixels per tick (tweak)
+  static const double acceleration = 0.5;
+  static const double brakeForce = 1.0;
+  static const double frictionPerTick = 0.05;
+
   static double clamp(double v, double min, double max) => v < min ? min : (v > max ? max : v);
 
   static double applyAcceleration(double speed) => clamp(speed + acceleration, 0, maxSpeed);

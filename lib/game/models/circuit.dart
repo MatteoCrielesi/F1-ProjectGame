@@ -3,7 +3,7 @@ class Circuit {
   final String id;
   final String displayName;
   final String svgPath;
-  final String maskPath; // png mask, nero=pista, bianco=fuori
+  final String maskPath; 
 
   const Circuit({
     required this.id,
