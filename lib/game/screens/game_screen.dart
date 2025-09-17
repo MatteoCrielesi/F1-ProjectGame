@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../controllers/game_controller.dart';
@@ -26,7 +28,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _initGame() async {
-    await controller.loadMask();
+    await controller.loadTrackFromJson();
     controller.start();
   }
 
@@ -52,36 +54,40 @@ class _GameScreenState extends State<GameScreen> {
                 child: AnimatedBuilder(
                   animation: controller,
                   builder: (_, __) {
-                    return Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // SVG del circuito
-                        SvgPicture.asset(
-                          widget.circuit.svgPath,
-                          fit: BoxFit.contain,
-                        ),
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final maxWidth = constraints.maxWidth;
+                        final maxHeight = constraints.maxHeight;
 
-                        // Pista + spawn + auto + bot
-                        if (controller.maskImage != null)
-                          FittedBox(
-                            fit: BoxFit.contain,
-                            alignment: Alignment.center,
-                            child: SizedBox(
-                              width: controller.maskWidth.toDouble(),
-                              height: controller.maskHeight.toDouble(),
-                              child: CustomPaint(
-                                painter: controller.buildDebugPainter(),
+                        return Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // SVG del circuito
+                            SvgPicture.asset(
+                              widget.circuit.svgPath,
+                              fit: BoxFit.contain,
+                              width: maxWidth,
+                              height: maxHeight,
+                            ),
+
+                            // Disegno track JSON nello stesso container
+                            CustomPaint(
+                              size: Size(maxWidth, maxHeight),
+                              painter: _TrackPainter(
+                                controller.trackPoints,
+                                widget.circuit,
+                                maxWidth,
+                                maxHeight,
                               ),
                             ),
-                          ),
-                      ],
+                          ],
+                        );
+                      },
                     );
                   },
                 ),
               ),
             ),
-
-            // controlli
             Container(
               color: Colors.black87,
               padding: const EdgeInsets.all(8),
@@ -92,4 +98,44 @@ class _GameScreenState extends State<GameScreen> {
       ),
     );
   }
+}
+
+class _TrackPainter extends CustomPainter {
+  final List<Offset> points;
+  final Circuit circuit;
+  final double canvasWidth;
+  final double canvasHeight;
+
+  _TrackPainter(this.points, this.circuit, this.canvasWidth, this.canvasHeight);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.isEmpty) return;
+
+    final paint = Paint()
+      ..color = Colors.yellow // <-- cambia qui il colore della track
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+
+    // --- Calcolo scaling e centraggio usando viewBox ---
+    final scaleX = canvasWidth / circuit.viewBoxWidth;
+    final scaleY = canvasHeight / circuit.viewBoxHeight;
+    final scale = min(scaleX, scaleY);
+
+    final offsetX = (canvasWidth - circuit.viewBoxWidth * scale) / 2 - circuit.viewBoxX * scale;
+    final offsetY = (canvasHeight - circuit.viewBoxHeight * scale) / 2 - circuit.viewBoxY * scale;
+
+    path.moveTo(points.first.dx * scale + offsetX, points.first.dy * scale + offsetY);
+
+    for (final p in points.skip(1)) {
+      path.lineTo(p.dx * scale + offsetX, p.dy * scale + offsetY);
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

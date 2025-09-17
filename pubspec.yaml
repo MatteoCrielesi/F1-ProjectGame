@@ -22,7 +22,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/abudhabi_track.json
 
     - assets/f1_logo.svg
     - assets/podium.png
@@ -116,23 +115,48 @@ flutter:
     - assets/circuiti/usacota.svg
     - assets/circuiti/usamiami.svg
     - assets/circuiti/usavegas.svg
-    - assets/circuiti/abudhabi_mask.png
-    - assets/circuiti/australia_mask.png
-    - assets/circuiti/austria_mask.png
-    - assets/circuiti/bahrain_mask.png
-    - assets/circuiti/belgium_mask.png
-    - assets/circuiti/brazil_mask.png
-    - assets/circuiti/canada_mask.png
-    - assets/circuiti/greatbritain_mask.png
-    - assets/circuiti/hungary_mask.png
-    - assets/circuiti/italyimola_mask.png
-    - assets/circuiti/italymonza_mask.png
-    - assets/circuiti/mexico_mask.png
-    - assets/circuiti/netherlands_mask.png
-    - assets/circuiti/qatar_mask.png
-    - assets/circuiti/shanghai_mask.png
-    - assets/circuiti/singapore_mask.png
-    - assets/circuiti/spain_mask.png
-    - assets/circuiti/usacota_mask.png
-    - assets/circuiti/usamiami_mask.png
-    - assets/circuiti/usavegas_mask.png
+    - assets/circuiti/mask/abudhabi_mask.png
+    - assets/circuiti/mask/australia_mask.png
+    - assets/circuiti/mask/austria_mask.png
+    - assets/circuiti/mask/bahrain_mask.png
+    - assets/circuiti/mask/belgium_mask.png
+    - assets/circuiti/mask/brazil_mask.png
+    - assets/circuiti/mask/canada_mask.png
+    - assets/circuiti/mask/greatbritain_mask.png
+    - assets/circuiti/mask/hungary_mask.png
+    - assets/circuiti/mask/italyimola_mask.png
+    - assets/circuiti/mask/italymonza_mask.png
+    - assets/circuiti/mask/mexico_mask.png
+    - assets/circuiti/mask/netherlands_mask.png
+    - assets/circuiti/mask/qatar_mask.png
+    - assets/circuiti/mask/shanghai_mask.png
+    - assets/circuiti/mask/singapore_mask.png
+    - assets/circuiti/mask/spain_mask.png
+    - assets/circuiti/mask/usacota_mask.png
+    - assets/circuiti/mask/usamiami_mask.png
+    - assets/circuiti/mask/usavegas_mask.png
+
+    - assets/circuiti/track/abudhabi_track.json
+    - assets/circuiti/track/australia_track.json
+    - assets/circuiti/track/austria_track.json
+    - assets/circuiti/track/azerbaijan_track.json
+    - assets/circuiti/track/bahrain_track.json
+    - assets/circuiti/track/belgium_track.json
+    - assets/circuiti/track/brazil_track.json
+    - assets/circuiti/track/canada_track.json
+    - assets/circuiti/track/greatbritain_track.json
+    - assets/circuiti/track/hungary_track.json
+    - assets/circuiti/track/italyimola_track.json
+    - assets/circuiti/track/italymonza_track.json
+    - assets/circuiti/track/japan_track.json
+    - assets/circuiti/track/mexico_track.json
+    - assets/circuiti/track/monaco_track.json
+    - assets/circuiti/track/netherlands_track.json
+    - assets/circuiti/track/qatar_track.json
+    - assets/circuiti/track/saudiarabia_track.json
+    - assets/circuiti/track/shanghai_track.json
+    - assets/circuiti/track/singapore_track.json
+    - assets/circuiti/track/spain_track.json
+    - assets/circuiti/track/usacota_track.json
+    - assets/circuiti/track/usamiami_track.json
+    - assets/circuiti/track/usavegas_track.json
