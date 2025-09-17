@@ -122,7 +122,7 @@ Future<List<Circuito>> fetchCalendario() async {
       id: 15, nome: 'Olanda', data: '31 agosto 2025', lunghezza: '4.259 km', zoneDRS: 2,
       recordQuali: '1:10.567', pilotaQuali: 'Max Verstappen', annoQuali: '2021',
       recordGara: '1:11.097', pilotaGara: 'Lewis Hamilton', annoGara: '2021',
-      imageAsset: 'assets/circuiti/netherlans.svg',
+      imageAsset: 'assets/circuiti/netherlands.svg',
     ),
     Circuito(
       id: 16, nome: 'Italia', data: '7 settembre 2025', lunghezza: '5.793 km', zoneDRS: 2,
@@ -164,7 +164,7 @@ Future<List<Circuito>> fetchCalendario() async {
       id: 22, nome: 'Las Vegas', data: '23 novembre 2025', lunghezza: '6.120 km', zoneDRS: 3,
       recordQuali: '1:32.029', pilotaQuali: 'Charles Leclerc', annoQuali: '2023',
       recordGara: '1:35.490', pilotaGara: 'Oscar Piastri', annoGara: '2023',
-      imageAsset: 'assets/circuiti/usalasvegas.svg',
+      imageAsset: 'assets/circuiti/usavegas.svg',
     ),
     Circuito(
       id: 23, nome: 'Qatar', data: '30 novembre 2025', lunghezza: '5.380 km', zoneDRS: 2,
