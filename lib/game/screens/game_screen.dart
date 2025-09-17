@@ -62,7 +62,7 @@ class _GameScreenState extends State<GameScreen> {
                         return Stack(
                           alignment: Alignment.center,
                           children: [
-                            // SVG del circuito
+                            // --- SVG circuito ---
                             SvgPicture.asset(
                               widget.circuit.svgPath,
                               fit: BoxFit.contain,
@@ -70,11 +70,13 @@ class _GameScreenState extends State<GameScreen> {
                               height: maxHeight,
                             ),
 
-                            // Disegno track JSON nello stesso container
+                            // --- Track + Player ---
                             CustomPaint(
                               size: Size(maxWidth, maxHeight),
                               painter: _TrackPainter(
                                 controller.trackPoints,
+                                controller.spawnPoint,
+                                controller.carPosition,
                                 widget.circuit,
                                 maxWidth,
                                 maxHeight,
@@ -102,24 +104,26 @@ class _GameScreenState extends State<GameScreen> {
 
 class _TrackPainter extends CustomPainter {
   final List<Offset> points;
+  final Offset? spawnPoint;
+  final Offset carPosition;
   final Circuit circuit;
   final double canvasWidth;
   final double canvasHeight;
 
-  _TrackPainter(this.points, this.circuit, this.canvasWidth, this.canvasHeight);
+  _TrackPainter(
+    this.points,
+    this.spawnPoint,
+    this.carPosition,
+    this.circuit,
+    this.canvasWidth,
+    this.canvasHeight,
+  );
 
   @override
   void paint(Canvas canvas, Size size) {
     if (points.isEmpty) return;
 
-    final paint = Paint()
-      ..color = Colors.yellow // <-- cambia qui il colore della track
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
-
-    final path = Path();
-
-    // --- Calcolo scaling e centraggio usando viewBox ---
+    // --- Calcolo scaling & offset per viewBox ---
     final scaleX = canvasWidth / circuit.viewBoxWidth;
     final scaleY = canvasHeight / circuit.viewBoxHeight;
     final scale = min(scaleX, scaleY);
@@ -127,13 +131,35 @@ class _TrackPainter extends CustomPainter {
     final offsetX = (canvasWidth - circuit.viewBoxWidth * scale) / 2 - circuit.viewBoxX * scale;
     final offsetY = (canvasHeight - circuit.viewBoxHeight * scale) / 2 - circuit.viewBoxY * scale;
 
-    path.moveTo(points.first.dx * scale + offsetX, points.first.dy * scale + offsetY);
+    // --- Disegno TRACK ---
+    final trackPaint = Paint()
+      ..color = Colors.yellow
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke;
 
+    final path = Path();
+    path.moveTo(points.first.dx * scale + offsetX, points.first.dy * scale + offsetY);
     for (final p in points.skip(1)) {
       path.lineTo(p.dx * scale + offsetX, p.dy * scale + offsetY);
     }
+    canvas.drawPath(path, trackPaint);
 
-    canvas.drawPath(path, paint);
+    // --- Disegno SPAWN POINT ---
+    if (spawnPoint != null) {
+      final spawnPaint = Paint()..color = Colors.red;
+      final spawnRadius = 5.0;
+      final sx = spawnPoint!.dx * scale + offsetX;
+      final sy = spawnPoint!.dy * scale + offsetY;
+      canvas.drawCircle(Offset(sx, sy), spawnRadius, spawnPaint);
+    }
+
+    // --- Disegno PLAYER CAR ---
+    if (carPosition != Offset.zero) {
+      final playerPaint = Paint()..color = Colors.blueAccent;
+      final px = carPosition.dx * scale + offsetX;
+      final py = carPosition.dy * scale + offsetY;
+      canvas.drawCircle(Offset(px, py), 8.0, playerPaint);
+    }
   }
 
   @override

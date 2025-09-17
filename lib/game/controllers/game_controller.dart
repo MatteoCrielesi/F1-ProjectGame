@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
+import 'package:flame/extensions.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import '../models/circuit.dart';
@@ -45,6 +45,10 @@ class GameController extends ChangeNotifier {
   final List<BotCar> bots = [];
   final List<int> _botIndices = [];
 
+  // input player
+  bool acceleratePressed = false;
+  bool brakePressed = false;
+
   Timer? _gameTimer;
   int tickMs = 16;
 
@@ -53,16 +57,21 @@ class GameController extends ChangeNotifier {
   // ---------------- JSON loading ----------------
   Future<void> loadTrackFromJson() async {
     try {
-      // <-- usa direttamente il path dal Circuit
       final jsonString = await rootBundle.loadString(circuit.trackJsonPath);
       final data = json.decode(jsonString) as Map<String, dynamic>;
 
       final points = (data["path"] as List)
-          .map((p) => Offset(
-                (p["x"] as num).toDouble(),
-                (p["y"] as num).toDouble(),
-              ))
+          .map(
+            (p) =>
+                Offset((p["x"] as num).toDouble(), (p["y"] as num).toDouble()),
+          )
           .toList();
+
+      // Inverti direzione per il circuito Belgium
+      if (circuit.id.toLowerCase() == "belgium") {
+        points.reverse();
+        debugPrint("[GameController] Direzione pista invertita per Belgium.");
+      }
 
       _trackPoints = points;
 
@@ -76,7 +85,9 @@ class GameController extends ChangeNotifier {
 
       _applySpawnPoint();
       if (bots.isEmpty) _initBots();
-      debugPrint("[GameController] Caricati ${_trackPoints.length} punti dal JSON.");
+      debugPrint(
+        "[GameController] Caricati ${_trackPoints.length} punti dal JSON.",
+      );
       notifyListeners();
     } catch (e) {
       debugPrint('[GameController] Errore caricamento JSON: $e');
@@ -87,8 +98,8 @@ class GameController extends ChangeNotifier {
     if (_spawnPoint == null || _trackPoints.isEmpty) return;
     speed = 0.0;
     disqualified = false;
-
     _playerIndex = _findNearestIndex(_spawnPoint!);
+    debugPrint("[GameController] Respawn effettuato allo spawn point.");
   }
 
   void _initBots() {
@@ -103,36 +114,93 @@ class GameController extends ChangeNotifier {
       );
       _botIndices.add(idx);
     }
-  }
-
-  void accelerate() {
-    if (disqualified) return;
-    speed = Physics.applyAcceleration(speed);
-  }
-
-  void brake() {
-    if (disqualified) return;
-    speed = Physics.applyBrake(speed);
+    debugPrint("[GameController] Bot inizializzati: ${bots.length}");
   }
 
   void tick() {
-    if (_trackPoints.isEmpty) {
+    if (_trackPoints.isEmpty || disqualified) {
       notifyListeners();
       return;
     }
 
-    _updateCarMovement();
+    _updatePlayer();
     _updateBots();
     notifyListeners();
   }
 
-  void _updateCarMovement() {
+  void _updatePlayer() {
     if (disqualified) return;
-    speed = Physics.applyFriction(speed);
+
+    // Aggiorna velocità in base all'input
+    if (acceleratePressed) {
+      speed = Physics.applyAcceleration(speed);
+    } else if (brakePressed) {
+      speed = Physics.applyBrake(speed);
+    } else {
+      speed = Physics.applyFriction(speed);
+    }
+
+    // Debug velocità attuale
+    debugPrint("[Player] Velocità attuale: ${speed.toStringAsFixed(2)}");
+
+    // Applica fisica curva
+    _applyCurvePhysics();
 
     _playerIndex += speed.toInt();
     if (_playerIndex < 0) _playerIndex = 0;
     _playerIndex %= _trackPoints.length;
+  }
+
+  void _applyCurvePhysics() {
+    if (_trackPoints.length < 3) return;
+
+    final prev = _trackPoints[(_playerIndex - 1) % _trackPoints.length];
+    final curr = _trackPoints[_playerIndex];
+    final next = _trackPoints[(_playerIndex + 1) % _trackPoints.length];
+
+    final v1 = (curr - prev);
+    final v2 = (next - curr);
+
+    final angle1 = atan2(v1.dy, v1.dx);
+    final angle2 = atan2(v2.dy, v2.dx);
+    double deltaAngle = (angle2 - angle1).abs();
+
+    // Normalizza angolo (0..pi)
+    if (deltaAngle > pi) deltaAngle = 2 * pi - deltaAngle;
+
+    // Calcola velocità ottimale: curve strette = velocità più bassa
+    double optimalSpeed = max(1.0, 10 / (deltaAngle + 0.1));
+
+    // ✅ abbassiamo artificialmente per test (così entriamo più facilmente nei rami)
+    optimalSpeed *= 0.5;
+
+    // Debug
+    debugPrint(
+      "[Curve] deltaAngle: ${deltaAngle.toStringAsFixed(2)} | optimalSpeed: ${optimalSpeed.toStringAsFixed(2)} | speed: ${speed.toStringAsFixed(2)}",
+    );
+
+    if (speed < optimalSpeed * 0.8) {
+      // troppo piano → nessun effetto
+      debugPrint("[Curve] Velocità troppo bassa, nessun effetto.");
+    } else if (speed <= optimalSpeed * 1.1) {
+      // entro il range ottimale → boost
+      debugPrint("[Curve] Velocità ottimale! BOOST attivato!");
+      speed *= 1.1;
+    } else if (speed <= optimalSpeed * 1.5) {
+      // un po' troppo veloce → penalità
+      debugPrint("[Curve] Troppo veloce! Velocità ridotta.");
+      speed *= 0.7;
+    } else if (speed <= optimalSpeed * 2.0) {
+      // fuori pista → respawn
+      debugPrint("[Curve] FUORI PISTA! Respawn in corso...");
+      _applySpawnPoint();
+      speed = 0.5;
+    } else {
+      // schianto → espulso
+      debugPrint("[Curve] SCHIANTO! Giocatore squalificato.");
+      disqualified = true;
+      stop();
+    }
   }
 
   void _updateBots() {

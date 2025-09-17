@@ -136,10 +136,10 @@ const List<Circuit> allCircuits = [
     xPercentage: 0.217,
     yPercentage: 0.800,
     trackJsonPath: 'assets/circuiti/track/canada_track.json',
-    viewBoxX: 10,
-    viewBoxY: 75,
-    viewBoxWidth: 309,
-    viewBoxHeight: 96,
+    viewBoxX: 5,
+    viewBoxY: 50,
+    viewBoxWidth: 268,
+    viewBoxHeight: 183,
     
   ),
   Circuit(

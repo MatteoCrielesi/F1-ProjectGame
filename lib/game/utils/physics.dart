@@ -1,11 +1,17 @@
 import 'dart:math';
 
 class Physics {
-  static const double maxSpeed =
-      1.01; // velocità massima per tick (display pixels)
-  static const double acceleration = 0.05; // incremento velocità per tick
-  static const double brakeForce = 0.08; // decremento velocità per freno
-  static const double frictionPerTick = 0.01; // rallentamento naturale
+  /// Velocità massima del player per tick
+  static const double maxSpeed = 3.0; // aumentata per permettere test più rapidi
+
+  /// Incremento velocità per tick quando si accelera
+  static const double acceleration = 0.15; // più veloce a salire di velocità
+
+  /// Decremento velocità per tick quando si frena
+  static const double brakeForce = 0.25;
+
+  /// Rallentamento naturale (frizione)
+  static const double frictionPerTick = 0.02;
 
   static double clamp(double v, double min, double max) =>
       v < min ? min : (v > max ? max : v);
