@@ -554,15 +554,20 @@ class _RankingsCardState extends State<_RankingsCard>
               children: [
                 // Podio visibile solo quando si tiene premuto / hover
                 if (_showPodio)
-                  Positioned.fill(
-                    child: Opacity(
-                      opacity: 0.15,
-                      child: FittedBox(
-                        fit: BoxFit.cover,
-                        child: Image.asset('assets/podium.png'),
-                      ),
-                    ),
-                  ),
+  Positioned.fill(
+    child: Align(
+      alignment: Alignment.bottomCenter, // 👈 fissata in basso
+      child: Opacity(
+        opacity: 0.18,
+        child: Image.asset(
+          'assets/podium.png',
+          fit: BoxFit.contain,
+          width: 1000,   // 👈 più largo
+          height: 250,  // 👈 più alto
+        ),
+      ),
+    ),
+  ),
                 // Testo centrale
                 SlideTransition(
                   position: isPhone
