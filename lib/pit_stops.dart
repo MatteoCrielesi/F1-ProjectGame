@@ -8,15 +8,51 @@ class PitStopsPage extends StatelessWidget {
   final List<Map<String, dynamic>> pitData = const [
     {"pilota": "Ferrari", "numero": 444},
     {"pilota": "McLaren", "numero": 256},
-    {"pilota": "Red Bull", "numero": 215},
+    {"pilota": "Red Bull Racing", "numero": 215}, // nome corretto come in ScuderiePage
     {"pilota": "Racing Bulls", "numero": 203},
     {"pilota": "Mercedes", "numero": 167},
-    {"pilota": "Sauber", "numero": 155},
+    {"pilota": "Kick Sauber", "numero": 155}, // uniformato
     {"pilota": "Alpine", "numero": 94},
     {"pilota": "Aston Martin", "numero": 36},
     {"pilota": "Williams", "numero": 24},
     {"pilota": "Haas", "numero": 22},
   ];
+
+  // Mappa scuderia → logo
+  String _getLogoPath(String team) {
+    final logos = {
+      "Ferrari": "assets/logos/ferrari.png",
+      "McLaren": "assets/logos/mclaren.png",
+      "Red Bull Racing": "assets/logos/redbull.png",
+      "Racing Bulls": "assets/logos/racingbulls.png",
+      "Mercedes": "assets/logos/mercedes.png",
+      "Kick Sauber": "assets/logos/kicksauber.png",
+      "Alpine": "assets/logos/alpine.png",
+      "Aston Martin": "assets/logos/astonmartin.png",
+      "Williams": "assets/logos/williams.png",
+      "Haas": "assets/logos/haas.png",
+    };
+
+    return logos[team] ?? "assets/f1_logo.svg"; // fallback
+  }
+
+  // Mappa scuderia → colore ufficiale
+  Color _getTeamColor(String team) {
+    final coloriScuderia = {
+      "McLaren": const Color(0xFFFF8700),
+      "Aston Martin": const Color(0xFF006F62),
+      "Alpine": const Color.fromARGB(255, 243, 34, 229),
+      "Ferrari": const Color(0xFFDC0000),
+      "Mercedes": const Color(0xFF00D2BE),
+      "Red Bull Racing": const Color(0xFF1E41FF),
+      "Haas": const Color(0xFFB6BABD),
+      "Racing Bulls": const Color(0xFF00205B),
+      "Kick Sauber": const Color.fromARGB(255, 0, 255, 8),
+      "Williams": const Color(0xFF005AFF),
+    };
+
+    return coloriScuderia[team] ?? Colors.grey;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +118,7 @@ class PitStopsPage extends StatelessWidget {
                       itemCount: pitData.length,
                       itemBuilder: (context, index) {
                         final item = pitData[index];
-                        final color = Colors.primaries[index % Colors.primaries.length];
+                        final colore = _getTeamColor(item["pilota"]);
 
                         return Container(
                           margin: const EdgeInsets.symmetric(vertical: 10),
@@ -90,8 +126,8 @@ class PitStopsPage extends StatelessWidget {
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                color.withOpacity(0.9),
-                                color.withOpacity(0.5),
+                                colore.withOpacity(0.9),
+                                colore.withOpacity(0.5),
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
@@ -99,7 +135,7 @@ class PitStopsPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
                               BoxShadow(
-                                color: color.withOpacity(0.4),
+                                color: colore.withOpacity(0.4),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
@@ -107,10 +143,12 @@ class PitStopsPage extends StatelessWidget {
                           ),
                           child: Row(
                             children: [
-                              const Icon(
-                                Icons.car_repair,
-                                color: Colors.white,
-                                size: 40,
+                              // logo della scuderia
+                              Image.asset(
+                                _getLogoPath(item["pilota"]),
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.contain,
                               ),
                               const SizedBox(width: 16),
                               Expanded(

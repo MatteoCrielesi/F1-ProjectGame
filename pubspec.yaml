@@ -56,6 +56,10 @@ flutter:
     - assets/logos/sauber.png
     - assets/logos/bmw.png
     - assets/logos/alfaromeo.png
+    - assets/logos/RedBullDash.png
+    - assets/logos/McLarenDash.png
+    - assets/logos/AlpineDash.png
+    - assets/logos/AstonMartinDash.png
 
     - assets/macchine/mclaren.png
     - assets/macchine/astonmartin.png
