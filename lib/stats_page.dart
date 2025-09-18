@@ -42,10 +42,15 @@ class StatistichePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    double horizontalPadding = screenWidth < 500 ? 12 : 16;
+    double verticalPadding = screenHeight < 700 ? 8 : 12;
+
     return Scaffold(
       body: Stack(
         children: [
-          // sfondo gradient
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -57,28 +62,32 @@ class StatistichePage extends StatelessWidget {
           ),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontalPadding,
+                vertical: verticalPadding,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // header con logo e back
+                  // Header con logo e back
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SvgPicture.asset(
                         'assets/f1_logo.svg',
-                        height: 24,
+                        height: screenHeight * 0.03,
                         color: Colors.pinkAccent,
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: screenHeight * 0.01),
                       Text(
                         "Formula 1",
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
+                              fontSize: screenWidth < 500 ? 20 : 26,
                             ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: screenHeight * 0.01),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white10,
@@ -98,17 +107,25 @@ class StatistichePage extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  // griglia responsive
+                  SizedBox(height: screenHeight * 0.02),
+                  // Griglia responsive
                   Expanded(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        int crossAxisCount = constraints.maxWidth < 500
+                        int crossAxisCount = screenWidth < 500
                             ? 1
-                            : constraints.maxWidth < 900
+                            : screenWidth < 900
                                 ? 2
                                 : 3;
-                        double aspectRatio = crossAxisCount == 1 ? 2.5 : 1.2;
+
+                        double aspectRatio;
+                        if (crossAxisCount == 1) {
+                          aspectRatio = screenWidth / (screenHeight * 0.25);
+                        } else if (crossAxisCount == 2) {
+                          aspectRatio = screenWidth / (screenHeight * 0.35);
+                        } else {
+                          aspectRatio = screenWidth / (screenHeight * 0.45);
+                        }
 
                         return GridView.builder(
                           itemCount: stats.length,
@@ -189,6 +206,15 @@ class _AnimatedCardState extends State<AnimatedCard>
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Dimensioni responsive
+    double iconSize = screenWidth < 500 ? 36 : 40;
+    double titleFontSize = screenWidth < 500 ? 16 : 18;
+    double descriptionFontSize = screenWidth < 500 ? 12 : 14;
+    double cardPadding = screenWidth < 500 ? 12 : 16;
+
     return GestureDetector(
       onTapDown: _onTapDown,
       onTapUp: _onTapUp,
@@ -217,26 +243,26 @@ class _AnimatedCardState extends State<AnimatedCard>
             ],
             border: Border.all(color: Colors.white.withOpacity(0.2)),
           ),
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(cardPadding),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(widget.s.icona, size: 40, color: Colors.white),
-              const SizedBox(height: 12),
+              Icon(widget.s.icona, size: iconSize, color: Colors.white),
+              SizedBox(height: cardPadding * 0.75),
               Text(
                 widget.s.titolo,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 18,
+                style: TextStyle(
+                  fontSize: titleFontSize,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: cardPadding * 0.5),
               Text(
                 widget.s.descrizione,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, color: Colors.white70),
+                style: TextStyle(fontSize: descriptionFontSize, color: Colors.white70),
               ),
             ],
           ),
