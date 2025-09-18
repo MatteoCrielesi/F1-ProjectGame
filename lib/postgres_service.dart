@@ -13,7 +13,7 @@ class PostgresService {
           port: 5432,
           database: 'postgres',
           username: 'postgres',
-          password: '1234',
+          password: 'password',
         ),
         settings: ConnectionSettings(sslMode: SslMode.disable),
       );

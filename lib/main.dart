@@ -22,10 +22,10 @@ class F1App extends StatelessWidget {
     return MaterialApp(
       title: 'F1 Project',
       debugShowCheckedModeBanner: false,
+      
       //home: const SplashPage(),
       //home: const GamePage(),
       home: const GamePage_1(),
-      //home: GameScreenTest(car: redCar),
       theme: ThemeData(
         brightness: Brightness.dark,
         fontFamily: 'Roboto',

@@ -81,7 +81,7 @@ class _DashboardPageState extends State<DashboardPage>
         body:
             'Explore all teams, lineups,\nand liveries for the\ncurrent season.',
         onTap: () {
-          Navigator.of(context).pushReplacement(
+          Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const ScuderiePage()),
           );
         },
@@ -90,7 +90,7 @@ class _DashboardPageState extends State<DashboardPage>
         title: 'Classifiche',
         body: 'Keep up with driver and\nconstructor standings,\nrace by race.',
         onTap: () {
-          Navigator.of(context).pushReplacement(
+          Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const RankingPage()),
           );
         },
@@ -99,7 +99,7 @@ class _DashboardPageState extends State<DashboardPage>
   title: 'Statistiche',
   body: 'Dive into pace, poles,\npodiums, and fastest lap\nmetrics.',
   onTap: () {
-    Navigator.of(context).pushReplacement(
+    Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => StatistichePage()),
     );
   },
@@ -293,7 +293,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Special card for Scuderie with hover logos
+/// Special card for Scuderie with hover logos (fixed size)
 class _ScuderieCard extends StatefulWidget {
   const _ScuderieCard({
     required this.title,
@@ -320,11 +320,11 @@ class _ScuderieCardState extends State<_ScuderieCard>
 
   final List<String> _logos = [
     'assets/logos/ferrari.png',
-    'assets/logos/redbull.png',
+    'assets/logos/RedBullDash.png',
     'assets/logos/mercedes.png',
-    'assets/logos/mclaren.png',
-    'assets/logos/alpine.png',
-    'assets/logos/astonmartin.png',
+    'assets/logos/McLarenDash.png',
+    'assets/logos/AlpineDash.png',
+    'assets/logos/AstonMartinDash.png',
     'assets/logos/haas.png',
     'assets/logos/williams.png',
     'assets/logos/kicksauber.png',
@@ -369,6 +369,10 @@ class _ScuderieCardState extends State<_ScuderieCard>
     final isPhone = mq.size.width < 600;
     final isSmall = mq.size.width < 400;
 
+    // Dimensioni fisse della card
+    const double cardWidth = 250;
+    const double cardHeight = 200;
+
     return MouseRegion(
       onEnter: (_) {
         _pickRandomLogo();
@@ -389,60 +393,70 @@ class _ScuderieCardState extends State<_ScuderieCard>
             }
           });
         },
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(85, 255, 4, 0),
-            border: Border.all(color: const Color.fromARGB(255, 255, 6, 0)),
-            borderRadius: BorderRadius.circular(16),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minWidth: cardWidth,
+            maxWidth: cardWidth,
+            minHeight: cardHeight,
+            maxHeight: cardHeight,
           ),
-          padding: const EdgeInsets.all(20),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              if (_hovering && _logo != null)
-                SlideTransition(
-                  position: isPhone
-                      ? _imageSlide
-                      : AlwaysStoppedAnimation(Offset.zero),
-                  child: Positioned.fill(
-                    child: Opacity(
-                      opacity: 0.12,
-                      child: FittedBox(
-                        fit: BoxFit.contain,
-                        child: Image.asset(_logo!),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(85, 255, 4, 0),
+              border: Border.all(color: const Color.fromARGB(255, 255, 6, 0)),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Logo/animazione dietro al testo
+                if (_hovering && _logo != null)
+                  SlideTransition(
+                    position: isPhone
+                        ? _imageSlide
+                        : AlwaysStoppedAnimation(Offset.zero),
+                    child: Positioned.fill(
+                      child: Opacity(
+                        opacity: 0.12,
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          child: Image.asset(_logo!),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              SlideTransition(
-                position: isPhone
-                    ? _textSlide
-                    : AlwaysStoppedAnimation(Offset.zero),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      widget.title,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: isSmall ? 16 : 18,
-                        fontWeight: FontWeight.w800,
+                // Testo centrale
+                SlideTransition(
+                  position: isPhone
+                      ? _textSlide
+                      : AlwaysStoppedAnimation(Offset.zero),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        widget.title,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: isSmall ? 16 : 18,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      widget.body,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.85),
-                        fontSize: isSmall ? 13 : 15,
-                        height: 1.3,
+                      const SizedBox(height: 10),
+                      Text(
+                        widget.body,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.85),
+                          fontSize: isSmall ? 13 : 15,
+                          height: 1.3,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -450,7 +464,6 @@ class _ScuderieCardState extends State<_ScuderieCard>
   }
 }
 
-/// Special card for Rankings with slide-up text and podium
 class _RankingsCard extends StatefulWidget {
   const _RankingsCard({
     required this.title,
@@ -468,10 +481,9 @@ class _RankingsCard extends StatefulWidget {
 
 class _RankingsCardState extends State<_RankingsCard>
     with SingleTickerProviderStateMixin {
-  bool _hovering = false;
+  bool _showPodio = false;
   late final AnimationController _controller;
   late final Animation<Offset> _textSlide;
-  late final Animation<Offset> _imageSlide;
 
   @override
   void initState() {
@@ -483,12 +495,7 @@ class _RankingsCardState extends State<_RankingsCard>
 
     _textSlide = Tween<Offset>(
       begin: Offset.zero,
-      end: const Offset(0.2, 0), // testo a destra
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-
-    _imageSlide = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(-0.2, 0), // immagine a sinistra
+      end: const Offset(0, -0.15), // verso l'alto su desktop
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
   }
 
@@ -498,95 +505,107 @@ class _RankingsCardState extends State<_RankingsCard>
     super.dispose();
   }
 
+  void _show() {
+    setState(() => _showPodio = true);
+    _controller.forward();
+  }
+
+  void _hide() {
+    setState(() => _showPodio = false);
+    _controller.reverse();
+  }
+
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final isPhone = mq.size.width < 600;
     final isSmall = mq.size.width < 400;
 
+    const double cardWidth = 250;
+    const double cardHeight = 200;
+
     return MouseRegion(
       onEnter: (_) {
-        setState(() => _hovering = true);
+        if (!isPhone) _show();
       },
       onExit: (_) {
-        setState(() => _hovering = false);
+        if (!isPhone) _hide();
       },
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+      child: GestureDetector(
         onTap: widget.onTap,
-        onLongPress: () {
-          setState(() => _hovering = true);
-          if (isPhone) _controller.forward();
-
-          Future.delayed(const Duration(seconds: 3), () {
-            if (mounted) {
-              setState(() => _hovering = false);
-              if (isPhone) _controller.reverse();
-            }
-          });
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(85, 255, 4, 0),
-            border: Border.all(color: const Color.fromARGB(255, 255, 6, 0)),
-            borderRadius: BorderRadius.circular(16),
+        onLongPress: _show,
+        onLongPressEnd: (_) => _hide(),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minWidth: cardWidth,
+            maxWidth: cardWidth,
+            minHeight: cardHeight,
+            maxHeight: cardHeight,
           ),
-          padding: const EdgeInsets.all(20),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              SlideTransition(
-                position: isPhone
-                    ? _imageSlide
-                    : AlwaysStoppedAnimation(Offset.zero),
-                child: Positioned.fill(
-                  child: Opacity(
-                    opacity: _hovering ? 0.15 : 0.0,
-                    child: FittedBox(
-                      fit: BoxFit.contain,
-                      alignment: isSmall
-                          ? Alignment.center
-                          : Alignment.bottomCenter,
-                      child: Image.asset('assets/podium.png'),
-                    ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(85, 255, 4, 0),
+              border: Border.all(color: const Color.fromARGB(255, 255, 6, 0)),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Podio visibile solo quando si tiene premuto / hover
+                if (_showPodio)
+  Positioned.fill(
+    child: Align(
+      alignment: Alignment.bottomCenter, // 👈 fissata in basso
+      child: Opacity(
+        opacity: 0.18,
+        child: Image.asset(
+          'assets/podium.png',
+          fit: BoxFit.contain,
+          width: 1000,   // 👈 più largo
+          height: 250,  // 👈 più alto
+        ),
+      ),
+    ),
+  ),
+                // Testo centrale
+                SlideTransition(
+                  position: isPhone
+                      ? AlwaysStoppedAnimation(Offset.zero)
+                      : _textSlide,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        widget.title,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: isSmall ? 16 : 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        widget.body,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.85),
+                          fontSize: isSmall ? 13 : 15,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              SlideTransition(
-                position: isPhone
-                    ? _textSlide
-                    : AlwaysStoppedAnimation(Offset.zero),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      widget.title,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: isSmall ? 16 : 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      widget.body,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.85),
-                        fontSize: isSmall ? 13 : 15,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+
 
 class _StatisticsCard extends StatefulWidget {
   const _StatisticsCard({
