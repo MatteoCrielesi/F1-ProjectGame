@@ -2,33 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flame/extensions.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/material.dart';
 import '../models/circuit.dart';
 import '../models/car.dart';
-import '../utils/physics.dart';
-
-class BotCar {
-  Offset position;
-  double speed;
-  bool disqualified;
-  Color color;
-
-  BotCar({
-    required this.position,
-    this.speed = 0,
-    this.disqualified = false,
-    required this.color,
-  });
-}
 
 class GameController extends ChangeNotifier {
   Circuit circuit;
   CarModel carModel;
-
-  final List<int> _botLaps = [];
-
-  List<int> get botLaps => _botLaps;
 
   List<Offset> _trackPoints = [];
   Offset? _spawnPoint;
@@ -48,14 +29,13 @@ class GameController extends ChangeNotifier {
   Offset get carPosition =>
       _trackPoints.isNotEmpty ? _trackPoints[_playerIndex] : Offset.zero;
 
-  final List<BotCar> bots = [];
-  final List<int> _botIndices = [];
-
   bool acceleratePressed = false;
   bool brakePressed = false;
 
   Timer? _gameTimer;
   int tickMs = 16;
+
+  void Function(int lap)? onLapCompleted;
 
   GameController({required this.circuit, required this.carModel});
 
@@ -87,7 +67,6 @@ class GameController extends ChangeNotifier {
       }
 
       _applySpawnPoint();
-      if (bots.isEmpty) _initBots();
       debugPrint(
         "[GameController] Caricati ${_trackPoints.length} punti dal JSON.",
       );
@@ -102,23 +81,9 @@ class GameController extends ChangeNotifier {
     speed = 0.0;
     disqualified = false;
     _playerIndex = _findNearestIndex(_spawnPoint!);
+    _previousPlayerIndex = _playerIndex;
+    _playerLap = 0;
     debugPrint("[GameController] Respawn effettuato allo spawn point.");
-  }
-
-  void _initBots() {
-    bots.clear();
-    _botIndices.clear();
-    _botLaps.clear();
-    final rand = Random();
-
-    for (int i = 0; i < 9 && _trackPoints.isNotEmpty; i++) {
-      int idx = rand.nextInt(_trackPoints.length);
-      bots.add(
-        BotCar(position: _trackPoints[idx], color: allCars[i + 1].color),
-      );
-      _botIndices.add(idx);
-    }
-    debugPrint("[GameController] Bot inizializzati: ${bots.length}");
   }
 
   void tick() {
@@ -128,7 +93,6 @@ class GameController extends ChangeNotifier {
     }
 
     _updatePlayer();
-    _updateBots();
     notifyListeners();
   }
 
@@ -153,12 +117,22 @@ class GameController extends ChangeNotifier {
       speed,
       maxSpeed,
       isPlayer: true,
-      bot: null,
     );
 
+    _previousPlayerIndex = _playerIndex;
     _playerIndex += speed.round();
+
     if (_playerIndex < 0) _playerIndex = 0;
     _playerIndex %= _trackPoints.length;
+
+    // 🔔 Controllo lap completato (wrap-around)
+    if (_playerIndex < _previousPlayerIndex) {
+      _playerLap += 1;
+      debugPrint("[GameController] Lap completato ($_playerLap)");
+      if (onLapCompleted != null) {
+        onLapCompleted!(_playerLap);
+      }
+    }
   }
 
   double _applyCurvePhysics(
@@ -166,7 +140,6 @@ class GameController extends ChangeNotifier {
     double currentSpeed,
     double maxSpeed, {
     bool isPlayer = false,
-    BotCar? bot,
   }) {
     if (_trackPoints.length < 3) return currentSpeed;
 
@@ -203,9 +176,6 @@ class GameController extends ChangeNotifier {
       if (isPlayer) {
         disqualified = true;
         stop();
-      } else if (bot != null) {
-        bot.disqualified = true;
-        bot.speed = 0;
       }
       return 0;
     }
@@ -217,38 +187,6 @@ class GameController extends ChangeNotifier {
     }
 
     return currentSpeed;
-  }
-
-  void _updateBots() {
-    final rand = Random();
-    for (int i = 0; i < bots.length; i++) {
-      var bot = bots[i];
-      if (bot.disqualified) continue;
-
-      bot.speed = max(0, bot.speed - 0.02);
-
-      if (rand.nextDouble() < 0.3) {
-        bot.speed = min(bot.speed + 0.05, 3.0);
-      }
-
-      // 🔧 anche i bot si possono schiantare
-      bot.speed = _applyCurvePhysics(
-        _botIndices[i],
-        bot.speed,
-        3.0,
-        isPlayer: false,
-        bot: bot,
-      );
-
-      int prevIndex = _botIndices[i];
-      _botIndices[i] += bot.speed.round();
-      _botIndices[i] %= _trackPoints.length;
-      bot.position = _trackPoints[_botIndices[i]];
-
-      if (_botIndices[i] < prevIndex) {
-        _botLaps[i] += 1;
-      }
-    }
   }
 
   int _findNearestIndex(Offset point) {

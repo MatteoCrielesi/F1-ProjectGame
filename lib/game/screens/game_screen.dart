@@ -1,25 +1,24 @@
-// screen_game.dart
 import 'dart:async';
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../controllers/game_controller.dart';
 import '../models/circuit.dart';
 import '../models/car.dart';
-import 'package:flutter/services.dart';
 import '../widgets/game_controls.dart';
 
 class GameScreen extends StatefulWidget {
   final Circuit circuit;
   final CarModel car;
   final bool showTouchControls;
+  final void Function(List<int> lapTimes)? onGameFinished; // callback verso GamePage_1
 
   const GameScreen({
     super.key,
     required this.circuit,
     required this.car,
     this.showTouchControls = true,
+    this.onGameFinished,
   });
 
   @override
@@ -31,13 +30,35 @@ class _GameScreenState extends State<GameScreen> {
   int? _countdown;
   bool _isTimerRunning = false;
   int _elapsedCentis = 0;
+  int _lastLapCentis = 0;
+  final List<int> _lapTimes = [];
   Timer? _timer;
-  final Set<LogicalKeyboardKey> _pressedKeys = {};
 
   @override
   void initState() {
     super.initState();
     controller = GameController(circuit: widget.circuit, carModel: widget.car);
+
+    // Gestione lap completati dal GameController
+    controller.onLapCompleted = (lap) {
+      final lapTime = _elapsedCentis - _lastLapCentis;
+      _lastLapCentis = _elapsedCentis;
+
+      setState(() {
+        _lapTimes.add(lapTime); // aggiorna la sidebar
+      });
+
+      // Notifica GamePage_1
+      if (widget.onGameFinished != null) {
+        widget.onGameFinished!(_lapTimes);
+      }
+
+      // interrompe il timer se sono completati 5 giri
+      if (_lapTimes.length >= 5) {
+        _stopTimer();
+      }
+    };
+
     _initGame();
   }
 
@@ -71,6 +92,8 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _isTimerRunning = true;
       _elapsedCentis = 0;
+      _lastLapCentis = 0;
+      _lapTimes.clear();
     });
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 10), (_) {
@@ -84,7 +107,12 @@ class _GameScreenState extends State<GameScreen> {
     setState(() => _isTimerRunning = false);
   }
 
-  int getLapsForPlayer(int index) => (index % 5) + 1;
+  String _formatTime(int centis) {
+    final ms = (centis % 100).toString().padLeft(2, '0');
+    final seconds = ((centis ~/ 100) % 60).toString().padLeft(2, '0');
+    final minutes = (centis ~/ 6000).toString().padLeft(2, '0');
+    return "$minutes:$seconds:$ms";
+  }
 
   @override
   void dispose() {
@@ -95,6 +123,10 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final totalTime = _lapTimes.isNotEmpty
+        ? _lapTimes.reduce((a, b) => a + b)
+        : _elapsedCentis;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
@@ -104,116 +136,63 @@ class _GameScreenState extends State<GameScreen> {
             Expanded(
               child: Row(
                 children: [
-                  // LEFT SIDEBAR
+                  // SIDEBAR LAP TIMES
                   SizedBox(
-                    width: 170,
+                    width: 200,
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Column(
                         children: [
-                          Expanded(
-                            flex: 5,
-                            child: Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.25),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.white24),
-                              ),
-                              padding: const EdgeInsets.all(8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Classifica',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.25),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (widget.car.logoPath.isNotEmpty)
+                                  Center(
+                                    child: Image.asset(
+                                      widget.car.logoPath,
+                                      width: 60,
+                                      height: 60,
+                                      fit: BoxFit.contain,
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Expanded(
-                                    child: ListView.builder(
-                                      itemCount: 10,
-                                      itemBuilder: (context, index) {
-                                        final car =
-                                            allCars[index % allCars.length];
-                                        final laps = getLapsForPlayer(index);
-                                        return Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 4,
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              SizedBox(
-                                                width: 26,
-                                                child: Text(
-                                                  '${index + 1}',
-                                                  style: const TextStyle(
-                                                    color: Colors.white70,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Expanded(
-                                                child: Container(
-                                                  height: 30,
-                                                  decoration: BoxDecoration(
-                                                    color: car.color,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          4,
-                                                        ),
-                                                  ),
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 4,
-                                                      ),
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      if (car
-                                                          .logoPath
-                                                          .isNotEmpty)
-                                                        SizedBox(
-                                                          width: 26,
-                                                          height: 26,
-                                                          child: Image.asset(
-                                                            car.logoPath,
-                                                            fit: BoxFit.contain,
-                                                          ),
-                                                        ),
-                                                      Text(
-                                                        '$laps/5',
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
+                                const SizedBox(height: 12),
+                                for (int i = 0; i < 5; i++)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 4),
+                                    child: Text(
+                                      "Lap ${i + 1}   Time: ${i < _lapTimes.length ? _formatTime(_lapTimes[i]) : "--:--:--"}",
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
-                                ],
-                              ),
+                                const Divider(color: Colors.white24),
+                                Text(
+                                  "Total Time: ${_formatTime(totalTime)}",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  // MAIN TRACK AREA + CONTROLS
+                  // TRACK + CONTROLS
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -238,7 +217,7 @@ class _GameScreenState extends State<GameScreen> {
                                     controller.spawnPoint,
                                     controller.carPosition,
                                     widget.circuit,
-                                    widget.car, // Passa il CarModel qui
+                                    widget.car,
                                     canvasWidth: maxWidth,
                                     canvasHeight: maxHeight,
                                   ),
@@ -259,7 +238,6 @@ class _GameScreenState extends State<GameScreen> {
                                     ),
                                   ),
                                 ),
-                              // Controlli touch / mobile
                               if (widget.showTouchControls)
                                 Positioned(
                                   bottom: 24,
@@ -290,7 +268,7 @@ class _TrackPainter extends CustomPainter {
   final Offset? spawnPoint;
   final Offset carPosition;
   final Circuit circuit;
-  final CarModel car; // Modello della macchina
+  final CarModel car;
   final double canvasWidth;
   final double canvasHeight;
 
@@ -299,7 +277,7 @@ class _TrackPainter extends CustomPainter {
     this.spawnPoint,
     this.carPosition,
     this.circuit,
-    this.car, { // Passaggio del CarModel
+    this.car, {
     required this.canvasWidth,
     required this.canvasHeight,
   });
@@ -312,30 +290,21 @@ class _TrackPainter extends CustomPainter {
     final scaleY = canvasHeight / circuit.viewBoxHeight;
     final scale = min(scaleX, scaleY);
 
-    final offsetX =
-        (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
-        circuit.viewBoxX * scale;
-    final offsetY =
-        (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
-        circuit.viewBoxY * scale;
+    final offsetX = (canvasWidth - circuit.viewBoxWidth * scale) / 2 - circuit.viewBoxX * scale;
+    final offsetY = (canvasHeight - circuit.viewBoxHeight * scale) / 2 - circuit.viewBoxY * scale;
 
-    // Disegna la pista
     final trackPaint = Paint()
       ..color = Colors.yellow
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
 
     final path = Path()
-      ..moveTo(
-        points.first.dx * scale + offsetX,
-        points.first.dy * scale + offsetY,
-      );
+      ..moveTo(points.first.dx * scale + offsetX, points.first.dy * scale + offsetY);
     for (final p in points.skip(1)) {
       path.lineTo(p.dx * scale + offsetX, p.dy * scale + offsetY);
     }
     canvas.drawPath(path, trackPaint);
 
-    // Disegna il punto di spawn
     if (spawnPoint != null) {
       final spawnPaint = Paint()..color = Colors.red;
       const spawnRadius = 5.0;
@@ -344,9 +313,8 @@ class _TrackPainter extends CustomPainter {
       canvas.drawCircle(Offset(sx, sy), spawnRadius, spawnPaint);
     }
 
-    // Disegna la macchina del giocatore
     if (carPosition != Offset.zero) {
-      final playerPaint = Paint()..color = car.color; // Colore dal CarModel
+      final playerPaint = Paint()..color = car.color;
       final px = carPosition.dx * scale + offsetX;
       final py = carPosition.dy * scale + offsetY;
       canvas.drawCircle(Offset(px, py), 8.0, playerPaint);
