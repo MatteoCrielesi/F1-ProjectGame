@@ -1,4 +1,3 @@
-// lib/game/widgets/game_controls.dart
 import 'package:flutter/material.dart';
 import '../controllers/game_controller.dart';
 import 'package:flutter/services.dart';
@@ -22,22 +21,22 @@ class _GameControlsState extends State<GameControls> {
 
   void _handleRawKey(RawKeyEvent ev) {
     final key = ev.logicalKey;
-    if (ev is RawKeyDownEvent) {
-      if (!_pressed.contains(key)) _pressed.add(key);
-    } else if (ev is RawKeyUpEvent) {
+    bool isDown = ev is RawKeyDownEvent;
+
+    if (isDown) {
+      _pressed.add(key);
+    } else {
       _pressed.remove(key);
     }
 
-    // solo su/giù
-    if (_pressed.contains(LogicalKeyboardKey.arrowUp) || _pressed.contains(LogicalKeyboardKey.keyW)) {
-      widget.controller.accelerate();
-    } else {
-      // optional: you may want to let it coast if not pressed
-    }
+    // Aggiorna lo stato del controller
+    widget.controller.acceleratePressed =
+        _pressed.contains(LogicalKeyboardKey.arrowUp) ||
+        _pressed.contains(LogicalKeyboardKey.keyW);
 
-    if (_pressed.contains(LogicalKeyboardKey.arrowDown) || _pressed.contains(LogicalKeyboardKey.keyS)) {
-      widget.controller.brake();
-    }
+    widget.controller.brakePressed =
+        _pressed.contains(LogicalKeyboardKey.arrowDown) ||
+        _pressed.contains(LogicalKeyboardKey.keyS);
   }
 
   @override
@@ -46,33 +45,60 @@ class _GameControlsState extends State<GameControls> {
     super.dispose();
   }
 
+  void _pressAccelerate(bool pressed) {
+    setState(() {
+      widget.controller.acceleratePressed = pressed;
+    });
+  }
+
+  void _pressBrake(bool pressed) {
+    setState(() {
+      widget.controller.brakePressed = pressed;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // accelerate
+        // Accelerate button
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ElevatedButton(
-              onPressed: widget.controller.accelerate,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green[700],
-                minimumSize: const Size(64, 48),
+            GestureDetector(
+              onTapDown: (_) => _pressAccelerate(true),
+              onTapUp: (_) => _pressAccelerate(false),
+              onTapCancel: () => _pressAccelerate(false),
+              child: Container(
+                width: 64,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.green[700],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.arrow_upward, color: Colors.white),
               ),
-              child: const Icon(Icons.arrow_upward),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        // brake
+        // Brake button
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ElevatedButton(
-              onPressed: widget.controller.brake,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red[700], minimumSize: const Size(120, 48)),
-              child: const Icon(Icons.arrow_downward),
+            GestureDetector(
+              onTapDown: (_) => _pressBrake(true),
+              onTapUp: (_) => _pressBrake(false),
+              onTapCancel: () => _pressBrake(false),
+              child: Container(
+                width: 64,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.red[700],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.arrow_downward, color: Colors.white),
+              ),
             ),
           ],
         ),
