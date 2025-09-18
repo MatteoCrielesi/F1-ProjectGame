@@ -10,7 +10,6 @@ import 'record_tracks.dart';
 
 class Statistica {
   final String titolo;
-  final String descrizione;
   final IconData icona;
   final Color colore;
   final bool glow;
@@ -19,7 +18,6 @@ class Statistica {
 
   Statistica(
     this.titolo,
-    this.descrizione,
     this.icona,
     this.colore, {
     this.glow = false,
@@ -32,25 +30,20 @@ class StatistichePage extends StatelessWidget {
   StatistichePage({super.key});
 
   final List<Statistica> stats = [
-    Statistica("Pole Positions", "Pole position conquistate.", Icons.flag, Colors.blue, glow: true),
-    Statistica("Giri Veloci", "Chi ha fatto il giro più veloce.", Icons.speed, Colors.orange, sweep: true),
-    Statistica("Podiums", "Quanti podi ha ottenuto ciascun pilota.", Icons.emoji_events, Colors.amber, fireworks: true),
-    Statistica("Pit Stops", "Numero e velocità dei pit stop.", Icons.build, Colors.green),
-    Statistica("DNF", "Numero di ritiri nella stagione.", Icons.error_outline, Colors.red),
-    Statistica("Record Tracks", "Record dei giri su ciascun circuito.", Icons.track_changes, Colors.purpleAccent, glow: true),
+    Statistica("Pole Positions", Icons.flag, Colors.blue, glow: true),
+    Statistica("Giri Veloci", Icons.speed, Colors.orange, sweep: true),
+    Statistica("Podiums", Icons.emoji_events, Colors.amber, fireworks: true),
+    Statistica("Pit Stops", Icons.build, Colors.green),
+    Statistica("DNF", Icons.error_outline, Colors.red),
+    Statistica("Track Records", Icons.track_changes, Colors.purpleAccent, glow: true),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    double horizontalPadding = screenWidth < 500 ? 12 : 16;
-    double verticalPadding = screenHeight < 700 ? 8 : 12;
-
     return Scaffold(
       body: Stack(
         children: [
+          // Sfondo gradient
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -62,10 +55,7 @@ class StatistichePage extends StatelessWidget {
           ),
           SafeArea(
             child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: horizontalPadding,
-                vertical: verticalPadding,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -75,19 +65,18 @@ class StatistichePage extends StatelessWidget {
                     children: [
                       SvgPicture.asset(
                         'assets/f1_logo.svg',
-                        height: screenHeight * 0.03,
+                        height: 24,
                         color: Colors.pinkAccent,
                       ),
-                      SizedBox(height: screenHeight * 0.01),
+                      const SizedBox(height: 8),
                       Text(
                         "Formula 1",
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
-                              fontSize: screenWidth < 500 ? 20 : 26,
                             ),
                       ),
-                      SizedBox(height: screenHeight * 0.01),
+                      const SizedBox(height: 8),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white10,
@@ -107,24 +96,26 @@ class StatistichePage extends StatelessWidget {
                       ),
                     ],
                   ),
-                  SizedBox(height: screenHeight * 0.02),
+                  const SizedBox(height: 16),
                   // Griglia responsive
                   Expanded(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        int crossAxisCount = screenWidth < 500
-                            ? 1
-                            : screenWidth < 900
-                                ? 2
-                                : 3;
-
+                        int crossAxisCount;
                         double aspectRatio;
-                        if (crossAxisCount == 1) {
-                          aspectRatio = screenWidth / (screenHeight * 0.25);
-                        } else if (crossAxisCount == 2) {
-                          aspectRatio = screenWidth / (screenHeight * 0.35);
+
+                        if (constraints.maxWidth < 350) {
+                          crossAxisCount = 1;
+                          aspectRatio = 2.8;
+                        } else if (constraints.maxWidth < 500) {
+                          crossAxisCount = 1;
+                          aspectRatio = 2.5;
+                        } else if (constraints.maxWidth < 900) {
+                          crossAxisCount = 2;
+                          aspectRatio = 1.2;
                         } else {
-                          aspectRatio = screenWidth / (screenHeight * 0.45);
+                          crossAxisCount = 3;
+                          aspectRatio = 1.2;
                         }
 
                         return GridView.builder(
@@ -166,7 +157,8 @@ class _AnimatedCardState extends State<AnimatedCard>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 250));
+    _controller = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 250));
     _scale = Tween(begin: 1.0, end: 1.05).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     );
@@ -180,92 +172,78 @@ class _AnimatedCardState extends State<AnimatedCard>
 
   void _onTapDown(_) => _controller.forward();
   void _onTapUp(_) => _controller.reverse();
+  void _onTapCancel() => _controller.reverse();
 
   void _onTap(BuildContext context) {
-    switch (widget.s.titolo) {
-      case "Pole Positions":
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const PolePositionPage()));
-        break;
-      case "Giri Veloci":
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const FastestLapPage()));
-        break;
-      case "Podiums":
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const PodiumsPage()));
-        break;
-      case "Pit Stops":
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const PitStopsPage()));
-        break;
-      case "DNF":
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const DNFPage()));
-        break;
-      case "Record Tracks":
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const RecordTracksPage()));
-        break;
-    }
+    final Map<String, Widget> pages = {
+      "Pole Positions": const PolePositionPage(),
+      "Giri Veloci": const FastestLapPage(),
+      "Podiums": const PodiumsPage(),
+      "Pit Stops": const PitStopsPage(),
+      "DNF": const DNFPage(),
+      "Track Records": const RecordTracksPage(),
+    };
+    final page = pages[widget.s.titolo];
+    if (page != null) Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    // Dimensioni responsive
-    double iconSize = screenWidth < 500 ? 36 : 40;
-    double titleFontSize = screenWidth < 500 ? 16 : 18;
-    double descriptionFontSize = screenWidth < 500 ? 12 : 14;
-    double cardPadding = screenWidth < 500 ? 12 : 16;
-
     return GestureDetector(
       onTapDown: _onTapDown,
       onTapUp: _onTapUp,
-      onTapCancel: () => _controller.reverse(),
+      onTapCancel: _onTapCancel,
       onTap: () => _onTap(context),
       child: ScaleTransition(
         scale: _scale,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                widget.s.colore.withOpacity(0.85),
-                widget.s.colore.withOpacity(0.45),
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              if (widget.s.glow)
-                BoxShadow(
-                  color: widget.s.colore.withOpacity(0.6),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Dimensioni dinamiche per testo e icone
+            double iconSize = constraints.maxWidth * 0.25;
+            double fontSize = constraints.maxWidth * 0.12;
+            fontSize = fontSize.clamp(14, 20);
+            iconSize = iconSize.clamp(24, 48);
+
+            return Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    widget.s.colore.withOpacity(0.85),
+                    widget.s.colore.withOpacity(0.45),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
-            ],
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
-          ),
-          padding: EdgeInsets.all(cardPadding),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(widget.s.icona, size: iconSize, color: Colors.white),
-              SizedBox(height: cardPadding * 0.75),
-              Text(
-                widget.s.titolo,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: titleFontSize,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  if (widget.s.glow)
+                    BoxShadow(
+                      color: widget.s.colore.withOpacity(0.6),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                ],
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
               ),
-              SizedBox(height: cardPadding * 0.5),
-              Text(
-                widget.s.descrizione,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: descriptionFontSize, color: Colors.white70),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(widget.s.icona, size: iconSize, color: Colors.white),
+                  const SizedBox(height: 12),
+                  Text(
+                    widget.s.titolo,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

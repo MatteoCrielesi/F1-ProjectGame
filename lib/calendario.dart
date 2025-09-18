@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+// Modello Circuito
 class Circuito {
   final int id;
   final String nome;
@@ -181,6 +182,35 @@ Future<List<Circuito>> fetchCalendario() async {
   ];
 }
 
+
+
+// Nuovo Header modulare
+class _Header extends StatelessWidget {
+  const _Header({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            SvgPicture.asset('assets/f1_logo.svg', height: 24),
+            const SizedBox(width: 12),
+            Text(
+              'Formula 1',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w700, color: Colors.white),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// Pagina Calendario
 class CalendarioPage extends StatefulWidget {
   const CalendarioPage({super.key});
 
@@ -202,12 +232,14 @@ class _CalendarioPageState extends State<CalendarioPage> {
   Widget build(BuildContext context) {
     final bool isSmallScreen = MediaQuery.of(context).size.width < 400;
     final bool isLargeScreen = MediaQuery.of(context).size.width > 800;
-    const Color bordoRosso = Color(0xFF990000);
-    const Color backgroundPanna = Color(0xFFF8F5EF);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Calendario F1 2025', style: TextStyle(color: Colors.white, fontSize: isSmallScreen ? 18 : 22)),
+        title: Text(
+          'Calendario F1 2025',
+          style: TextStyle(
+              color: Colors.white, fontSize: isSmallScreen ? 18 : 22),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -217,58 +249,113 @@ class _CalendarioPageState extends State<CalendarioPage> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [bordoRosso, Colors.black, Colors.black, bordoRosso],
-            stops: [0, 0.12, 0.88, 1],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.fromARGB(255, 0, 0, 0),
+              Color.fromARGB(255, 137, 11, 11),
+            ],
           ),
         ),
         child: SafeArea(
-          child: FutureBuilder<List<Circuito>>(
-            future: futureCircuiti,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator(color: Colors.red));
-              } else if (snapshot.hasError) {
-                return Center(child: Text('Errore: ${snapshot.error}', style: const TextStyle(color: Colors.white), textAlign: TextAlign.center));
-              } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return const Center(child: Text('Nessun circuito disponibile', style: const TextStyle(color: Colors.white), textAlign: TextAlign.center));
-              }
-              
-              final data = snapshot.data!;
-              return ListView.builder(
-                padding: EdgeInsets.all(isSmallScreen ? 12 : 18),
-                itemCount: data.length,
-                itemBuilder: (context, index) {
-                  final circuito = data[index];
-                  final isExpanded = expandedId == circuito.id;
-                  final borderRadius = isSmallScreen ? 14.0 : 18.0;
-                  final padding = isExpanded 
-                      ? (isSmallScreen ? 14.0 : isLargeScreen ? 24.0 : 20.0) 
-                      : (isSmallScreen ? 10.0 : 14.0);
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(8, 16, 8, 12),
+                  child: _Header(),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: FutureBuilder<List<Circuito>>(
+                    future: futureCircuiti,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(
+                            child:
+                                CircularProgressIndicator(color: Colors.red));
+                      } else if (snapshot.hasError) {
+                        return Center(
+                            child: Text(
+                          'Errore: ${snapshot.error}',
+                          style: const TextStyle(color: Colors.white),
+                          textAlign: TextAlign.center,
+                        ));
+                      } else if (!snapshot.hasData ||
+                          snapshot.data!.isEmpty) {
+                        return const Center(
+                            child: Text(
+                          'Nessun circuito disponibile',
+                          style: TextStyle(color: Colors.white),
+                          textAlign: TextAlign.center,
+                        ));
+                      }
 
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    margin: EdgeInsets.symmetric(vertical: isSmallScreen ? 6 : 8),
-                    decoration: BoxDecoration(
-                      color: isExpanded ? backgroundPanna : Colors.black.withOpacity(0.87),
-                      borderRadius: BorderRadius.circular(borderRadius),
-                      boxShadow: isExpanded ? [BoxShadow(color: Colors.white.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 5))] : null,
-                    ),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(borderRadius),
-                      onTap: () => setState(() => expandedId = isExpanded ? null : circuito.id),
-                      child: Padding(
-                        padding: EdgeInsets.all(padding),
-                        child: isExpanded 
-                            ? _buildExpandedView(circuito, isSmallScreen, isLargeScreen)
-                            : _buildCollapsedView(circuito, isSmallScreen),
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
+                      final data = snapshot.data!;
+                      return ListView.builder(
+                        padding: EdgeInsets.all(isSmallScreen ? 12 : 18),
+                        itemCount: data.length,
+                        itemBuilder: (context, index) {
+                          final circuito = data[index];
+                          final isExpanded = expandedId == circuito.id;
+                          final borderRadius =
+                              isSmallScreen ? 14.0 : 18.0;
+                          final padding = isExpanded
+                              ? (isSmallScreen
+                                  ? 14.0
+                                  : isLargeScreen
+                                      ? 24.0
+                                      : 20.0)
+                              : (isSmallScreen ? 10.0 : 14.0);
+
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            margin: EdgeInsets.symmetric(
+                                vertical: isSmallScreen ? 6 : 8),
+                            decoration: BoxDecoration(
+                              color: isExpanded
+                                  ? const Color.fromARGB(255, 173, 173, 173)
+                                  : const Color.fromARGB(255, 100, 14, 14)
+                                      .withOpacity(0.87),
+                              borderRadius:
+                                  BorderRadius.circular(borderRadius),
+                              boxShadow: isExpanded
+                                  ? [
+                                      BoxShadow(
+                                          color: const Color.fromARGB(
+                                                  255, 185, 185, 185)
+                                              .withOpacity(0.1),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 5))
+                                    ]
+                                  : null,
+                            ),
+                            child: InkWell(
+                              borderRadius:
+                                  BorderRadius.circular(borderRadius),
+                              onTap: () => setState(() =>
+                                  expandedId =
+                                      isExpanded ? null : circuito.id),
+                              child: Padding(
+                                padding: EdgeInsets.all(padding),
+                                child: isExpanded
+                                    ? _buildExpandedView(
+                                        circuito, isSmallScreen, isLargeScreen)
+                                    : _buildCollapsedView(
+                                        circuito, isSmallScreen),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -279,66 +366,96 @@ class _CalendarioPageState extends State<CalendarioPage> {
     return Row(
       children: [
         Expanded(
-          child: Text(circuito.nome, style: TextStyle(fontSize: isSmallScreen ? 16 : 18, fontWeight: FontWeight.bold, color: Colors.white), overflow: TextOverflow.ellipsis),
+          child: Text(circuito.nome,
+              style: TextStyle(
+                  fontSize: isSmallScreen ? 16 : 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
+              overflow: TextOverflow.ellipsis),
         ),
-        Text(circuito.data, style: TextStyle(fontSize: isSmallScreen ? 14 : 16, color: Colors.white70), overflow: TextOverflow.ellipsis),
+        Text(circuito.data,
+            style: TextStyle(
+                fontSize: isSmallScreen ? 14 : 16, color: Colors.white70),
+            overflow: TextOverflow.ellipsis),
       ],
     );
   }
 
-  Widget _buildExpandedView(Circuito circuito, bool isSmallScreen, bool isLargeScreen) {
+  Widget _buildExpandedView(
+      Circuito circuito, bool isSmallScreen, bool isLargeScreen) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (isSmallScreen) _buildSmallScreenHeader(circuito) else _buildLargeScreenHeader(circuito, isLargeScreen),
+        if (isSmallScreen)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(circuito.nome,
+                  style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87)),
+              const SizedBox(height: 8),
+              Text(circuito.data,
+                  style: const TextStyle(fontSize: 14, color: Colors.black54)),
+              const SizedBox(height: 12),
+              SizedBox(
+                  height: 120,
+                  child: SvgPicture.asset(
+                    circuito.imageAsset,
+                    fit: BoxFit.contain,
+                    placeholderBuilder: (context) => const Center(
+                        child:
+                            CircularProgressIndicator(color: Colors.red)),
+                  )),
+            ],
+          )
+        else
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                  width: isLargeScreen ? 120 : 90,
+                  height: isLargeScreen ? 120 : 90,
+                  child: SvgPicture.asset(
+                    circuito.imageAsset,
+                    fit: BoxFit.contain,
+                    placeholderBuilder: (context) => const Center(
+                        child:
+                            CircularProgressIndicator(color: Colors.red)),
+                  )),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(circuito.nome,
+                        style: TextStyle(
+                            fontSize: isLargeScreen ? 28 : 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87)),
+                    const SizedBox(height: 6),
+                    Text(circuito.data,
+                        style: TextStyle(
+                            fontSize: isLargeScreen ? 18 : 16,
+                            color: Colors.black54)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         const SizedBox(height: 16),
         const Divider(color: Colors.black26),
         const SizedBox(height: 12),
-        isSmallScreen 
-            ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: _buildDetailFields(circuito, isSmallScreen))
-            : Wrap(spacing: isLargeScreen ? 30 : 25, runSpacing: isLargeScreen ? 16 : 12, children: _buildDetailFields(circuito, isSmallScreen)),
+        isSmallScreen
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: _buildDetailFields(circuito, isSmallScreen))
+            : Wrap(
+                spacing: isLargeScreen ? 30 : 25,
+                runSpacing: isLargeScreen ? 16 : 12,
+                children: _buildDetailFields(circuito, isSmallScreen)),
       ],
-    );
-  }
-
-  Widget _buildSmallScreenHeader(Circuito circuito) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(circuito.nome, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
-        const SizedBox(height: 8),
-        Text(circuito.data, style: const TextStyle(fontSize: 14, color: Colors.black54)),
-        const SizedBox(height: 12),
-        SizedBox(height: 120, child: _buildCircuitImage(circuito)),
-      ],
-    );
-  }
-
-  Widget _buildLargeScreenHeader(Circuito circuito, bool isLargeScreen) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(width: isLargeScreen ? 120 : 90, height: isLargeScreen ? 120 : 90, child: _buildCircuitImage(circuito)),
-        const SizedBox(width: 20),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(circuito.nome, style: TextStyle(fontSize: isLargeScreen ? 28 : 24, fontWeight: FontWeight.bold, color: Colors.black87)),
-              const SizedBox(height: 6),
-              Text(circuito.data, style: TextStyle(fontSize: isLargeScreen ? 18 : 16, color: Colors.black54)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCircuitImage(Circuito circuito) {
-    return SvgPicture.asset(
-      circuito.imageAsset,
-      fit: BoxFit.contain,
-      placeholderBuilder: (context) => const Center(child: CircularProgressIndicator(color: Colors.red)),
     );
   }
 
@@ -346,8 +463,14 @@ class _CalendarioPageState extends State<CalendarioPage> {
     return [
       _detailField('Lunghezza', circuito.lunghezza, isSmallScreen),
       _detailField('Zone DRS', circuito.zoneDRS.toString(), isSmallScreen),
-      _detailField('Record Qualifica', '${circuito.recordQuali} (${circuito.pilotaQuali}, ${circuito.annoQuali})', isSmallScreen),
-      _detailField('Record Gara', '${circuito.recordGara} (${circuito.pilotaGara}, ${circuito.annoGara})', isSmallScreen),
+      _detailField(
+          'Record Qualifica',
+          '${circuito.recordQuali} (${circuito.pilotaQuali}, ${circuito.annoQuali})',
+          isSmallScreen),
+      _detailField(
+          'Record Gara',
+          '${circuito.recordGara} (${circuito.pilotaGara}, ${circuito.annoGara})',
+          isSmallScreen),
     ];
   }
 
@@ -356,8 +479,17 @@ class _CalendarioPageState extends State<CalendarioPage> {
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        Text('$label: ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: isSmallScreen ? 14 : 16)),
-        Expanded(child: Text(value, style: TextStyle(color: Colors.black87, fontSize: isSmallScreen ? 14 : 16), softWrap: true)),
+        Text('$label: ',
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+                fontSize: isSmallScreen ? 14 : 16)),
+        Expanded(
+          child: Text(value,
+              style: TextStyle(
+                  color: Colors.black87, fontSize: isSmallScreen ? 14 : 16),
+              softWrap: true),
+        ),
       ],
     );
   }
