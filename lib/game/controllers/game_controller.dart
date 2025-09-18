@@ -26,14 +26,12 @@ class GameController extends ChangeNotifier {
   Circuit circuit;
   CarModel carModel;
 
-  // --- track points da JSON ---
   List<Offset> _trackPoints = [];
   Offset? _spawnPoint;
 
   List<Offset> get trackPoints => _trackPoints;
   Offset? get spawnPoint => _spawnPoint;
 
-  // stato player
   double speed = 0.0;
   bool disqualified = false;
   int _playerIndex = 0;
@@ -41,11 +39,9 @@ class GameController extends ChangeNotifier {
   Offset get carPosition =>
       _trackPoints.isNotEmpty ? _trackPoints[_playerIndex] : Offset.zero;
 
-  // bot cars
   final List<BotCar> bots = [];
   final List<int> _botIndices = [];
 
-  // input player
   bool acceleratePressed = false;
   bool brakePressed = false;
 
@@ -54,7 +50,6 @@ class GameController extends ChangeNotifier {
 
   GameController({required this.circuit, required this.carModel});
 
-  // ---------------- JSON loading ----------------
   Future<void> loadTrackFromJson() async {
     try {
       final jsonString = await rootBundle.loadString(circuit.trackJsonPath);
@@ -67,7 +62,6 @@ class GameController extends ChangeNotifier {
           )
           .toList();
 
-      // Inverti direzione per il circuito Belgium
       if (circuit.id.toLowerCase() == "belgium") {
         points.reverse();
         debugPrint("[GameController] Direzione pista invertita per Belgium.");
@@ -131,11 +125,10 @@ class GameController extends ChangeNotifier {
   void _updatePlayer() {
     if (disqualified) return;
 
-    // 🔧 Velocità meno sensibile e accelerazione più lenta
-    const double maxSpeed = 4.0;        // prima 5.0
-    const double accelerationStep = 0.1; // prima 0.2
-    const double brakeStep = 0.15;       // prima 0.3
-    const double frictionStep = 0.05;    // prima 0.1
+    const double maxSpeed = 2.5;
+    const double accelerationStep = 0.05;
+    const double brakeStep = 0.10;
+    const double frictionStep = 0.05;
 
     if (acceleratePressed) {
       speed = (speed + accelerationStep).clamp(0, maxSpeed);
@@ -145,60 +138,65 @@ class GameController extends ChangeNotifier {
       speed = (speed - frictionStep).clamp(0, maxSpeed);
     }
 
-    _applyCurvePhysics(maxSpeed);
+    speed = _applyCurvePhysics(_playerIndex, speed, maxSpeed,
+        isPlayer: true, bot: null);
 
     _playerIndex += speed.round();
     if (_playerIndex < 0) _playerIndex = 0;
     _playerIndex %= _trackPoints.length;
   }
 
-  void _applyCurvePhysics(double maxSpeed) {
-    if (_trackPoints.length < 3) return;
+  double _applyCurvePhysics(int index, double currentSpeed, double maxSpeed,
+      {bool isPlayer = false, BotCar? bot}) {
+    if (_trackPoints.length < 3) return currentSpeed;
 
-    final prev = _trackPoints[(_playerIndex - 3) % _trackPoints.length];
-    final curr = _trackPoints[_playerIndex];
-    final next = _trackPoints[(_playerIndex + 3) % _trackPoints.length];
+    final prev = _trackPoints[(index - 3) % _trackPoints.length];
+    final curr = _trackPoints[index];
+    final next = _trackPoints[(index + 3) % _trackPoints.length];
 
     final v1 = (curr - prev);
     final v2 = (next - curr);
 
     final angle1 = atan2(v1.dy, v1.dx);
     final angle2 = atan2(v2.dy, v2.dx);
-    
+
     double deltaAngle = (angle2 - angle1).abs();
     if (deltaAngle > pi) deltaAngle = 2 * pi - deltaAngle;
 
     const double minCurveAngle = 0.15;
-    if (deltaAngle < minCurveAngle) {
-      return;
-    }
+    if (deltaAngle < minCurveAngle) return currentSpeed;
 
     double curveSeverity = deltaAngle / pi;
     double optimalSpeed = maxSpeed * (1.0 - curveSeverity * 1.2);
-    optimalSpeed = optimalSpeed.clamp(1.0, maxSpeed);
+    optimalSpeed = optimalSpeed.clamp(0.5, 2.0);
 
-    if (speed > 3.5 && deltaAngle > 0.3) {
-      disqualified = true;
-      stop();
-      return;
-    }
-    else if (speed > 4.0 && deltaAngle > 0.2) {
-      disqualified = true;
-      stop();
-      return;
-    }
-    else if (speed > 4.5) {
-      disqualified = true;
-      stop();
-      return;
+    bool crash = false;
+    if (currentSpeed > 2.0 && deltaAngle > 0.3) {
+      crash = true;
+    } else if (currentSpeed > 2.3 && deltaAngle > 0.2) {
+      crash = true;
+    } else if (currentSpeed > 2.5) {
+      crash = true;
     }
 
-    if (speed > optimalSpeed * 1.5) {
-      speed = speed * 0.4;
-    } 
-    else if (speed > optimalSpeed * 1.2) {
-      speed = speed * 0.7;
+    if (crash) {
+      if (isPlayer) {
+        disqualified = true;
+        stop();
+      } else if (bot != null) {
+        bot.disqualified = true;
+        bot.speed = 0;
+      }
+      return 0;
     }
+
+    if (currentSpeed > optimalSpeed * 1.5) {
+      return currentSpeed * 0.4;
+    } else if (currentSpeed > optimalSpeed * 1.2) {
+      return currentSpeed * 0.7;
+    }
+
+    return currentSpeed;
   }
 
   void _updateBots() {
@@ -207,13 +205,15 @@ class GameController extends ChangeNotifier {
       var bot = bots[i];
       if (bot.disqualified) continue;
 
-      // 🔧 attrito più morbido
       bot.speed = max(0, bot.speed - 0.02);
 
-      // 🔧 accelerazione più lenta
       if (rand.nextDouble() < 0.3) {
-        bot.speed = min(bot.speed + 0.05, 4.0); // maxSpeed ridotto
+        bot.speed = min(bot.speed + 0.05, 3.0);
       }
+
+      // 🔧 anche i bot si possono schiantare
+      bot.speed =
+          _applyCurvePhysics(_botIndices[i], bot.speed, 3.0, isPlayer: false, bot: bot);
 
       _botIndices[i] += bot.speed.round();
       _botIndices[i] %= _trackPoints.length;
