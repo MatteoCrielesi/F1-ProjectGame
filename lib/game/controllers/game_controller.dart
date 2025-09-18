@@ -131,11 +131,11 @@ class GameController extends ChangeNotifier {
   void _updatePlayer() {
     if (disqualified) return;
 
-    // 🔧 Velocità più reattiva
-    const double maxSpeed = 5.0;
-    const double accelerationStep = 0.2;
-    const double brakeStep = 0.3;
-    const double frictionStep = 0.1;
+    // 🔧 Velocità meno sensibile e accelerazione più lenta
+    const double maxSpeed = 4.0;        // prima 5.0
+    const double accelerationStep = 0.1; // prima 0.2
+    const double brakeStep = 0.15;       // prima 0.3
+    const double frictionStep = 0.05;    // prima 0.1
 
     if (acceleratePressed) {
       speed = (speed + accelerationStep).clamp(0, maxSpeed);
@@ -168,53 +168,36 @@ class GameController extends ChangeNotifier {
     double deltaAngle = (angle2 - angle1).abs();
     if (deltaAngle > pi) deltaAngle = 2 * pi - deltaAngle;
 
-    // 🔧 SOGLIA PIÙ BASSA per rilevare più curve
     const double minCurveAngle = 0.15;
     if (deltaAngle < minCurveAngle) {
-      // Rettilineo - nessun controllo di curva
       return;
     }
 
-    // 🔧 CALCOLO VELOCITÀ OTTIMALE molto severo per le curve
     double curveSeverity = deltaAngle / pi;
     double optimalSpeed = maxSpeed * (1.0 - curveSeverity * 1.2);
     optimalSpeed = optimalSpeed.clamp(1.0, maxSpeed);
 
-    debugPrint("[Curve] Angolo: ${(deltaAngle * 180/pi).toStringAsFixed(1)}°, Ottimale: ${optimalSpeed.toStringAsFixed(2)}, Attuale: ${speed.toStringAsFixed(2)}");
-
-    // 🔥 SCHIANTO PER VELOCITÀ ALTA IN CURVA - SISTEMA SEMPLIFICATO
     if (speed > 3.5 && deltaAngle > 0.3) {
-      // Se velocità > 3.5 E curva > ~17 gradi → SCHIANTO
-      debugPrint("[Curve] SCHIANTO! Velocità troppo alta (${speed.toStringAsFixed(2)}) in curva stretta (${(deltaAngle * 180/pi).toStringAsFixed(1)}°).");
       disqualified = true;
       stop();
       return;
     }
     else if (speed > 4.0 && deltaAngle > 0.2) {
-      // Se velocità > 4.0 E curva > ~11 gradi → SCHIANTO
-      debugPrint("[Curve] SCHIANTO! Velocità pericolosa (${speed.toStringAsFixed(2)}) in curva (${(deltaAngle * 180/pi).toStringAsFixed(1)}°).");
       disqualified = true;
       stop();
       return;
     }
     else if (speed > 4.5) {
-      // Se velocità > 4.5 in QUALSIASI curva → SCHIANTO
-      debugPrint("[Curve] SCHIANTO! Velocità folle (${speed.toStringAsFixed(2)}) in qualsiasi curva.");
       disqualified = true;
       stop();
       return;
     }
 
-    // SISTEMA DI RIDUZIONE VELOCITÀ PER CURVE
     if (speed > optimalSpeed * 1.5) {
-      // ⚠️ PERICOLO DI SCHIANTO - riduzione drastica
       speed = speed * 0.4;
-      debugPrint("[Curve] PERICOLO SCHIANTO! Velocità ridotta a ${speed.toStringAsFixed(2)}.");
     } 
     else if (speed > optimalSpeed * 1.2) {
-      // 🟡 TROPPO VELOCE - riduzione moderata
       speed = speed * 0.7;
-      debugPrint("[Curve] Troppo veloce in curva. Rallenta!");
     }
   }
 
@@ -224,9 +207,12 @@ class GameController extends ChangeNotifier {
       var bot = bots[i];
       if (bot.disqualified) continue;
 
-      bot.speed = max(0, bot.speed - 0.05);
+      // 🔧 attrito più morbido
+      bot.speed = max(0, bot.speed - 0.02);
+
+      // 🔧 accelerazione più lenta
       if (rand.nextDouble() < 0.3) {
-        bot.speed = min(bot.speed + 0.1, 5.0);
+        bot.speed = min(bot.speed + 0.05, 4.0); // maxSpeed ridotto
       }
 
       _botIndices[i] += bot.speed.round();
