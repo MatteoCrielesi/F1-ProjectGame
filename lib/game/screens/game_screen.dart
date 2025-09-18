@@ -1,10 +1,11 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../controllers/game_controller.dart';
 import '../models/circuit.dart';
 import '../models/car.dart';
 import '../widgets/game_controls.dart';
-import 'dart:async';
 
 class GameScreen extends StatefulWidget {
   final Circuit circuit;
@@ -18,54 +19,29 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   late GameController controller;
-  final GlobalKey _circuitKey = GlobalKey();
-  Timer? _ensureLayoutTimer;
 
   @override
   void initState() {
     super.initState();
     controller = GameController(circuit: widget.circuit, carModel: widget.car);
-    controller.loadMask();
-
-    // start game loop after layout ready
-    WidgetsBinding.instance.addPostFrameCallback((_) => _onLayoutReady());
+    _initGame();
   }
 
-  void _onLayoutReady() {
-    _updateLayoutToController();
+  Future<void> _initGame() async {
+    await controller.loadTrackFromJson();
     controller.start();
-
-    // sometimes layout changes (orientation) — poll few times
-    _ensureLayoutTimer?.cancel();
-    int attempts = 0;
-    _ensureLayoutTimer = Timer.periodic(const Duration(milliseconds: 300), (t) {
-      attempts++;
-      _updateLayoutToController();
-      if (attempts > 8) {
-        t.cancel();
-      }
-    });
-  }
-
-  void _updateLayoutToController() {
-    final renderBox = _circuitKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox != null && renderBox.hasSize) {
-      final size = renderBox.size;
-      controller.updateDisplayLayout(size: size); // solo size, topLeftGlobal rimosso
-    }
   }
 
   @override
   void dispose() {
     controller.disposeController();
-    _ensureLayoutTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.black,
       appBar: AppBar(
         title: Text(widget.circuit.displayName),
         backgroundColor: Colors.black87,
@@ -74,50 +50,46 @@ class _GameScreenState extends State<GameScreen> {
         child: Column(
           children: [
             Expanded(
-              child: LayoutBuilder(builder: (context, constraints) {
-                return Stack(
-                  children: [
-                    // Circuit SVG (scaled to fit)
-                    Positioned.fill(
-                      child: Container(
-                        key: _circuitKey,
-                        padding: const EdgeInsets.all(8),
-                        child: SvgPicture.asset(
-                          widget.circuit.svgPath,
-                          fit: BoxFit.contain,
-                          alignment: Alignment.center,
-                        ),
-                      ),
-                    ),
+              child: Center(
+                child: AnimatedBuilder(
+                  animation: controller,
+                  builder: (_, __) {
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final maxWidth = constraints.maxWidth;
+                        final maxHeight = constraints.maxHeight;
 
-                    // Car overlay: puntino colorato
-                    AnimatedBuilder(
-                      animation: controller,
-                      builder: (_, __) {
-                        final pos = controller.carPosition;
-                        return Positioned(
-                          left: pos.dx - 5, // centrare il puntino
-                          top: pos.dy - 5,
-                          child: Container(
-                            width: 10,
-                            height: 10,
-                            decoration: BoxDecoration(
-                              color: widget.car.color,
-                              shape: BoxShape.circle,
-                              boxShadow: const [
-                                BoxShadow(blurRadius: 2, color: Colors.black38, offset: Offset(1, 1)),
-                              ],
+                        return Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // --- SVG circuito ---
+                            SvgPicture.asset(
+                              widget.circuit.svgPath,
+                              fit: BoxFit.contain,
+                              width: maxWidth,
+                              height: maxHeight,
                             ),
-                          ),
+
+                            // --- Track + Player ---
+                            CustomPaint(
+                              size: Size(maxWidth, maxHeight),
+                              painter: _TrackPainter(
+                                controller.trackPoints,
+                                controller.spawnPoint,
+                                controller.carPosition,
+                                widget.circuit,
+                                maxWidth,
+                                maxHeight,
+                              ),
+                            ),
+                          ],
                         );
                       },
-                    ),
-                  ],
-                );
-              }),
+                    );
+                  },
+                ),
+              ),
             ),
-
-            // Controls (accelerate / brake only)
             Container(
               color: Colors.black87,
               padding: const EdgeInsets.all(8),
@@ -128,4 +100,75 @@ class _GameScreenState extends State<GameScreen> {
       ),
     );
   }
+}
+
+class _TrackPainter extends CustomPainter {
+  final List<Offset> points;
+  final Offset? spawnPoint;
+  final Offset carPosition;
+  final Circuit circuit;
+  final double canvasWidth;
+  final double canvasHeight;
+
+  _TrackPainter(
+    this.points,
+    this.spawnPoint,
+    this.carPosition,
+    this.circuit,
+    this.canvasWidth,
+    this.canvasHeight,
+  );
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.isEmpty) return;
+
+    // --- Calcolo scaling & offset per viewBox ---
+    final scaleX = canvasWidth / circuit.viewBoxWidth;
+    final scaleY = canvasHeight / circuit.viewBoxHeight;
+    final scale = min(scaleX, scaleY);
+
+    final offsetX =
+        (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
+        circuit.viewBoxX * scale;
+    final offsetY =
+        (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
+        circuit.viewBoxY * scale;
+
+    // --- Disegno TRACK ---
+    final trackPaint = Paint()
+      ..color = Colors.yellow
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+    path.moveTo(
+      points.first.dx * scale + offsetX,
+      points.first.dy * scale + offsetY,
+    );
+    for (final p in points.skip(1)) {
+      path.lineTo(p.dx * scale + offsetX, p.dy * scale + offsetY);
+    }
+    canvas.drawPath(path, trackPaint);
+
+    // --- Disegno SPAWN POINT ---
+    if (spawnPoint != null) {
+      final spawnPaint = Paint()..color = Colors.red;
+      final spawnRadius = 5.0;
+      final sx = spawnPoint!.dx * scale + offsetX;
+      final sy = spawnPoint!.dy * scale + offsetY;
+      canvas.drawCircle(Offset(sx, sy), spawnRadius, spawnPaint);
+    }
+
+    // --- Disegno PLAYER CAR ---
+    if (carPosition != Offset.zero) {
+      final playerPaint = Paint()..color = Colors.blueAccent;
+      final px = carPosition.dx * scale + offsetX;
+      final py = carPosition.dy * scale + offsetY;
+      canvas.drawCircle(Offset(px, py), 8.0, playerPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
