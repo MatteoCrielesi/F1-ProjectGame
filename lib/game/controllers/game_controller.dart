@@ -131,11 +131,11 @@ class GameController extends ChangeNotifier {
   void _updatePlayer() {
     if (disqualified) return;
 
-    // 🔧 Velocità più lenta e naturale
+    // 🔧 Velocità più reattiva
     const double maxSpeed = 5.0;
-    const double accelerationStep = 0.15;
-    const double brakeStep = 0.25;
-    const double frictionStep = 0.05;
+    const double accelerationStep = 0.2;
+    const double brakeStep = 0.3;
+    const double frictionStep = 0.1;
 
     if (acceleratePressed) {
       speed = (speed + accelerationStep).clamp(0, maxSpeed);
@@ -155,38 +155,66 @@ class GameController extends ChangeNotifier {
   void _applyCurvePhysics(double maxSpeed) {
     if (_trackPoints.length < 3) return;
 
-    final prev = _trackPoints[(_playerIndex - 1) % _trackPoints.length];
+    final prev = _trackPoints[(_playerIndex - 3) % _trackPoints.length];
     final curr = _trackPoints[_playerIndex];
-    final next = _trackPoints[(_playerIndex + 1) % _trackPoints.length];
+    final next = _trackPoints[(_playerIndex + 3) % _trackPoints.length];
 
     final v1 = (curr - prev);
     final v2 = (next - curr);
 
     final angle1 = atan2(v1.dy, v1.dx);
     final angle2 = atan2(v2.dy, v2.dx);
+    
     double deltaAngle = (angle2 - angle1).abs();
-
     if (deltaAngle > pi) deltaAngle = 2 * pi - deltaAngle;
 
-    double optimalSpeed = max(0.2, 1.5 / (deltaAngle + 0.1));
-    optimalSpeed = optimalSpeed.clamp(0.2, maxSpeed * 0.8);
+    // 🔧 SOGLIA PIÙ BASSA per rilevare più curve
+    const double minCurveAngle = 0.15;
+    if (deltaAngle < minCurveAngle) {
+      // Rettilineo - nessun controllo di curva
+      return;
+    }
 
-    if (speed < optimalSpeed * 0.8) {
-      // troppo piano → nessun log
-    } else if (speed <= optimalSpeed * 1.1) {
-      debugPrint("[Curve] Velocità ottimale! BOOST attivato!");
-      speed = (speed * 1.05).clamp(0, maxSpeed);
-    } else if (speed <= optimalSpeed * 1.5) {
-      debugPrint("[Curve] Troppo veloce! Velocità ridotta.");
-      speed = speed * 0.7;
-    } else if (speed <= optimalSpeed * 2.0) {
-      debugPrint("[Curve] FUORI PISTA! Respawn in corso...");
-      _applySpawnPoint();
-      speed = 0.2;
-    } else {
-      debugPrint("[Curve] SCHIANTO! Giocatore squalificato.");
+    // 🔧 CALCOLO VELOCITÀ OTTIMALE molto severo per le curve
+    double curveSeverity = deltaAngle / pi;
+    double optimalSpeed = maxSpeed * (1.0 - curveSeverity * 1.2);
+    optimalSpeed = optimalSpeed.clamp(1.0, maxSpeed);
+
+    debugPrint("[Curve] Angolo: ${(deltaAngle * 180/pi).toStringAsFixed(1)}°, Ottimale: ${optimalSpeed.toStringAsFixed(2)}, Attuale: ${speed.toStringAsFixed(2)}");
+
+    // 🔥 SCHIANTO PER VELOCITÀ ALTA IN CURVA - SISTEMA SEMPLIFICATO
+    if (speed > 3.5 && deltaAngle > 0.3) {
+      // Se velocità > 3.5 E curva > ~17 gradi → SCHIANTO
+      debugPrint("[Curve] SCHIANTO! Velocità troppo alta (${speed.toStringAsFixed(2)}) in curva stretta (${(deltaAngle * 180/pi).toStringAsFixed(1)}°).");
       disqualified = true;
       stop();
+      return;
+    }
+    else if (speed > 4.0 && deltaAngle > 0.2) {
+      // Se velocità > 4.0 E curva > ~11 gradi → SCHIANTO
+      debugPrint("[Curve] SCHIANTO! Velocità pericolosa (${speed.toStringAsFixed(2)}) in curva (${(deltaAngle * 180/pi).toStringAsFixed(1)}°).");
+      disqualified = true;
+      stop();
+      return;
+    }
+    else if (speed > 4.5) {
+      // Se velocità > 4.5 in QUALSIASI curva → SCHIANTO
+      debugPrint("[Curve] SCHIANTO! Velocità folle (${speed.toStringAsFixed(2)}) in qualsiasi curva.");
+      disqualified = true;
+      stop();
+      return;
+    }
+
+    // SISTEMA DI RIDUZIONE VELOCITÀ PER CURVE
+    if (speed > optimalSpeed * 1.5) {
+      // ⚠️ PERICOLO DI SCHIANTO - riduzione drastica
+      speed = speed * 0.4;
+      debugPrint("[Curve] PERICOLO SCHIANTO! Velocità ridotta a ${speed.toStringAsFixed(2)}.");
+    } 
+    else if (speed > optimalSpeed * 1.2) {
+      // 🟡 TROPPO VELOCE - riduzione moderata
+      speed = speed * 0.7;
+      debugPrint("[Curve] Troppo veloce in curva. Rallenta!");
     }
   }
 
