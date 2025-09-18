@@ -131,27 +131,28 @@ class GameController extends ChangeNotifier {
   void _updatePlayer() {
     if (disqualified) return;
 
-    // Aggiorna velocità in base all'input
+    // 🔧 Velocità più lenta e naturale
+    const double maxSpeed = 5.0;
+    const double accelerationStep = 0.15;
+    const double brakeStep = 0.25;
+    const double frictionStep = 0.05;
+
     if (acceleratePressed) {
-      speed = Physics.applyAcceleration(speed);
+      speed = (speed + accelerationStep).clamp(0, maxSpeed);
     } else if (brakePressed) {
-      speed = Physics.applyBrake(speed);
+      speed = (speed - brakeStep).clamp(0, maxSpeed);
     } else {
-      speed = Physics.applyFriction(speed);
+      speed = (speed - frictionStep).clamp(0, maxSpeed);
     }
 
-    // Debug velocità attuale
-    debugPrint("[Player] Velocità attuale: ${speed.toStringAsFixed(2)}");
+    _applyCurvePhysics(maxSpeed);
 
-    // Applica fisica curva
-    _applyCurvePhysics();
-
-    _playerIndex += speed.toInt();
+    _playerIndex += speed.round();
     if (_playerIndex < 0) _playerIndex = 0;
     _playerIndex %= _trackPoints.length;
   }
 
-  void _applyCurvePhysics() {
+  void _applyCurvePhysics(double maxSpeed) {
     if (_trackPoints.length < 3) return;
 
     final prev = _trackPoints[(_playerIndex - 1) % _trackPoints.length];
@@ -165,38 +166,24 @@ class GameController extends ChangeNotifier {
     final angle2 = atan2(v2.dy, v2.dx);
     double deltaAngle = (angle2 - angle1).abs();
 
-    // Normalizza angolo (0..pi)
     if (deltaAngle > pi) deltaAngle = 2 * pi - deltaAngle;
 
-    // Calcola velocità ottimale: curve strette = velocità più bassa
-    double optimalSpeed = max(1.0, 10 / (deltaAngle + 0.1));
-
-    // ✅ abbassiamo artificialmente per test (così entriamo più facilmente nei rami)
-    optimalSpeed *= 0.5;
-
-    // Debug
-    debugPrint(
-      "[Curve] deltaAngle: ${deltaAngle.toStringAsFixed(2)} | optimalSpeed: ${optimalSpeed.toStringAsFixed(2)} | speed: ${speed.toStringAsFixed(2)}",
-    );
+    double optimalSpeed = max(0.2, 1.5 / (deltaAngle + 0.1));
+    optimalSpeed = optimalSpeed.clamp(0.2, maxSpeed * 0.8);
 
     if (speed < optimalSpeed * 0.8) {
-      // troppo piano → nessun effetto
-      debugPrint("[Curve] Velocità troppo bassa, nessun effetto.");
+      // troppo piano → nessun log
     } else if (speed <= optimalSpeed * 1.1) {
-      // entro il range ottimale → boost
       debugPrint("[Curve] Velocità ottimale! BOOST attivato!");
-      speed *= 1.1;
+      speed = (speed * 1.05).clamp(0, maxSpeed);
     } else if (speed <= optimalSpeed * 1.5) {
-      // un po' troppo veloce → penalità
       debugPrint("[Curve] Troppo veloce! Velocità ridotta.");
-      speed *= 0.7;
+      speed = speed * 0.7;
     } else if (speed <= optimalSpeed * 2.0) {
-      // fuori pista → respawn
       debugPrint("[Curve] FUORI PISTA! Respawn in corso...");
       _applySpawnPoint();
-      speed = 0.5;
+      speed = 0.2;
     } else {
-      // schianto → espulso
       debugPrint("[Curve] SCHIANTO! Giocatore squalificato.");
       disqualified = true;
       stop();
@@ -209,12 +196,12 @@ class GameController extends ChangeNotifier {
       var bot = bots[i];
       if (bot.disqualified) continue;
 
-      bot.speed = Physics.applyFriction(bot.speed);
+      bot.speed = max(0, bot.speed - 0.05);
       if (rand.nextDouble() < 0.3) {
-        bot.speed = Physics.applyAcceleration(bot.speed);
+        bot.speed = min(bot.speed + 0.1, 5.0);
       }
 
-      _botIndices[i] += bot.speed.toInt();
+      _botIndices[i] += bot.speed.round();
       _botIndices[i] %= _trackPoints.length;
       bot.position = _trackPoints[_botIndices[i]];
     }
