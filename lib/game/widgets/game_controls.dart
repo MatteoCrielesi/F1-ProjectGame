@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../controllers/game_controller.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +13,11 @@ class GameControls extends StatefulWidget {
 
 class _GameControlsState extends State<GameControls> {
   final Set<LogicalKeyboardKey> _pressed = {};
+
+  // Determina se siamo su mobile
+  bool get _isMobile =>
+      defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
 
   @override
   void initState() {
@@ -59,9 +65,12 @@ class _GameControlsState extends State<GameControls> {
 
   @override
   Widget build(BuildContext context) {
+    // Se non siamo su mobile, non mostrare i pulsanti touch
+    if (!_isMobile) return const SizedBox.shrink();
+
     return Column(
       children: [
-        // Accelerate button
+        // Pulsante Accelerare
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -82,7 +91,7 @@ class _GameControlsState extends State<GameControls> {
           ],
         ),
         const SizedBox(height: 8),
-        // Brake button
+        // Pulsante Frenare
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

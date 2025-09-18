@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'game/screens/game_screen.dart';
 import 'game/models/circuit.dart';
 import 'game/models/car.dart';
 import 'dashboard.dart';
+import 'game/controllers/game_controller.dart';
+import 'start_lights.dart'; // importa il widget StartLights
 
 class GamePage_1 extends StatefulWidget {
   const GamePage_1({super.key});
@@ -20,6 +23,15 @@ class _GamePageState extends State<GamePage_1> {
 
   bool _teamSelected = false;
 
+  GameController? _preloadController;
+  Future<void>? _preloadFuture;
+
+  bool _showStartLights = false; // mostra animazione luci
+  bool _timerRunning = false; // stato timer
+  int _elapsedCentis = 0; // timer in centesimi
+
+  Timer? _countdownTimer;
+
   @override
   void initState() {
     super.initState();
@@ -30,12 +42,41 @@ class _GamePageState extends State<GamePage_1> {
     });
   }
 
+  Future<void> _preloadCircuit(Circuit circuit) async {
+    _preloadController = GameController(
+      circuit: circuit,
+      carModel: _selectedTeam ?? allCars.first,
+    );
+    await _preloadController!.loadTrackFromJson();
+  }
+
+  void _startTimer() {
+    setState(() {
+      _timerRunning = true;
+      _elapsedCentis = 0;
+    });
+
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(milliseconds: 10), (timer) {
+      setState(() {
+        _elapsedCentis++;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _preloadController?.disposeController();
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          // sfondo gradiente
+          // gradient background
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -49,18 +90,18 @@ class _GamePageState extends State<GamePage_1> {
               ),
             ),
           ),
-          // barra rossa
+          // red top bar
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            child: Container(height: 3, color: Color(0xFFE10600)),
+            child: Container(height: 3, color: const Color(0xFFE10600)),
           ),
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // logo e titolo
+                // logo + title
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                   child: Row(
@@ -76,44 +117,94 @@ class _GamePageState extends State<GamePage_1> {
                     ],
                   ),
                 ),
-                // pulsante back
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white10,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.all(12),
-                      minimumSize: const Size(40, 40),
-                    ),
-                    onPressed: () {
-                      if (_teamSelected) {
-                        setState(() {
-                          _teamSelected = false;
-                          _selectedTeam = null;
-                        });
-                      } else if (_selectedCircuit != null) {
-                        setState(() {
-                          _selectedCircuit = null;
-                        });
-                      } else {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const DashboardPage(),
+
+                // BACK + START / TIMER + NOME CIRCUITO
+                if (_selectedCircuit != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // FRECCETTA BACK
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white10,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.all(12),
+                            minimumSize: const Size(40, 40),
                           ),
-                        );
-                      }
-                    },
-                    child: const Icon(Icons.arrow_back),
+                          onPressed: () {
+                            if (_teamSelected) {
+                              setState(() {
+                                _teamSelected = false;
+                                _selectedTeam = null;
+                              });
+                            } else if (_selectedCircuit != null) {
+                              setState(() {
+                                _selectedCircuit = null;
+                              });
+                            } else {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const DashboardPage(),
+                                ),
+                              );
+                            }
+                          },
+                          child: const Icon(Icons.arrow_back),
+                        ),
+
+                        // START / TIMER CENTRALI
+                        if (!_timerRunning)
+                          StartLights(
+                            showStartButton: true,
+                            onSequenceComplete: () {
+                              _startTimer();
+                            },
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: Text(
+                              _formatTime(_elapsedCentis),
+                              style: const TextStyle(
+                                color: Colors.greenAccent,
+                                fontFamily: 'monospace',
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+
+                        // NOME CIRCUITO A DESTRA
+                        Text(
+                          _selectedCircuit?.displayName ?? '',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+
                 const SizedBox(height: 20),
-                // selezione circuito
+
+                // CIRCUIT SELECTION
                 if (_selectedCircuit == null)
                   Expanded(
                     child: PageView.builder(
@@ -137,6 +228,7 @@ class _GamePageState extends State<GamePage_1> {
                               setState(() {
                                 _selectedCircuit = circuit;
                                 _currentPage = index;
+                                _preloadFuture = _preloadCircuit(circuit);
                               });
                             },
                             child: SizedBox(
@@ -183,65 +275,89 @@ class _GamePageState extends State<GamePage_1> {
                       },
                     ),
                   )
-                // selezione team
+                // TEAM SELECTION
                 else if (!_teamSelected)
                   Expanded(
-                    child: Container(
-                      color: Colors.black54,
-                      child: Center(
-                        child: Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          alignment: WrapAlignment.center,
-                          children: allCars.map((car) {
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _teamSelected = true;
-                                  _selectedTeam = car;
-                                });
-                              },
-                              child: Container(
-                                width: 100,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  color: car.color,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    car.name,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ),
-                  )
-                // gioco attivo
-                else
-                  Expanded(
                     child: Stack(
-                      alignment: Alignment.center,
                       children: [
-                        // SVG circuito di sfondo
-                        SvgPicture.asset(
-                          _selectedCircuit!.svgPath,
-                          fit: BoxFit.contain,
-                        ),
-                        // widget GameScreen con pista e auto
-                        GameScreen(
-                          circuit: _selectedCircuit!,
-                          car: _selectedTeam!,
+                        if (_preloadFuture != null)
+                          FutureBuilder(
+                            future: _preloadFuture,
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.done) {
+                                return CustomPaint(
+                                  size: Size.infinite,
+                                  painter: _BackgroundTrackPainter(
+                                    _preloadController!.trackPoints,
+                                    _selectedCircuit!,
+                                  ),
+                                );
+                              } else {
+                                return const SizedBox.shrink();
+                              }
+                            },
+                          ),
+                        Container(
+                          color: Colors.black54,
+                          child: Center(
+                            child: Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              alignment: WrapAlignment.center,
+                              children: allCars.map((car) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _teamSelected = true;
+                                      _selectedTeam = car;
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 100,
+                                    height: 120,
+                                    decoration: BoxDecoration(
+                                      color: car.color,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        if (car.logoPath.isNotEmpty)
+                                          SizedBox(
+                                            height: 50,
+                                            child: Image.asset(
+                                              car.logoPath,
+                                              fit: BoxFit.contain,
+                                            ),
+                                          ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          car.name,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
                         ),
                       ],
+                    ),
+                  )
+                // GAME ACTIVE
+                else
+                  Expanded(
+                    child: GameScreen(
+                      circuit: _selectedCircuit!,
+                      car: _selectedTeam!,
                     ),
                   ),
               ],
@@ -251,4 +367,53 @@ class _GamePageState extends State<GamePage_1> {
       ),
     );
   }
+
+  String _formatTime(int centis) {
+    final minutes = centis ~/ 6000;
+    final seconds = (centis % 6000) ~/ 100;
+    final cs = centis % 100;
+    return '${minutes.toString()}:${seconds.toString().padLeft(2, '0')}.${cs.toString().padLeft(2, '0')}';
+  }
+}
+
+// Painter per background circuito
+class _BackgroundTrackPainter extends CustomPainter {
+  final List<Offset> points;
+  final Circuit circuit;
+
+  _BackgroundTrackPainter(this.points, this.circuit);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.isEmpty) return;
+
+    final scaleX = size.width / circuit.viewBoxWidth;
+    final scaleY = size.height / circuit.viewBoxHeight;
+    final scale = scaleX < scaleY ? scaleX : scaleY;
+
+    final offsetX =
+        (size.width - circuit.viewBoxWidth * scale) / 2 -
+        circuit.viewBoxX * scale;
+    final offsetY =
+        (size.height - circuit.viewBoxHeight * scale) / 2 -
+        circuit.viewBoxY * scale;
+
+    final paint = Paint()
+      ..color = Colors.yellow.withOpacity(0.5)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final path = Path()
+      ..moveTo(
+        points.first.dx * scale + offsetX,
+        points.first.dy * scale + offsetY,
+      );
+    for (final p in points.skip(1)) {
+      path.lineTo(p.dx * scale + offsetX, p.dy * scale + offsetY);
+    }
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
