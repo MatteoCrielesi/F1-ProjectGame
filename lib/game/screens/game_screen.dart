@@ -263,7 +263,10 @@ class _GameScreenState extends State<GameScreen> {
                                 Positioned(
                                   bottom: 24,
                                   right: 24,
-                                  child: GameControls(controller: controller),
+                                  child: GameControls(
+                                    controller: controller,
+                                    controlsEnabled: false,
+                                  ),
                                 ),
                             ],
                           );

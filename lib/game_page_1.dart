@@ -26,7 +26,6 @@ class _GamePageState extends State<GamePage_1> {
   GameController? _preloadController;
   Future<void>? _preloadFuture;
 
-  bool _showStartLights = false; // mostra animazione luci
   bool _timerRunning = false; // stato timer
   int _elapsedCentis = 0; // timer in centesimi
 
@@ -73,6 +72,10 @@ class _GamePageState extends State<GamePage_1> {
 
   @override
   Widget build(BuildContext context) {
+    // Dimensione fissa per il timer / start lights
+    const double centralWidgetWidth = 120;
+    const double centralWidgetHeight = 40;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -160,34 +163,40 @@ class _GamePageState extends State<GamePage_1> {
                         ),
 
                         // START / TIMER CENTRALI
-                        if (!_timerRunning)
-                          StartLights(
-                            showStartButton: true,
-                            onSequenceComplete: () {
-                              _startTimer();
-                            },
-                          )
-                        else
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.06),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.white24),
-                            ),
-                            child: Text(
-                              _formatTime(_elapsedCentis),
-                              style: const TextStyle(
-                                color: Colors.greenAccent,
-                                fontFamily: 'monospace',
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
+                        SizedBox(
+                          width: centralWidgetWidth,
+                          height: centralWidgetHeight,
+                          child: _teamSelected
+                              ? !_timerRunning
+                                    ? StartLights(
+                                        showStartButton: true,
+                                        onSequenceComplete: () {
+                                          _startTimer();
+                                        },
+                                      )
+                                    : Container(
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.06),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.white24,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          _formatTime(_elapsedCentis),
+                                          style: const TextStyle(
+                                            color: Colors.greenAccent,
+                                            fontFamily: 'monospace',
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      )
+                              : const SizedBox.shrink(),
+                        ),
 
                         // NOME CIRCUITO A DESTRA
                         Text(

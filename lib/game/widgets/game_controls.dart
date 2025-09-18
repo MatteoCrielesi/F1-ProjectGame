@@ -5,7 +5,11 @@ import 'package:flutter/services.dart';
 
 class GameControls extends StatefulWidget {
   final GameController controller;
-  const GameControls({super.key, required this.controller});
+  const GameControls({
+    super.key,
+    required this.controller,
+    required bool controlsEnabled,
+  });
 
   @override
   State<GameControls> createState() => _GameControlsState();

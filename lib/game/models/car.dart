@@ -27,7 +27,7 @@ const List<CarModel> allCars = [
   ),
   CarModel(
     name: "Alpine",
-    logoPath: "assets/logos/alpine.png",
+    logoPath: "assets/logos/AlpineDash.png",
     color: Color.fromARGB(255, 243, 34, 229),
   ),
   CarModel(
@@ -42,7 +42,7 @@ const List<CarModel> allCars = [
   ),
   CarModel(
     name: "Red Bull Racing",
-    logoPath: "assets/logos/redbull.png",
+    logoPath: "assets/logos/RedBullDash.png",
     color: Color(0xFF1E41FF),
   ),
   CarModel(

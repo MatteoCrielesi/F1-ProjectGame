@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import '../models/circuit.dart';
 import '../models/car.dart';
+import '../utils/physics.dart';
 
 class BotCar {
   Offset position;
@@ -32,7 +33,6 @@ class GameController extends ChangeNotifier {
   Offset? get spawnPoint => _spawnPoint;
 
   double speed = 0.0;
-  double _playerProgress = 0.0;
   bool disqualified = false;
   int _playerIndex = 0;
 
@@ -93,7 +93,6 @@ class GameController extends ChangeNotifier {
     speed = 0.0;
     disqualified = false;
     _playerIndex = _findNearestIndex(_spawnPoint!);
-    _playerProgress = _playerIndex.toDouble();
     debugPrint("[GameController] Respawn effettuato allo spawn point.");
   }
 
@@ -127,7 +126,7 @@ class GameController extends ChangeNotifier {
     if (disqualified) return;
 
     const double maxSpeed = 2.5;
-    const double accelerationStep = 0.05;
+    const double accelerationStep = 0.10;
     const double brakeStep = 0.10;
     const double frictionStep = 0.05;
 
@@ -167,8 +166,6 @@ class GameController extends ChangeNotifier {
 
     final v1 = (curr - prev);
     final v2 = (next - curr);
-
-    if (v1 == Offset.zero || v2 == Offset.zero) return;
 
     final angle1 = atan2(v1.dy, v1.dx);
     final angle2 = atan2(v2.dy, v2.dx);
