@@ -128,8 +128,12 @@ class _TrackPainter extends CustomPainter {
     final scaleY = canvasHeight / circuit.viewBoxHeight;
     final scale = min(scaleX, scaleY);
 
-    final offsetX = (canvasWidth - circuit.viewBoxWidth * scale) / 2 - circuit.viewBoxX * scale;
-    final offsetY = (canvasHeight - circuit.viewBoxHeight * scale) / 2 - circuit.viewBoxY * scale;
+    final offsetX =
+        (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
+        circuit.viewBoxX * scale;
+    final offsetY =
+        (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
+        circuit.viewBoxY * scale;
 
     // --- Disegno TRACK ---
     final trackPaint = Paint()
@@ -138,7 +142,10 @@ class _TrackPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final path = Path();
-    path.moveTo(points.first.dx * scale + offsetX, points.first.dy * scale + offsetY);
+    path.moveTo(
+      points.first.dx * scale + offsetX,
+      points.first.dy * scale + offsetY,
+    );
     for (final p in points.skip(1)) {
       path.lineTo(p.dx * scale + offsetX, p.dy * scale + offsetY);
     }
