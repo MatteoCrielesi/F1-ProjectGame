@@ -209,6 +209,36 @@ class _GamePageState extends State<GamePage_1> {
                         ),
                       ],
                     ),
+                  )
+                else
+                  // FRECCIA BACK nella pagina di selezione circuito
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white10,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.all(12),
+                            minimumSize: const Size(40, 40),
+                          ),
+                          onPressed: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const DashboardPage(),
+                              ),
+                            );
+                          },
+                          child: const Icon(Icons.arrow_back),
+                        ),
+                      ],
+                    ),
                   ),
 
                 const SizedBox(height: 20),

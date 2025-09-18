@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:f1_project/game_page_1.dart';
 import 'package:f1_project/scuderie_page.dart';
 import 'package:flutter/material.dart';
 import 'package:f1_project/stats_page.dart';
@@ -81,30 +82,29 @@ class _DashboardPageState extends State<DashboardPage>
         body:
             'Explore all teams, lineups,\nand liveries for the\ncurrent season.',
         onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const ScuderiePage()),
-          );
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const ScuderiePage()));
         },
       ),
       _RankingsCard(
         title: 'Classifiche',
         body: 'Keep up with driver and\nconstructor standings,\nrace by race.',
         onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const RankingPage()),
-          );
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const RankingPage()));
         },
       ),
       _StatisticsCard(
-  title: 'Statistiche',
-  body: 'Dive into pace, poles,\npodiums, and fastest lap\nmetrics.',
-  onTap: () {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => StatistichePage()),
-    );
-  },
-),
-
+        title: 'Statistiche',
+        body: 'Dive into pace, poles,\npodiums, and fastest lap\nmetrics.',
+        onTap: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => StatistichePage()));
+        },
+      ),
     ];
 
     return Scaffold(
@@ -208,10 +208,12 @@ class _DashboardPageState extends State<DashboardPage>
                       ),
                       onPressed: () {
                         Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const CalendarioPage()),
-                      );
-                    },
-                    child: const Text('Race Calendar'),
+                          MaterialPageRoute(
+                            builder: (context) => const CalendarioPage(),
+                          ),
+                        );
+                      },
+                      child: const Text('Race Calendar'),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -279,14 +281,41 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment
+          .spaceBetween, // ✅ permette spazio tra titolo e pulsante
       children: [
-        SvgPicture.asset('assets/f1_logo.svg', height: 24),
-        const SizedBox(width: 12),
-        Text(
-          'Formula 1',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+        Row(
+          children: [
+            SvgPicture.asset('assets/f1_logo.svg', height: 24),
+            const SizedBox(width: 12),
+            Text(
+              'Formula 1',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        // Pulsante tondo con icona controller
+        InkWell(
+          onTap: () {
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const GamePage_1()));
+          },
+          borderRadius: BorderRadius.circular(24),
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE10600),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.videogame_asset, // icona controller standard
+              color: Colors.white,
+            ),
+          ),
         ),
       ],
     );
@@ -554,20 +583,20 @@ class _RankingsCardState extends State<_RankingsCard>
               children: [
                 // Podio visibile solo quando si tiene premuto / hover
                 if (_showPodio)
-  Positioned.fill(
-    child: Align(
-      alignment: Alignment.bottomCenter, // 👈 fissata in basso
-      child: Opacity(
-        opacity: 0.18,
-        child: Image.asset(
-          'assets/podium.png',
-          fit: BoxFit.contain,
-          width: 1000,   // 👈 più largo
-          height: 250,  // 👈 più alto
-        ),
-      ),
-    ),
-  ),
+                  Positioned.fill(
+                    child: Align(
+                      alignment: Alignment.bottomCenter, // 👈 fissata in basso
+                      child: Opacity(
+                        opacity: 0.18,
+                        child: Image.asset(
+                          'assets/podium.png',
+                          fit: BoxFit.contain,
+                          width: 1000, // 👈 più largo
+                          height: 250, // 👈 più alto
+                        ),
+                      ),
+                    ),
+                  ),
                 // Testo centrale
                 SlideTransition(
                   position: isPhone
@@ -605,7 +634,6 @@ class _RankingsCardState extends State<_RankingsCard>
     );
   }
 }
-
 
 class _StatisticsCard extends StatefulWidget {
   const _StatisticsCard({
