@@ -8,7 +8,7 @@ import '../controllers/game_controller.dart';
 import '../models/circuit.dart';
 import '../models/car.dart';
 import 'package:flutter/services.dart';
-import '../widgets/game_controls.dart'; // Importa il nuovo widget dei comandi
+import '../widgets/game_controls.dart';
 
 class GameScreen extends StatefulWidget {
   final Circuit circuit;
@@ -176,9 +176,7 @@ class _GameScreenState extends State<GameScreen> {
                                                         MainAxisAlignment
                                                             .spaceBetween,
                                                     children: [
-                                                      if (car
-                                                          .logoPath
-                                                          .isNotEmpty)
+                                                      if (car.logoPath.isNotEmpty)
                                                         SizedBox(
                                                           width: 26,
                                                           height: 26,
@@ -238,6 +236,7 @@ class _GameScreenState extends State<GameScreen> {
                                     controller.spawnPoint,
                                     controller.carPosition,
                                     widget.circuit,
+                                    widget.car, // Passa il CarModel qui
                                     canvasWidth: maxWidth,
                                     canvasHeight: maxHeight,
                                   ),
@@ -289,6 +288,7 @@ class _TrackPainter extends CustomPainter {
   final Offset? spawnPoint;
   final Offset carPosition;
   final Circuit circuit;
+  final CarModel car; // Modello della macchina
   final double canvasWidth;
   final double canvasHeight;
 
@@ -296,10 +296,13 @@ class _TrackPainter extends CustomPainter {
     this.points,
     this.spawnPoint,
     this.carPosition,
-    this.circuit, {
-    required this.canvasWidth,
-    required this.canvasHeight,
-  });
+    this.circuit,
+    this.car, // Passaggio del CarModel
+    {
+      required this.canvasWidth,
+      required this.canvasHeight,
+    }
+  );
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -310,27 +313,24 @@ class _TrackPainter extends CustomPainter {
     final scale = min(scaleX, scaleY);
 
     final offsetX =
-        (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
-        circuit.viewBoxX * scale;
+        (canvasWidth - circuit.viewBoxWidth * scale) / 2 - circuit.viewBoxX * scale;
     final offsetY =
-        (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
-        circuit.viewBoxY * scale;
+        (canvasHeight - circuit.viewBoxHeight * scale) / 2 - circuit.viewBoxY * scale;
 
+    // Disegna la pista
     final trackPaint = Paint()
       ..color = Colors.yellow
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
 
     final path = Path()
-      ..moveTo(
-        points.first.dx * scale + offsetX,
-        points.first.dy * scale + offsetY,
-      );
+      ..moveTo(points.first.dx * scale + offsetX, points.first.dy * scale + offsetY);
     for (final p in points.skip(1)) {
       path.lineTo(p.dx * scale + offsetX, p.dy * scale + offsetY);
     }
     canvas.drawPath(path, trackPaint);
 
+    // Disegna il punto di spawn
     if (spawnPoint != null) {
       final spawnPaint = Paint()..color = Colors.red;
       const spawnRadius = 5.0;
@@ -339,8 +339,9 @@ class _TrackPainter extends CustomPainter {
       canvas.drawCircle(Offset(sx, sy), spawnRadius, spawnPaint);
     }
 
+    // Disegna la macchina del giocatore
     if (carPosition != Offset.zero) {
-      final playerPaint = Paint()..color = Colors.blueAccent;
+      final playerPaint = Paint()..color = car.color; // Colore dal CarModel
       final px = carPosition.dx * scale + offsetX;
       final py = carPosition.dy * scale + offsetY;
       canvas.drawCircle(Offset(px, py), 8.0, playerPaint);

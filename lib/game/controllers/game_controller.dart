@@ -138,26 +138,16 @@ class GameController extends ChangeNotifier {
       speed = (speed - frictionStep).clamp(0, maxSpeed);
     }
 
-    speed = _applyCurvePhysics(
-      _playerIndex,
-      speed,
-      maxSpeed,
-      isPlayer: true,
-      bot: null,
-    );
+    speed = _applyCurvePhysics(_playerIndex, speed, maxSpeed,
+        isPlayer: true, bot: null);
 
     _playerIndex += speed.round();
     if (_playerIndex < 0) _playerIndex = 0;
     _playerIndex %= _trackPoints.length;
   }
 
-  double _applyCurvePhysics(
-    int index,
-    double currentSpeed,
-    double maxSpeed, {
-    bool isPlayer = false,
-    BotCar? bot,
-  }) {
+  double _applyCurvePhysics(int index, double currentSpeed, double maxSpeed,
+      {bool isPlayer = false, BotCar? bot}) {
     if (_trackPoints.length < 3) return currentSpeed;
 
     final prev = _trackPoints[(index - 3) % _trackPoints.length];
@@ -222,13 +212,8 @@ class GameController extends ChangeNotifier {
       }
 
       // 🔧 anche i bot si possono schiantare
-      bot.speed = _applyCurvePhysics(
-        _botIndices[i],
-        bot.speed,
-        3.0,
-        isPlayer: false,
-        bot: bot,
-      );
+      bot.speed =
+          _applyCurvePhysics(_botIndices[i], bot.speed, 3.0, isPlayer: false, bot: bot);
 
       _botIndices[i] += bot.speed.round();
       _botIndices[i] %= _trackPoints.length;
