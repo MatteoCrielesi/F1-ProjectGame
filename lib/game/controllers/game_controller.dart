@@ -26,6 +26,10 @@ class GameController extends ChangeNotifier {
   Circuit circuit;
   CarModel carModel;
 
+  final List<int> _botLaps = [];
+
+  List<int> get botLaps => _botLaps;
+
   List<Offset> _trackPoints = [];
   Offset? _spawnPoint;
 
@@ -35,6 +39,11 @@ class GameController extends ChangeNotifier {
   double speed = 0.0;
   bool disqualified = false;
   int _playerIndex = 0;
+
+  int _playerLap = 0;
+  int _previousPlayerIndex = 0;
+
+  int get playerLap => _playerLap;
 
   Offset get carPosition =>
       _trackPoints.isNotEmpty ? _trackPoints[_playerIndex] : Offset.zero;
@@ -99,6 +108,7 @@ class GameController extends ChangeNotifier {
   void _initBots() {
     bots.clear();
     _botIndices.clear();
+    _botLaps.clear();
     final rand = Random();
 
     for (int i = 0; i < 9 && _trackPoints.isNotEmpty; i++) {
@@ -138,16 +148,26 @@ class GameController extends ChangeNotifier {
       speed = (speed - frictionStep).clamp(0, maxSpeed);
     }
 
-    speed = _applyCurvePhysics(_playerIndex, speed, maxSpeed,
-        isPlayer: true, bot: null);
+    speed = _applyCurvePhysics(
+      _playerIndex,
+      speed,
+      maxSpeed,
+      isPlayer: true,
+      bot: null,
+    );
 
     _playerIndex += speed.round();
     if (_playerIndex < 0) _playerIndex = 0;
     _playerIndex %= _trackPoints.length;
   }
 
-  double _applyCurvePhysics(int index, double currentSpeed, double maxSpeed,
-      {bool isPlayer = false, BotCar? bot}) {
+  double _applyCurvePhysics(
+    int index,
+    double currentSpeed,
+    double maxSpeed, {
+    bool isPlayer = false,
+    BotCar? bot,
+  }) {
     if (_trackPoints.length < 3) return currentSpeed;
 
     final prev = _trackPoints[(index - 3) % _trackPoints.length];
@@ -212,12 +232,22 @@ class GameController extends ChangeNotifier {
       }
 
       // 🔧 anche i bot si possono schiantare
-      bot.speed =
-          _applyCurvePhysics(_botIndices[i], bot.speed, 3.0, isPlayer: false, bot: bot);
+      bot.speed = _applyCurvePhysics(
+        _botIndices[i],
+        bot.speed,
+        3.0,
+        isPlayer: false,
+        bot: bot,
+      );
 
+      int prevIndex = _botIndices[i];
       _botIndices[i] += bot.speed.round();
       _botIndices[i] %= _trackPoints.length;
       bot.position = _trackPoints[_botIndices[i]];
+
+      if (_botIndices[i] < prevIndex) {
+        _botLaps[i] += 1;
+      }
     }
   }
 

@@ -73,7 +73,7 @@ class _GamePageState extends State<GamePage_1> {
   @override
   Widget build(BuildContext context) {
     // Dimensione fissa per il timer / start lights
-    const double centralWidgetWidth = 120;
+    const double centralWidgetWidth = 200;
     const double centralWidgetHeight = 40;
 
     return Scaffold(

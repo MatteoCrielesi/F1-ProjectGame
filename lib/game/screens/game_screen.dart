@@ -176,7 +176,9 @@ class _GameScreenState extends State<GameScreen> {
                                                         MainAxisAlignment
                                                             .spaceBetween,
                                                     children: [
-                                                      if (car.logoPath.isNotEmpty)
+                                                      if (car
+                                                          .logoPath
+                                                          .isNotEmpty)
                                                         SizedBox(
                                                           width: 26,
                                                           height: 26,
@@ -297,12 +299,10 @@ class _TrackPainter extends CustomPainter {
     this.spawnPoint,
     this.carPosition,
     this.circuit,
-    this.car, // Passaggio del CarModel
-    {
-      required this.canvasWidth,
-      required this.canvasHeight,
-    }
-  );
+    this.car, { // Passaggio del CarModel
+    required this.canvasWidth,
+    required this.canvasHeight,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -313,9 +313,11 @@ class _TrackPainter extends CustomPainter {
     final scale = min(scaleX, scaleY);
 
     final offsetX =
-        (canvasWidth - circuit.viewBoxWidth * scale) / 2 - circuit.viewBoxX * scale;
+        (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
+        circuit.viewBoxX * scale;
     final offsetY =
-        (canvasHeight - circuit.viewBoxHeight * scale) / 2 - circuit.viewBoxY * scale;
+        (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
+        circuit.viewBoxY * scale;
 
     // Disegna la pista
     final trackPaint = Paint()
@@ -324,7 +326,10 @@ class _TrackPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final path = Path()
-      ..moveTo(points.first.dx * scale + offsetX, points.first.dy * scale + offsetY);
+      ..moveTo(
+        points.first.dx * scale + offsetX,
+        points.first.dy * scale + offsetY,
+      );
     for (final p in points.skip(1)) {
       path.lineTo(p.dx * scale + offsetX, p.dy * scale + offsetY);
     }
