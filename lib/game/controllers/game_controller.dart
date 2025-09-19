@@ -2,24 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flame/extensions.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/material.dart';
 import '../models/circuit.dart';
 import '../models/car.dart';
-
-class BotCar {
-  Offset position;
-  double speed;
-  bool disqualified;
-  Color color;
-
-  BotCar({
-    required this.position,
-    this.speed = 0,
-    this.disqualified = false,
-    required this.color,
-  });
-}
 
 class GameController extends ChangeNotifier {
   Circuit circuit;
@@ -31,24 +17,25 @@ class GameController extends ChangeNotifier {
   List<Offset> get trackPoints => _trackPoints;
   Offset? get spawnPoint => _spawnPoint;
 
-  // stato player
   double speed = 0.0;
-  double _playerProgress = 0.0;
   bool disqualified = false;
   int _playerIndex = 0;
 
+  int _playerLap = 0;
+  int _previousPlayerIndex = 0;
+
+  int get playerLap => _playerLap;
+
   Offset get carPosition =>
       _trackPoints.isNotEmpty ? _trackPoints[_playerIndex] : Offset.zero;
-
-  // bot cars
-  final List<BotCar> bots = [];
-  final List<int> _botIndices = [];
 
   bool acceleratePressed = false;
   bool brakePressed = false;
 
   Timer? _gameTimer;
   int tickMs = 16;
+
+  void Function(int lap)? onLapCompleted;
 
   GameController({required this.circuit, required this.carModel});
 
@@ -80,7 +67,6 @@ class GameController extends ChangeNotifier {
       }
 
       _applySpawnPoint();
-      if (bots.isEmpty) _initBots();
       debugPrint(
         "[GameController] Caricati ${_trackPoints.length} punti dal JSON.",
       );
@@ -95,23 +81,9 @@ class GameController extends ChangeNotifier {
     speed = 0.0;
     disqualified = false;
     _playerIndex = _findNearestIndex(_spawnPoint!);
-    _playerProgress = _playerIndex.toDouble();
+    _previousPlayerIndex = _playerIndex;
+    _playerLap = 0;
     debugPrint("[GameController] Respawn effettuato allo spawn point.");
-  }
-
-  void _initBots() {
-    bots.clear();
-    _botIndices.clear();
-    final rand = Random();
-
-    for (int i = 0; i < 9 && _trackPoints.isNotEmpty; i++) {
-      int idx = rand.nextInt(_trackPoints.length);
-      bots.add(
-        BotCar(position: _trackPoints[idx], color: allCars[i + 1].color),
-      );
-      _botIndices.add(idx);
-    }
-    debugPrint("[GameController] Bot inizializzati: ${bots.length}");
   }
 
   void tick() {
@@ -121,7 +93,6 @@ class GameController extends ChangeNotifier {
     }
 
     _updatePlayer();
-    _updateBots();
     notifyListeners();
   }
 
@@ -129,9 +100,9 @@ class GameController extends ChangeNotifier {
     if (disqualified) return;
 
     const double maxSpeed = 2.5;
-    const double accelerationStep = 0.08;
-    const double brakeStep = 0.12;
-    const double frictionStep = 0.03;
+    const double accelerationStep = 0.10;
+    const double brakeStep = 0.10;
+    const double frictionStep = 0.05;
 
     if (acceleratePressed) {
       speed = (speed + accelerationStep).clamp(0, maxSpeed);
@@ -141,82 +112,81 @@ class GameController extends ChangeNotifier {
       speed = (speed - frictionStep).clamp(0, maxSpeed);
     }
 
-    double oldProgress = _playerProgress;
-    _playerProgress += speed;
-    if (_playerProgress < 0) _playerProgress = 0;
-    _playerIndex = _playerProgress.floor() % _trackPoints.length;
+    speed = _applyCurvePhysics(
+      _playerIndex,
+      speed,
+      maxSpeed,
+      isPlayer: true,
+    );
 
-    if (_playerProgress.floor() != oldProgress.floor()) {
-      _applyCurvePhysics(maxSpeed);
+    _previousPlayerIndex = _playerIndex;
+    _playerIndex += speed.round();
+
+    if (_playerIndex < 0) _playerIndex = 0;
+    _playerIndex %= _trackPoints.length;
+
+    // 🔔 Controllo lap completato (wrap-around)
+    if (_playerIndex < _previousPlayerIndex) {
+      _playerLap += 1;
+      debugPrint("[GameController] Lap completato ($_playerLap)");
+      if (onLapCompleted != null) {
+        onLapCompleted!(_playerLap);
+      }
     }
   }
 
-  void _applyCurvePhysics(double maxSpeed) {
-    if (_trackPoints.length < 3) return;
+  double _applyCurvePhysics(
+    int index,
+    double currentSpeed,
+    double maxSpeed, {
+    bool isPlayer = false,
+  }) {
+    if (_trackPoints.length < 3) return currentSpeed;
 
-    final prev = _trackPoints[(_playerIndex - 1) % _trackPoints.length];
-    final curr = _trackPoints[_playerIndex];
-    final next = _trackPoints[(_playerIndex + 1) % _trackPoints.length];
+    final prev = _trackPoints[(index - 3) % _trackPoints.length];
+    final curr = _trackPoints[index];
+    final next = _trackPoints[(index + 3) % _trackPoints.length];
 
     final v1 = (curr - prev);
     final v2 = (next - curr);
 
-    if (v1 == Offset.zero || v2 == Offset.zero) return;
-
     final angle1 = atan2(v1.dy, v1.dx);
     final angle2 = atan2(v2.dy, v2.dx);
+
     double deltaAngle = (angle2 - angle1).abs();
     if (deltaAngle > pi) deltaAngle = 2 * pi - deltaAngle;
 
-    // 🔧 RETTILINEO: tolleranza più alta
-    const double straightThreshold = 0.1; // ~5.7°
-    final len1 = v1.distance;
-    final len2 = v2.distance;
+    const double minCurveAngle = 0.15;
+    if (deltaAngle < minCurveAngle) return currentSpeed;
 
-    if (deltaAngle < straightThreshold &&
-        (len1 - len2).abs() < min(len1, len2) * 0.2) {
-      // Sono praticamente collineari → nessuna penalità
-      // debugPrint("[Curve] Rettlineo, nessuna penalità.");
-      return;
+    double curveSeverity = deltaAngle / pi;
+    double optimalSpeed = maxSpeed * (1.0 - curveSeverity * 1.2);
+    optimalSpeed = optimalSpeed.clamp(0.5, 2.0);
+
+    bool crash = false;
+    if (currentSpeed > 2.0 && deltaAngle > 0.3) {
+      crash = true;
+    } else if (currentSpeed > 2.3 && deltaAngle > 0.2) {
+      crash = true;
+    } else if (currentSpeed > 2.5) {
+      crash = true;
     }
 
-    double optimalSpeed = max(0.1, 1.0 / (deltaAngle + 0.1));
-    optimalSpeed = optimalSpeed.clamp(0.1, maxSpeed * 0.8);
-
-    if (speed < optimalSpeed * 0.8) {
-      // troppo piano → nessun log
-    } else if (speed <= optimalSpeed * 1.1) {
-      debugPrint("[Curve] Velocità ottimale! BOOST attivato!");
-      speed = (speed * 1.05).clamp(0, maxSpeed);
-    } else if (speed <= optimalSpeed * 1.5) {
-      debugPrint("[Curve] Troppo veloce! Velocità ridotta.");
-      speed *= 0.7;
-    } else if (speed <= optimalSpeed * 2.0) {
-      debugPrint("[Curve] FUORI PISTA! Respawn in corso...");
-      _applySpawnPoint();
-      speed = 0.1;
-    } else {
-      debugPrint("[Curve] SCHIANTO! Giocatore squalificato.");
-      disqualified = true;
-      stop();
-    }
-  }
-
-  void _updateBots() {
-    final rand = Random();
-    for (int i = 0; i < bots.length; i++) {
-      var bot = bots[i];
-      if (bot.disqualified) continue;
-
-      bot.speed = max(0, bot.speed - 0.03);
-      if (rand.nextDouble() < 0.3) {
-        bot.speed = min(bot.speed + 0.05, 2.5);
+    if (crash) {
+      if (isPlayer) {
+        disqualified = true;
+        stop();
       }
-
-      _botIndices[i] += bot.speed.round();
-      _botIndices[i] %= _trackPoints.length;
-      bot.position = _trackPoints[_botIndices[i]];
+      return 0;
     }
+
+    if (currentSpeed > optimalSpeed * 1.5) {
+      return currentSpeed * 0.4;
+    } else if (currentSpeed > optimalSpeed * 1.2) {
+      return currentSpeed * 0.7;
+    }
+
+    return currentSpeed;
   }
 
   int _findNearestIndex(Offset point) {

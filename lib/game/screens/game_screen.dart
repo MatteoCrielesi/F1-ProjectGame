@@ -10,8 +10,16 @@ import '../widgets/game_controls.dart';
 class GameScreen extends StatefulWidget {
   final Circuit circuit;
   final CarModel car;
+  final bool showTouchControls;
+  final void Function(List<int> lapTimes)? onGameFinished;
 
-  const GameScreen({super.key, required this.circuit, required this.car});
+  const GameScreen({
+    super.key,
+    required this.circuit,
+    required this.car,
+    this.showTouchControls = true,
+    this.onGameFinished,
+  });
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -19,11 +27,36 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   late GameController controller;
+  int? _countdown;
+  bool _isTimerRunning = false;
+  int _elapsedCentis = 0;
+  int _lastLapCentis = 0;
+  final List<int> _lapTimes = [];
+  Timer? _timer;
+  Orientation? _currentOrientation;
 
   @override
   void initState() {
     super.initState();
     controller = GameController(circuit: widget.circuit, carModel: widget.car);
+
+    controller.onLapCompleted = (lap) {
+      final lapTime = _elapsedCentis - _lastLapCentis;
+      _lastLapCentis = _elapsedCentis;
+
+      setState(() {
+        _lapTimes.add(lapTime);
+      });
+
+      if (widget.onGameFinished != null) {
+        widget.onGameFinished!(_lapTimes);
+      }
+
+      if (_lapTimes.length >= 5) {
+        _stopTimer();
+      }
+    };
+
     _initGame();
   }
 
@@ -32,72 +65,349 @@ class _GameScreenState extends State<GameScreen> {
     controller.start();
   }
 
+  void _startCountdown() {
+    if (_countdown != null || _isTimerRunning) return;
+    setState(() => _countdown = 3);
+
+    Timer.periodic(const Duration(seconds: 1), (tick) {
+      if (!mounted) return;
+      setState(() {
+        if (_countdown == null) {
+          tick.cancel();
+        } else if (_countdown! <= 1) {
+          _countdown = null;
+          tick.cancel();
+          _startTimer();
+        } else {
+          _countdown = _countdown! - 1;
+        }
+      });
+    });
+  }
+
+  void _startTimer() {
+    if (_isTimerRunning) return;
+    setState(() {
+      _isTimerRunning = true;
+      _elapsedCentis = 0;
+      _lastLapCentis = 0;
+      _lapTimes.clear();
+    });
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(milliseconds: 10), (_) {
+      if (!mounted) return;
+      setState(() => _elapsedCentis += 1);
+    });
+  }
+
+  void _stopTimer() {
+    _timer?.cancel();
+    setState(() => _isTimerRunning = false);
+  }
+
+  String _formatTime(int centis) {
+    final ms = (centis % 100).toString().padLeft(2, '0');
+    final seconds = ((centis ~/ 100) % 60).toString().padLeft(2, '0');
+    final minutes = (centis ~/ 6000).toString().padLeft(2, '0');
+    return "$minutes:$seconds:$ms";
+  }
+
   @override
   void dispose() {
+    _timer?.cancel();
     controller.disposeController();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final totalTime = _lapTimes.isNotEmpty
+        ? _lapTimes.reduce((a, b) => a + b)
+        : _elapsedCentis;
+
+    final orientation = MediaQuery.of(context).orientation;
+    if (_currentOrientation != orientation) {
+      _currentOrientation = orientation;
+    }
+
     return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: Text(widget.circuit.displayName),
-        backgroundColor: Colors.black87,
-      ),
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(
           children: [
+            Container(height: 3, color: const Color(0xFFE10600)),
             Expanded(
-              child: Center(
-                child: AnimatedBuilder(
-                  animation: controller,
-                  builder: (_, __) {
-                    return LayoutBuilder(
-                      builder: (context, constraints) {
-                        final maxWidth = constraints.maxWidth;
-                        final maxHeight = constraints.maxHeight;
-
-                        return Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // --- SVG circuito ---
-                            SvgPicture.asset(
-                              widget.circuit.svgPath,
-                              fit: BoxFit.contain,
-                              width: maxWidth,
-                              height: maxHeight,
-                            ),
-
-                            // --- Track + Player ---
-                            CustomPaint(
-                              size: Size(maxWidth, maxHeight),
-                              painter: _TrackPainter(
-                                controller.trackPoints,
-                                controller.spawnPoint,
-                                controller.carPosition,
-                                widget.circuit,
-                                maxWidth,
-                                maxHeight,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ),
-            Container(
-              color: Colors.black87,
-              padding: const EdgeInsets.all(8),
-              child: GameControls(controller: controller),
+              child: orientation == Orientation.landscape
+                  ? _buildLandscapeLayout(totalTime)
+                  : _buildPortraitLayout(totalTime, context),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLandscapeLayout(int totalTime) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenHeight = constraints.maxHeight;
+        final isSmallScreen = screenHeight < 500;
+        
+        return Row(
+          children: [
+            // PANNELLO INFO A SINISTRA (più grande)
+            Container(
+              width: 140, // Larghezza aumentata
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        // Logo
+                        if (widget.car.logoPath.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: Image.asset(
+                              widget.car.logoPath,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        
+                        // Tempo totale (più grande)
+                        Text(
+                          _formatTime(totalTime),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isSmallScreen ? 16 : 20, // Dimensione aumentata
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        
+                        const SizedBox(height: 8),
+                        
+                        // Ultimo giro (più grande)
+                        if (_lapTimes.isNotEmpty)
+                          Text(
+                            'Last: ${_formatTime(_lapTimes.last)}',
+                            style: TextStyle(
+                              color: Colors.grey[300],
+                              fontSize: isSmallScreen ? 14 : 16, // Dimensione aumentata
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        
+                        const SizedBox(height: 12),
+                        
+                        // Numero di giri completati (più grande)
+                        Text(
+                          'Laps: ${_lapTimes.length}/5',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isSmallScreen ? 16 : 18, // Dimensione aumentata
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // TRACK - Parte centrale
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Stack(
+                  children: [
+                    _buildTrackWithOverlays(),
+                    
+                    if (_countdown != null)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withOpacity(0.35),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '$_countdown',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: isSmallScreen ? 80 : 120,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // CONTROLLI A DESTRA (entrambi i pulsanti)
+            if (widget.showTouchControls)
+              Container(
+                width: 100,
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Pulsante acceleratore
+                    GameControls(
+                      controller: controller,
+                      controlsEnabled: true,
+                      isLandscape: true,
+                      isLeftSide: false,
+                      showBothButtons: true, // Mostra entrambi i pulsanti
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPortraitLayout(int totalTime, BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenHeight = constraints.maxHeight;
+        final isSmallScreen = screenHeight < 600;
+        
+        return Column(
+          children: [
+            // TRACK - Parte superiore
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: _buildTrackWithOverlays(),
+              ),
+            ),
+            
+            // INFO E CONTROLLI - Parte inferiore
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                children: [
+                  // Informazioni tempi e giri
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Logo e info tempi
+                      Row(
+                        children: [
+                          if (widget.car.logoPath.isNotEmpty)
+                            Image.asset(
+                              widget.car.logoPath,
+                              width: 24,
+                              height: 24,
+                              fit: BoxFit.contain,
+                            ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Total: ${_formatTime(totalTime)}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: isSmallScreen ? 14 : 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (_lapTimes.isNotEmpty)
+                                Text(
+                                  'Last: ${_formatTime(_lapTimes.last)}',
+                                  style: TextStyle(
+                                    color: Colors.grey[300],
+                                    fontSize: isSmallScreen ? 12 : 14,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      
+                      // Contatore giri
+                      Text(
+                        'Laps: ${_lapTimes.length}/5',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isSmallScreen ? 14 : 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Controlli
+                  if (widget.showTouchControls)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: GameControls(
+                        controller: controller,
+                        controlsEnabled: true,
+                        isLandscape: false,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTrackWithOverlays() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final maxHeight = constraints.maxHeight;
+
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: SvgPicture.asset(
+                widget.circuit.svgPath,
+                fit: BoxFit.contain,
+              ),
+            ),
+            Positioned.fill(
+              child: CustomPaint(
+                size: Size(maxWidth, maxHeight),
+                painter: _TrackPainter(
+                  controller.trackPoints,
+                  controller.spawnPoint,
+                  controller.carPosition,
+                  widget.circuit,
+                  widget.car,
+                  canvasWidth: maxWidth,
+                  canvasHeight: maxHeight,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -107,6 +417,7 @@ class _TrackPainter extends CustomPainter {
   final Offset? spawnPoint;
   final Offset carPosition;
   final Circuit circuit;
+  final CarModel car;
   final double canvasWidth;
   final double canvasHeight;
 
@@ -115,54 +426,44 @@ class _TrackPainter extends CustomPainter {
     this.spawnPoint,
     this.carPosition,
     this.circuit,
-    this.canvasWidth,
-    this.canvasHeight,
-  );
+    this.car, {
+    required this.canvasWidth,
+    required this.canvasHeight,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     if (points.isEmpty) return;
 
-    // --- Calcolo scaling & offset per viewBox ---
     final scaleX = canvasWidth / circuit.viewBoxWidth;
     final scaleY = canvasHeight / circuit.viewBoxHeight;
     final scale = min(scaleX, scaleY);
 
-    final offsetX =
-        (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
-        circuit.viewBoxX * scale;
-    final offsetY =
-        (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
-        circuit.viewBoxY * scale;
+    final offsetX = (canvasWidth - circuit.viewBoxWidth * scale) / 2 - circuit.viewBoxX * scale;
+    final offsetY = (canvasHeight - circuit.viewBoxHeight * scale) / 2 - circuit.viewBoxY * scale;
 
-    // --- Disegno TRACK ---
     final trackPaint = Paint()
       ..color = Colors.yellow
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
 
-    final path = Path();
-    path.moveTo(
-      points.first.dx * scale + offsetX,
-      points.first.dy * scale + offsetY,
-    );
+    final path = Path()
+      ..moveTo(points.first.dx * scale + offsetX, points.first.dy * scale + offsetY);
     for (final p in points.skip(1)) {
       path.lineTo(p.dx * scale + offsetX, p.dy * scale + offsetY);
     }
     canvas.drawPath(path, trackPaint);
 
-    // --- Disegno SPAWN POINT ---
     if (spawnPoint != null) {
       final spawnPaint = Paint()..color = Colors.red;
-      final spawnRadius = 5.0;
+      const spawnRadius = 5.0;
       final sx = spawnPoint!.dx * scale + offsetX;
       final sy = spawnPoint!.dy * scale + offsetY;
       canvas.drawCircle(Offset(sx, sy), spawnRadius, spawnPaint);
     }
 
-    // --- Disegno PLAYER CAR ---
     if (carPosition != Offset.zero) {
-      final playerPaint = Paint()..color = Colors.blueAccent;
+      final playerPaint = Paint()..color = car.color;
       final px = carPosition.dx * scale + offsetX;
       final py = carPosition.dy * scale + offsetY;
       canvas.drawCircle(Offset(px, py), 8.0, playerPaint);

@@ -11,7 +11,6 @@ class Circuit {
   final double viewBoxY;
   final double viewBoxWidth;
   final double viewBoxHeight;
-  
 
   const Circuit({
     required this.id,
@@ -25,7 +24,6 @@ class Circuit {
     required this.viewBoxY,
     required this.viewBoxWidth,
     required this.viewBoxHeight,
-    
   });
 }
 
@@ -42,7 +40,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 75,
     viewBoxWidth: 260,
     viewBoxHeight: 131,
-    
   ),
   Circuit(
     id: 'australia',
@@ -56,7 +53,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 56,
     viewBoxWidth: 266,
     viewBoxHeight: 142,
-    
   ),
   Circuit(
     id: 'austria',
@@ -66,11 +62,10 @@ const List<Circuit> allCircuits = [
     xPercentage: 0.711,
     yPercentage: 0.831,
     trackJsonPath: 'assets/circuiti/track/austria_track.json',
-    viewBoxX:9,
+    viewBoxX: 9,
     viewBoxY: 52,
     viewBoxWidth: 262,
     viewBoxHeight: 173,
-    
   ),
   Circuit(
     id: 'azerbaijan',
@@ -84,7 +79,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 53,
     viewBoxWidth: 264,
     viewBoxHeight: 173,
-    
   ),
   Circuit(
     id: 'bahrain',
@@ -98,7 +92,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 38,
     viewBoxWidth: 265,
     viewBoxHeight: 185,
-    
   ),
   Circuit(
     id: 'belgium',
@@ -112,7 +105,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 54,
     viewBoxWidth: 262,
     viewBoxHeight: 171,
-    
   ),
   Circuit(
     id: 'brazil',
@@ -126,7 +118,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 52,
     viewBoxWidth: 267,
     viewBoxHeight: 177,
-    
   ),
   Circuit(
     id: 'canada',
@@ -140,7 +131,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 50,
     viewBoxWidth: 268,
     viewBoxHeight: 183,
-    
   ),
   Circuit(
     id: 'greatbritain',
@@ -154,7 +144,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 49,
     viewBoxWidth: 264,
     viewBoxHeight: 186,
-    
   ),
   Circuit(
     id: 'hungary',
@@ -168,7 +157,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 30,
     viewBoxWidth: 211,
     viewBoxHeight: 219,
-    
   ),
   Circuit(
     id: 'italyimola',
@@ -182,7 +170,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 71,
     viewBoxWidth: 260,
     viewBoxHeight: 155,
-    
   ),
   Circuit(
     id: 'italymonza',
@@ -196,7 +183,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 57,
     viewBoxWidth: 262,
     viewBoxHeight: 163,
-    
   ),
   Circuit(
     id: 'japan',
@@ -210,7 +196,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 67,
     viewBoxWidth: 262,
     viewBoxHeight: 145,
-    
   ),
   Circuit(
     id: 'mexico',
@@ -224,7 +209,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 58,
     viewBoxWidth: 260,
     viewBoxHeight: 165,
-    
   ),
   Circuit(
     id: 'monaco',
@@ -238,7 +222,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 60,
     viewBoxWidth: 262,
     viewBoxHeight: 179,
-    
   ),
   Circuit(
     id: 'netherlands',
@@ -252,7 +235,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 23,
     viewBoxWidth: 262,
     viewBoxHeight: 235,
-    
   ),
   Circuit(
     id: 'qatar',
@@ -266,7 +248,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 38,
     viewBoxWidth: 267,
     viewBoxHeight: 203,
-    
   ),
   Circuit(
     id: 'saudiarabia',
@@ -280,7 +261,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 47,
     viewBoxWidth: 260,
     viewBoxHeight: 185,
-    
   ),
   Circuit(
     id: 'shanghai',
@@ -294,7 +274,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 53,
     viewBoxWidth: 262,
     viewBoxHeight: 174,
-    
   ),
   Circuit(
     id: 'singapore',
@@ -308,7 +287,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 56,
     viewBoxWidth: 254,
     viewBoxHeight: 167,
-    
   ),
   Circuit(
     id: 'spain',
@@ -322,7 +300,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 92,
     viewBoxWidth: 273,
     viewBoxHeight: 95,
-    
   ),
   Circuit(
     id: 'usacota',
@@ -336,7 +313,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 57,
     viewBoxWidth: 267,
     viewBoxHeight: 164,
-    
   ),
   Circuit(
     id: 'usamiami',
@@ -350,7 +326,6 @@ const List<Circuit> allCircuits = [
     viewBoxY: 81,
     viewBoxWidth: 268,
     viewBoxHeight: 119,
-        
   ),
   Circuit(
     id: 'usavegas',
@@ -364,6 +339,5 @@ const List<Circuit> allCircuits = [
     viewBoxY: 60,
     viewBoxWidth: 260,
     viewBoxHeight: 161,
-    
   ),
 ];
