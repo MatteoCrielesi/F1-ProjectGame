@@ -155,6 +155,7 @@ class GameScreenState extends State<GameScreen> {
   }
 
   // LANDSCAPE
+
   Widget _buildLandscapeLayout(int totalTime, bool isDesktop) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -538,7 +539,7 @@ class _TrackPainter extends CustomPainter {
         circuit.viewBoxY * scale;
 
     final trackPaint = Paint()
-      ..color = Colors.yellow
+      ..color = const Color.fromARGB(255, 78, 78, 78)
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
 
