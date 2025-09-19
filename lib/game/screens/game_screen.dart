@@ -135,6 +135,8 @@ class GameScreenState extends State<GameScreen> {
       _currentOrientation = orientation;
     }
 
+    final isDesktop = MediaQuery.of(context).size.width > 600;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
@@ -143,8 +145,8 @@ class GameScreenState extends State<GameScreen> {
             Container(height: 3, color: const Color(0xFFE10600)),
             Expanded(
               child: orientation == Orientation.landscape
-                  ? _buildLandscapeLayout(totalTime)
-                  : _buildPortraitLayout(totalTime, context),
+                  ? _buildLandscapeLayout(totalTime, isDesktop)
+                  : _buildPortraitLayout(totalTime, context, isDesktop),
             ),
           ],
         ),
@@ -152,7 +154,8 @@ class GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildLandscapeLayout(int totalTime) {
+  // LANDSCAPE
+  Widget _buildLandscapeLayout(int totalTime, bool isDesktop) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenHeight = constraints.maxHeight;
@@ -160,66 +163,72 @@ class GameScreenState extends State<GameScreen> {
 
         return Row(
           children: [
-            // INFO A SINISTRA
-            Container(
-              width: 140,
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
+            // INFO LAP TABLE O MOBILE
+            isDesktop
+                ? Container(
+                    width: 200,
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    child: _buildLapTable(totalTime),
+                  )
+                : Container(
+                    width: 140,
+                    padding: const EdgeInsets.all(12),
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (widget.car.logoPath.isNotEmpty)
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: Image.asset(
-                              widget.car.logoPath,
-                              width: 40,
-                              height: 40,
-                              fit: BoxFit.contain,
-                            ),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        Text(
-                          _formatTime(totalTime),
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: isSmallScreen ? 16 : 20,
-                            fontWeight: FontWeight.bold,
+                          child: Column(
+                            children: [
+                              if (widget.car.logoPath.isNotEmpty)
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  child: Image.asset(
+                                    widget.car.logoPath,
+                                    width: 40,
+                                    height: 40,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              Text(
+                                _formatTime(totalTime),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: isSmallScreen ? 16 : 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              if (_lapTimes.isNotEmpty)
+                                Text(
+                                  'Last: ${_formatTime(_lapTimes.last)}',
+                                  style: TextStyle(
+                                    color: Colors.grey[300],
+                                    fontSize: isSmallScreen ? 14 : 16,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Laps: ${_lapTimes.length}/5',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: isSmallScreen ? 16 : 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        if (_lapTimes.isNotEmpty)
-                          Text(
-                            'Last: ${_formatTime(_lapTimes.last)}',
-                            style: TextStyle(
-                              color: Colors.grey[300],
-                              fontSize: isSmallScreen ? 14 : 16,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Laps: ${_lapTimes.length}/5',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: isSmallScreen ? 16 : 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
 
             // TRACK
             Expanded(
@@ -248,7 +257,12 @@ class GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildPortraitLayout(int totalTime, BuildContext context) {
+  // PORTRAIT
+  Widget _buildPortraitLayout(
+    int totalTime,
+    BuildContext context,
+    bool isDesktop,
+  ) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenHeight = constraints.maxHeight;
@@ -267,52 +281,53 @@ class GameScreenState extends State<GameScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          if (widget.car.logoPath.isNotEmpty)
-                            Image.asset(
-                              widget.car.logoPath,
-                              width: 24,
-                              height: 24,
-                              fit: BoxFit.contain,
-                            ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Total: ${_formatTime(totalTime)}',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: isSmallScreen ? 14 : 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                  if (!isDesktop)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            if (widget.car.logoPath.isNotEmpty)
+                              Image.asset(
+                                widget.car.logoPath,
+                                width: 24,
+                                height: 24,
+                                fit: BoxFit.contain,
                               ),
-                              if (_lapTimes.isNotEmpty)
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                                 Text(
-                                  'Last: ${_formatTime(_lapTimes.last)}',
+                                  'Total: ${_formatTime(totalTime)}',
                                   style: TextStyle(
-                                    color: Colors.grey[300],
-                                    fontSize: isSmallScreen ? 12 : 14,
+                                    color: Colors.white,
+                                    fontSize: isSmallScreen ? 14 : 16,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Text(
-                        'Laps: ${_lapTimes.length}/5',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isSmallScreen ? 14 : 16,
-                          fontWeight: FontWeight.bold,
+                                if (_lapTimes.isNotEmpty)
+                                  Text(
+                                    'Last: ${_formatTime(_lapTimes.last)}',
+                                    style: TextStyle(
+                                      color: Colors.grey[300],
+                                      fontSize: isSmallScreen ? 12 : 14,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
+                        Text(
+                          'Laps: ${_lapTimes.length}/5',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isSmallScreen ? 14 : 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 16),
                   if (widget.showTouchControls)
                     Container(
@@ -337,6 +352,80 @@ class GameScreenState extends State<GameScreen> {
     );
   }
 
+  // LAP TABLE PER DESKTOP
+  Widget _buildLapTable(int totalTime) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.25),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Column(
+        children: [
+          if (widget.car.logoPath.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Image.asset(
+                widget.car.logoPath,
+                width: 60,
+                height: 60,
+                fit: BoxFit.contain,
+              ),
+            ),
+          for (int i = 0; i < 5; i++)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Lap ${i + 1}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    i < _lapTimes.length
+                        ? _formatTime(_lapTimes[i])
+                        : '--:--:--',
+                    style: const TextStyle(
+                      color: Colors.greenAccent,
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const Divider(color: Colors.white24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Total',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                _formatTime(totalTime),
+                style: const TextStyle(
+                  color: Colors.greenAccent,
+                  fontFamily: 'monospace',
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // TRACK + OVERLAYS
   Widget _buildTrackWithOverlays() {
     return LayoutBuilder(
       builder: (context, constraints) {
