@@ -36,6 +36,7 @@ class GameController extends ChangeNotifier {
   int tickMs = 16;
 
   void Function(int lap)? onLapCompleted;
+  void Function(int index)? onMinorRespawn;
 
   GameController({required this.circuit, required this.carModel});
 
@@ -135,6 +136,19 @@ class GameController extends ChangeNotifier {
     }
   }
 
+  void _minorRespawn(int index) {
+    _playerIndex = index;
+    _previousPlayerIndex = _playerIndex;
+    speed = 0.0;
+    disqualified = false;
+
+    debugPrint("[GameController] Minor respawn effettuato (index: $index).");
+    if (onMinorRespawn != null) {
+      onMinorRespawn!(index);
+    }
+    notifyListeners();
+  }
+
   double _applyCurvePhysics(
     int index,
     double currentSpeed,
@@ -159,24 +173,38 @@ class GameController extends ChangeNotifier {
     const double minCurveAngle = 0.15;
     if (deltaAngle < minCurveAngle) return currentSpeed;
 
+    // 📢 Log ogni curva rilevata
+    debugPrint("[GameController] Curva rilevata: deltaAngle=${deltaAngle.toStringAsFixed(3)} speed=${currentSpeed.toStringAsFixed(2)}");
+
     double curveSeverity = deltaAngle / pi;
     double optimalSpeed = maxSpeed * (1.0 - curveSeverity * 1.2);
     optimalSpeed = optimalSpeed.clamp(0.5, 2.0);
 
     bool crash = false;
+    bool needRespawn = false;
+
     if (currentSpeed > 2.0 && deltaAngle > 0.3) {
       crash = true;
     } else if (currentSpeed > 2.3 && deltaAngle > 0.2) {
       crash = true;
     } else if (currentSpeed > 2.5) {
       crash = true;
+    } else if (currentSpeed > optimalSpeed) {
+      needRespawn = true;
     }
 
     if (crash) {
       if (isPlayer) {
+        debugPrint("[GameController] Crash! Giocatore squalificato.");
         disqualified = true;
         stop();
       }
+      return 0;
+    }
+
+    if (needRespawn && isPlayer) {
+      final safeIndex = (index - 5).clamp(0, _trackPoints.length - 1);
+      _minorRespawn(safeIndex);
       return 0;
     }
 
