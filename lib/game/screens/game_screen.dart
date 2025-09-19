@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'package:f1_project/dashboard.dart';
 import 'package:f1_project/game_page_1.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -32,6 +31,7 @@ class GameScreenState extends State<GameScreen> {
   late GameController controller;
   int _lastLapCentis = 0;
   final List<int> _lapTimes = [];
+  Orientation? _currentOrientation;
 
   @override
   void initState() {
@@ -48,7 +48,6 @@ class GameScreenState extends State<GameScreen> {
       if (widget.onGameFinished != null) {
         widget.onGameFinished!(_lapTimes);
       }
-
     };
 
     _initGame();
@@ -77,10 +76,8 @@ class GameScreenState extends State<GameScreen> {
   void resetGame() {
     if (!mounted) return;
 
-    // Dispose del vecchio controller
     controller.disposeController();
 
-    // Ricrea controller nuovo
     controller = GameController(circuit: widget.circuit, carModel: widget.car);
 
     controller.onLapCompleted = (lap) {
@@ -95,18 +92,15 @@ class GameScreenState extends State<GameScreen> {
       }
     };
 
-    // Ripristina variabili
     _lastLapCentis = 0;
     _lapTimes.clear();
 
-    // Carica la pista e avvia
     _initGame();
 
     setState(() {});
   }
 
   void onStopTimer() {
-    // eventuali azioni da fare quando GamePage ferma il timer
     if (!mounted) return;
     setState(() {});
   }
@@ -125,9 +119,7 @@ class GameScreenState extends State<GameScreen> {
   }
 
   @override
-
   void dispose() {
-    _timer?.cancel();
     controller.disposeController();
     super.dispose();
   }
@@ -136,7 +128,7 @@ class GameScreenState extends State<GameScreen> {
   Widget build(BuildContext context) {
     final totalTime = _lapTimes.isNotEmpty
         ? _lapTimes.reduce((a, b) => a + b)
-        : _elapsedCentis;
+        : widget.elapsedCentis;
 
     final orientation = MediaQuery.of(context).orientation;
     if (_currentOrientation != orientation) {
@@ -165,12 +157,12 @@ class GameScreenState extends State<GameScreen> {
       builder: (context, constraints) {
         final screenHeight = constraints.maxHeight;
         final isSmallScreen = screenHeight < 500;
-        
+
         return Row(
           children: [
-            // PANNELLO INFO A SINISTRA (più grande)
+            // INFO A SINISTRA
             Container(
-              width: 140, // Larghezza aumentata
+              width: 140,
               padding: const EdgeInsets.all(12),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -183,7 +175,6 @@ class GameScreenState extends State<GameScreen> {
                     ),
                     child: Column(
                       children: [
-                        // Logo
                         if (widget.car.logoPath.isNotEmpty)
                           Container(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -194,39 +185,31 @@ class GameScreenState extends State<GameScreen> {
                               fit: BoxFit.contain,
                             ),
                           ),
-                        
-                        // Tempo totale (più grande)
                         Text(
                           _formatTime(totalTime),
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: isSmallScreen ? 16 : 20, // Dimensione aumentata
+                            fontSize: isSmallScreen ? 16 : 20,
                             fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        
                         const SizedBox(height: 8),
-                        
-                        // Ultimo giro (più grande)
                         if (_lapTimes.isNotEmpty)
                           Text(
                             'Last: ${_formatTime(_lapTimes.last)}',
                             style: TextStyle(
                               color: Colors.grey[300],
-                              fontSize: isSmallScreen ? 14 : 16, // Dimensione aumentata
+                              fontSize: isSmallScreen ? 14 : 16,
                             ),
                             textAlign: TextAlign.center,
                           ),
-                        
                         const SizedBox(height: 12),
-                        
-                        // Numero di giri completati (più grande)
                         Text(
                           'Laps: ${_lapTimes.length}/5',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: isSmallScreen ? 16 : 18, // Dimensione aumentata
+                            fontSize: isSmallScreen ? 16 : 18,
                             fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
@@ -238,51 +221,25 @@ class GameScreenState extends State<GameScreen> {
               ),
             ),
 
-            // TRACK - Parte centrale
+            // TRACK
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(8),
-                child: Stack(
-                  children: [
-                    _buildTrackWithOverlays(),
-                    
-                    if (_countdown != null)
-                      Positioned.fill(
-                        child: Container(
-                          color: Colors.black.withOpacity(0.35),
-                          alignment: Alignment.center,
-                          child: Text(
-                            '$_countdown',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: isSmallScreen ? 80 : 120,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                child: _buildTrackWithOverlays(),
               ),
             ),
-            
-            // CONTROLLI A DESTRA (entrambi i pulsanti)
+
+            // CONTROLLI A DESTRA
             if (widget.showTouchControls)
               Container(
                 width: 100,
                 padding: const EdgeInsets.all(12),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Pulsante acceleratore
-                    GameControls(
-                      controller: controller,
-                      controlsEnabled: true,
-                      isLandscape: true,
-                      isLeftSide: false,
-                      showBothButtons: true, // Mostra entrambi i pulsanti
-                    ),
-                  ],
+                child: GameControls(
+                  controller: controller,
+                  controlsEnabled: !controller.disqualified,
+                  isLandscape: true,
+                  isLeftSide: false,
+                  showBothButtons: true,
                 ),
               ),
           ],
@@ -296,10 +253,9 @@ class GameScreenState extends State<GameScreen> {
       builder: (context, constraints) {
         final screenHeight = constraints.maxHeight;
         final isSmallScreen = screenHeight < 600;
-        
+
         return Column(
           children: [
-            // TRACK - Parte superiore
             Expanded(
               flex: 3,
               child: Padding(
@@ -307,17 +263,13 @@ class GameScreenState extends State<GameScreen> {
                 child: _buildTrackWithOverlays(),
               ),
             ),
-            
-            // INFO E CONTROLLI - Parte inferiore
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 children: [
-                  // Informazioni tempi e giri
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Logo e info tempi
                       Row(
                         children: [
                           if (widget.car.logoPath.isNotEmpty)
@@ -351,8 +303,6 @@ class GameScreenState extends State<GameScreen> {
                           ),
                         ],
                       ),
-                      
-                      // Contatore giri
                       Text(
                         'Laps: ${_lapTimes.length}/5',
                         style: TextStyle(
@@ -363,10 +313,7 @@ class GameScreenState extends State<GameScreen> {
                       ),
                     ],
                   ),
-                  
                   const SizedBox(height: 16),
-                  
-                  // Controlli
                   if (widget.showTouchControls)
                     Container(
                       width: double.infinity,
@@ -377,7 +324,7 @@ class GameScreenState extends State<GameScreen> {
                       ),
                       child: GameControls(
                         controller: controller,
-                        controlsEnabled: true,
+                        controlsEnabled: !controller.disqualified,
                         isLandscape: false,
                       ),
                     ),
@@ -396,99 +343,70 @@ class GameScreenState extends State<GameScreen> {
         final maxWidth = constraints.maxWidth;
         final maxHeight = constraints.maxHeight;
 
-                              return Stack(
-                                children: [
-                                  Positioned.fill(
-                                    child: SvgPicture.asset(
-                                      widget.circuit.svgPath,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                  Positioned.fill(
-                                    child: CustomPaint(
-                                      size: Size(maxWidth, maxHeight),
-                                      painter: _TrackPainter(
-                                        controller.trackPoints,
-                                        controller.spawnPoint,
-                                        controller.carPosition,
-                                        widget.circuit,
-                                        widget.car,
-                                        canvasWidth: maxWidth,
-                                        canvasHeight: maxHeight,
-                                      ),
-                                    ),
-                                  ),
-                                  if (controller.disqualified)
-                                    Positioned.fill(
-                                      child: Container(
-                                        color: Colors.black.withOpacity(0.8),
-                                        alignment: Alignment.center,
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            const Text(
-                                              "Ti sei schiantato!",
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 36,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 24),
-                                            ElevatedButton(
-                                              onPressed: () {
-                                                resetGame();
-                                              },
-                                              child: const Text("Riprova"),
-                                            ),
-                                            const SizedBox(height: 12),
-                                            ElevatedButton(
-                                              onPressed: () {
-                                                // 1. Ferma timer e resetta stato
-                                                resetGame();
-
-                                                // 2. Esegui la navigazione solo dopo che il frame corrente è completato
-                                                WidgetsBinding.instance
-                                                    .addPostFrameCallback((_) {
-                                                      Navigator.pushReplacement(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder: (_) =>
-                                                              const GamePage_1(),
-                                                        ),
-                                                      );
-                                                    });
-                                              },
-                                              child: const Text(
-                                                "Torna alla scelta pista",
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  if (widget.showTouchControls)
-                                    Positioned(
-                                      bottom: 24,
-                                      right: 24,
-                                      child: GameControls(
-                                        controller: controller,
-                                        controlsEnabled:
-                                            !controller.disqualified,
-                                      ),
-                                    ),
-                                ],
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: SvgPicture.asset(
+                widget.circuit.svgPath,
+                fit: BoxFit.contain,
               ),
             ),
+            Positioned.fill(
+              child: CustomPaint(
+                size: Size(maxWidth, maxHeight),
+                painter: _TrackPainter(
+                  controller.trackPoints,
+                  controller.spawnPoint,
+                  controller.carPosition,
+                  widget.circuit,
+                  widget.car,
+                  canvasWidth: maxWidth,
+                  canvasHeight: maxHeight,
+                ),
+              ),
+            ),
+            if (controller.disqualified)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withOpacity(0.8),
+                  alignment: Alignment.center,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        "Ti sei schiantato!",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: () {
+                          resetGame();
+                        },
+                        child: const Text("Riprova"),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: () {
+                          resetGame();
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const GamePage_1(),
+                              ),
+                            );
+                          });
+                        },
+                        child: const Text("Torna alla scelta pista"),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         );
       },
@@ -523,8 +441,12 @@ class _TrackPainter extends CustomPainter {
     final scaleY = canvasHeight / circuit.viewBoxHeight;
     final scale = min(scaleX, scaleY);
 
-    final offsetX = (canvasWidth - circuit.viewBoxWidth * scale) / 2 - circuit.viewBoxX * scale;
-    final offsetY = (canvasHeight - circuit.viewBoxHeight * scale) / 2 - circuit.viewBoxY * scale;
+    final offsetX =
+        (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
+        circuit.viewBoxX * scale;
+    final offsetY =
+        (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
+        circuit.viewBoxY * scale;
 
     final trackPaint = Paint()
       ..color = Colors.yellow
