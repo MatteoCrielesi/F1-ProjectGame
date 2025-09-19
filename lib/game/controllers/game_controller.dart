@@ -25,6 +25,7 @@ class GameController extends ChangeNotifier {
 
   int _playerLap = 0;
   int _previousPlayerIndex = 0;
+  int? _startIndex; // 📍 indice della linea di partenza/arrivo
 
   int get playerLap => _playerLap;
 
@@ -92,6 +93,10 @@ class GameController extends ChangeNotifier {
     _playerIndex = _findNearestIndex(_spawnPoint!);
     _previousPlayerIndex = _playerIndex;
     _playerLap = 0;
+
+    // 📍 salvo l’indice di partenza/arrivo
+    _startIndex = _playerIndex;
+
     debugPrint("[GameController] Respawn effettuato allo spawn point.");
   }
 
@@ -129,12 +134,14 @@ class GameController extends ChangeNotifier {
     if (_playerIndex < 0) _playerIndex = 0;
     _playerIndex %= _trackPoints.length;
 
-    // 🔔 Controllo lap completato (wrap-around)
-    if (_playerIndex < _previousPlayerIndex) {
-      _playerLap += 1;
-      debugPrint("[GameController] Lap completato ($_playerLap)");
-      if (onLapCompleted != null) {
-        onLapCompleted!(_playerLap);
+    // 🔔 Controllo lap completato (passaggio linea di partenza)
+    if (_startIndex != null) {
+      if (_previousPlayerIndex < _startIndex! && _playerIndex >= _startIndex!) {
+        _playerLap += 1;
+        debugPrint("[GameController] Lap completato ($_playerLap)");
+        if (onLapCompleted != null) {
+          onLapCompleted!(_playerLap);
+        }
       }
     }
   }
@@ -176,7 +183,6 @@ class GameController extends ChangeNotifier {
     const double minCurveAngle = 0.15;
     if (deltaAngle < minCurveAngle) return currentSpeed;
 
-    // 📢 Log ogni curva rilevata
     debugPrint(
       "[GameController] Curva rilevata: deltaAngle=${deltaAngle.toStringAsFixed(3)} speed=${currentSpeed.toStringAsFixed(2)}",
     );
@@ -202,8 +208,8 @@ class GameController extends ChangeNotifier {
       if (isPlayer) {
         debugPrint("[GameController] Crash! Giocatore squalificato.");
         disqualified = true;
-        stop(); // ferma il timer
-        waitingForStart = false; // NON mostro subito il tasto start
+        stop();
+        waitingForStart = false;
         notifyListeners();
       }
       return 0;

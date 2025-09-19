@@ -9,11 +9,11 @@ class PostgresService {
       _connection = await Connection.open(
         Endpoint(
           host:
-              'localhost', //Computer e andorid (per android 1. download https://developer.android.com/tools/releases/platform-tools?hl=it    2. dopo aver estratto inserire il percorso in variabili d'ambiente PATH 3.    adb reverse tcp:5432 tcp:5432)
+              'localhost', //Computer e andorid (per android 1. download https://developer.android.com/tools/releases/platform-tools?hl=it    2. dopo aver estratto inserire il percorso in variabili d'ambiente PATH   3. quando lo attachi ar tel scrivi sul terminal sta roba:  adb reverse tcp:5432 tcp:5432)
           port: 5432,
           database: 'postgres',
           username: 'postgres',
-          password: '1234',
+          password: 'password',
         ),
         settings: ConnectionSettings(sslMode: SslMode.disable),
       );
