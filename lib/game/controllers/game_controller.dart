@@ -17,6 +17,8 @@ class GameController extends ChangeNotifier {
   List<Offset> get trackPoints => _trackPoints;
   Offset? get spawnPoint => _spawnPoint;
 
+  bool waitingForStart = true;
+
   double speed = 0.0;
   bool disqualified = false;
   int _playerIndex = 0;
@@ -79,6 +81,7 @@ class GameController extends ChangeNotifier {
 
   void respawn() {
     _applySpawnPoint();
+    waitingForStart = true;
     notifyListeners();
   }
 
@@ -174,7 +177,9 @@ class GameController extends ChangeNotifier {
     if (deltaAngle < minCurveAngle) return currentSpeed;
 
     // 📢 Log ogni curva rilevata
-    debugPrint("[GameController] Curva rilevata: deltaAngle=${deltaAngle.toStringAsFixed(3)} speed=${currentSpeed.toStringAsFixed(2)}");
+    debugPrint(
+      "[GameController] Curva rilevata: deltaAngle=${deltaAngle.toStringAsFixed(3)} speed=${currentSpeed.toStringAsFixed(2)}",
+    );
 
     double curveSeverity = deltaAngle / pi;
     double optimalSpeed = maxSpeed * (1.0 - curveSeverity * 1.2);
@@ -197,7 +202,9 @@ class GameController extends ChangeNotifier {
       if (isPlayer) {
         debugPrint("[GameController] Crash! Giocatore squalificato.");
         disqualified = true;
-        stop();
+        stop(); // ferma il timer
+        waitingForStart = false; // NON mostro subito il tasto start
+        notifyListeners();
       }
       return 0;
     }
@@ -228,6 +235,13 @@ class GameController extends ChangeNotifier {
       }
     }
     return nearest;
+  }
+
+  void startGame() {
+    waitingForStart = false;
+    disqualified = false;
+    start();
+    notifyListeners();
   }
 
   void start() {

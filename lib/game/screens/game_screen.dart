@@ -1,5 +1,6 @@
-import 'dart:async';
 import 'dart:math';
+import 'package:f1_project/dashboard.dart';
+import 'package:f1_project/game_page_1.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../controllers/game_controller.dart';
@@ -11,8 +12,8 @@ class GameScreen extends StatefulWidget {
   final Circuit circuit;
   final CarModel car;
   final bool showTouchControls;
-  final void Function(List<int> lapTimes)?
-  onGameFinished; // callback verso GamePage_1
+  final void Function(List<int> lapTimes)? onGameFinished;
+  final int elapsedCentis; // riceve timer da GamePage_1
 
   const GameScreen({
     super.key,
@@ -20,42 +21,32 @@ class GameScreen extends StatefulWidget {
     required this.car,
     this.showTouchControls = true,
     this.onGameFinished,
+    required this.elapsedCentis,
   });
 
   @override
-  State<GameScreen> createState() => _GameScreenState();
+  State<GameScreen> createState() => GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class GameScreenState extends State<GameScreen> {
   late GameController controller;
-  int? _countdown;
-  bool _isTimerRunning = false;
-  int _elapsedCentis = 0;
   int _lastLapCentis = 0;
   final List<int> _lapTimes = [];
-  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     controller = GameController(circuit: widget.circuit, carModel: widget.car);
 
-    // Aggiorna tabella tempi appena finisce un giro
     controller.onLapCompleted = (lap) {
-      final lapTime = _elapsedCentis - _lastLapCentis;
-      _lastLapCentis = _elapsedCentis;
+      final lapTime = widget.elapsedCentis - _lastLapCentis;
+      _lastLapCentis = widget.elapsedCentis;
       setState(() {
-        _lapTimes.add(lapTime); // aggiorna subito la tabella
+        _lapTimes.add(lapTime);
       });
 
-      // Notifica GamePage_1 se serve
       if (widget.onGameFinished != null) {
         widget.onGameFinished!(_lapTimes);
-      }
-
-      // Interrompe timer se sono completati 5 giri (modifica come vuoi)
-      if (_lapTimes.length >= 5) {
-        _stopTimer();
       }
     };
 
@@ -67,44 +58,62 @@ class _GameScreenState extends State<GameScreen> {
     controller.start();
   }
 
-  void _startCountdown() {
-    if (_countdown != null || _isTimerRunning) return;
-    setState(() => _countdown = 3);
+  void startGame() {
+    if (!mounted) return;
+    _respawnCarAndReset();
+  }
 
-    Timer.periodic(const Duration(seconds: 1), (tick) {
-      if (!mounted) return;
+  void respawnCar() {
+    if (!mounted) return;
+    controller.respawn();
+  }
+
+  void respawnCarAndReset() {
+    if (!mounted) return;
+    _respawnCarAndReset();
+  }
+
+  void resetGame() {
+    if (!mounted) return;
+
+    // Dispose del vecchio controller
+    controller.disposeController();
+
+    // Ricrea controller nuovo
+    controller = GameController(circuit: widget.circuit, carModel: widget.car);
+
+    controller.onLapCompleted = (lap) {
+      final lapTime = widget.elapsedCentis - _lastLapCentis;
+      _lastLapCentis = widget.elapsedCentis;
       setState(() {
-        if (_countdown == null) {
-          tick.cancel();
-        } else if (_countdown! <= 1) {
-          _countdown = null;
-          tick.cancel();
-          _startTimer();
-        } else {
-          _countdown = _countdown! - 1;
-        }
+        _lapTimes.add(lapTime);
       });
-    });
+
+      if (widget.onGameFinished != null) {
+        widget.onGameFinished!(_lapTimes);
+      }
+    };
+
+    // Ripristina variabili
+    _lastLapCentis = 0;
+    _lapTimes.clear();
+
+    // Carica la pista e avvia
+    _initGame();
+
+    setState(() {});
   }
 
-  void _startTimer() {
-    if (_isTimerRunning) return;
-    setState(() {
-      _isTimerRunning = true;
-      _elapsedCentis = 0;
-      _lastLapCentis = 0;
-      _lapTimes.clear();
-    });
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(milliseconds: 10), (_) {
-      if (!mounted) return;
-      setState(() => _elapsedCentis += 1);
-    });
+  void onStopTimer() {
+    // eventuali azioni da fare quando GamePage ferma il timer
+    if (!mounted) return;
+    setState(() {});
   }
 
-  void _stopTimer() {
-    _timer?.cancel();
-    setState(() => _isTimerRunning = false);
+  void _respawnCarAndReset() {
+    controller.respawn();
+    _lastLapCentis = 0;
+    _lapTimes.clear();
   }
 
   String _formatTime(int centis) {
@@ -116,7 +125,6 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   void dispose() {
-    _timer?.cancel();
     controller.disposeController();
     super.dispose();
   }
@@ -125,7 +133,7 @@ class _GameScreenState extends State<GameScreen> {
   Widget build(BuildContext context) {
     final totalTime = _lapTimes.isNotEmpty
         ? _lapTimes.reduce((a, b) => a + b)
-        : _elapsedCentis;
+        : widget.elapsedCentis;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -136,7 +144,6 @@ class _GameScreenState extends State<GameScreen> {
             Expanded(
               child: Row(
                 children: [
-                  // SIDEBAR LAP TIMES
                   SizedBox(
                     width: 200,
                     child: Padding(
@@ -164,8 +171,6 @@ class _GameScreenState extends State<GameScreen> {
                                     ),
                                   ),
                                 const SizedBox(height: 12),
-
-                                // MOSTRA TUTTI I LAP COMPLETATI SUBITO:
                                 for (int i = 0; i < _lapTimes.length; i++)
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
@@ -180,10 +185,11 @@ class _GameScreenState extends State<GameScreen> {
                                       ),
                                     ),
                                   ),
-                                // Riempi fino a 5 lap con placeholder
                                 for (int i = _lapTimes.length; i < 5; i++)
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                    ),
                                     child: Text(
                                       "Lap ${i + 1}   Time: --:--:--",
                                       style: const TextStyle(
@@ -209,11 +215,9 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                     ),
                   ),
-
-                  // TRACK + CONTROLS
                   Expanded(
                     child: AnimatedBuilder(
-                      animation: controller, // <-- ascolta il controller
+                      animation: controller,
                       builder: (context, _) {
                         return Padding(
                           padding: const EdgeInsets.all(16),
@@ -224,15 +228,12 @@ class _GameScreenState extends State<GameScreen> {
 
                               return Stack(
                                 children: [
-                                  // Pista
                                   Positioned.fill(
                                     child: SvgPicture.asset(
                                       widget.circuit.svgPath,
                                       fit: BoxFit.contain,
                                     ),
                                   ),
-
-                                  // Linea del tracciato + macchina
                                   Positioned.fill(
                                     child: CustomPaint(
                                       size: Size(maxWidth, maxHeight),
@@ -247,25 +248,6 @@ class _GameScreenState extends State<GameScreen> {
                                       ),
                                     ),
                                   ),
-
-                                  // Countdown
-                                  if (_countdown != null)
-                                    Positioned.fill(
-                                      child: Container(
-                                        color: Colors.black.withOpacity(0.35),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          '$_countdown',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 120,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-
-                                  // Maschera di crash SOPRA pista
                                   if (controller.disqualified)
                                     Positioned.fill(
                                       child: Container(
@@ -286,15 +268,27 @@ class _GameScreenState extends State<GameScreen> {
                                             const SizedBox(height: 24),
                                             ElevatedButton(
                                               onPressed: () {
-                                                controller.respawn();
-                                                controller.start();
+                                                resetGame();
                                               },
                                               child: const Text("Riprova"),
                                             ),
                                             const SizedBox(height: 12),
                                             ElevatedButton(
                                               onPressed: () {
-                                                Navigator.pop(context);
+                                                // 1. Ferma timer e resetta stato
+                                                resetGame();
+
+                                                // 2. Esegui la navigazione solo dopo che il frame corrente è completato
+                                                WidgetsBinding.instance
+                                                    .addPostFrameCallback((_) {
+                                                      Navigator.pushReplacement(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (_) =>
+                                                              const GamePage_1(),
+                                                        ),
+                                                      );
+                                                    });
                                               },
                                               child: const Text(
                                                 "Torna alla scelta pista",
@@ -304,8 +298,6 @@ class _GameScreenState extends State<GameScreen> {
                                         ),
                                       ),
                                     ),
-
-                                  // Controlli
                                   if (widget.showTouchControls)
                                     Positioned(
                                       bottom: 24,

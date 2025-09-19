@@ -17,6 +17,7 @@ class GamePage_1 extends StatefulWidget {
 
 class _GamePageState extends State<GamePage_1> {
   final PageController _pageController = PageController(viewportFraction: 0.5);
+
   int _currentPage = 0;
   Circuit? _selectedCircuit;
   CarModel? _selectedTeam;
@@ -26,7 +27,11 @@ class _GamePageState extends State<GamePage_1> {
   bool _timerRunning = false; // stato timer
   int _elapsedCentis = 0; // timer in centesimi
   Timer? _countdownTimer;
-  int? _lastSelectedIndex; // <-- AGGIUNTA: salva l’indice dell’ultima pista scelta
+  int? _lastSelectedIndex; // salva l’indice dell’ultima pista scelta
+
+  // GlobalKey per controllare GameScreen
+  final GlobalKey<GameScreenState> _gameScreenKey =
+      GlobalKey<GameScreenState>();
 
   @override
   void initState() {
@@ -47,37 +52,86 @@ class _GamePageState extends State<GamePage_1> {
   }
 
   void _startTimer() {
-    setState(() {
-      _timerRunning = true;
-      _elapsedCentis = 0;
-    });
+    if (!mounted) return;
 
     _countdownTimer?.cancel();
+    _elapsedCentis = 0;
+    _timerRunning = true;
+
+    _gameScreenKey.currentState?.respawnCarAndReset();
+
     _countdownTimer = Timer.periodic(const Duration(milliseconds: 10), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      // Se GameScreen non esiste più, fermiamo il timer
+      if (_gameScreenKey.currentState == null) {
+        timer.cancel();
+        return;
+      }
+
       setState(() {
         _elapsedCentis++;
       });
+
+      if (_gameScreenKey.currentState!.controller.disqualified) {
+        _stopTimer();
+      }
     });
+  }
+
+  void _stopTimer() {
+    // Ferma il timer
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
+
+    if (!mounted) return;
+
+    // Aggiorna stato principale solo se montato
+    try {
+      setState(() {
+        _timerRunning = false;
+      });
+    } catch (e) {
+      // Ignora errori se il widget non è più montato
+      debugPrint("setState ignorato: $e");
+    }
+
+    // Aggiorna GameScreen solo se montato
+    final gameScreenState = _gameScreenKey.currentState;
+    if (gameScreenState != null && gameScreenState.mounted) {
+      gameScreenState.onStopTimer();
+    }
+  }
+
+  void _resetGame() {
+    _stopTimer();
+    _elapsedCentis = 0;
+    _gameScreenKey.currentState?.resetGame();
   }
 
   @override
   void dispose() {
+    _stopTimer();
+
+    _preloadController?.waitingForStart = true;
     _preloadController?.disposeController();
-    _countdownTimer?.cancel();
-    _pageController.dispose(); // <-- chiudi il controller
+    _pageController.dispose();
+    _preloadController?.stop();
+
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Dimensione fissa per il timer / start lights
     const double centralWidgetWidth = 200;
     const double centralWidgetHeight = 40;
 
     return Scaffold(
       body: Stack(
         children: [
-          // gradient background
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -91,7 +145,6 @@ class _GamePageState extends State<GamePage_1> {
               ),
             ),
           ),
-          // red top bar
           Positioned(
             top: 0,
             left: 0,
@@ -102,7 +155,6 @@ class _GamePageState extends State<GamePage_1> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // logo + title
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                   child: Row(
@@ -118,14 +170,12 @@ class _GamePageState extends State<GamePage_1> {
                     ],
                   ),
                 ),
-                // BACK + START / TIMER + NOME CIRCUITO
                 if (_selectedCircuit != null)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // FRECCETTA BACK
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white10,
@@ -138,6 +188,8 @@ class _GamePageState extends State<GamePage_1> {
                             minimumSize: const Size(40, 40),
                           ),
                           onPressed: () {
+                            _resetGame();
+
                             if (_teamSelected) {
                               setState(() {
                                 _teamSelected = false;
@@ -145,14 +197,19 @@ class _GamePageState extends State<GamePage_1> {
                               });
                             } else if (_selectedCircuit != null) {
                               setState(() {
-                                _lastSelectedIndex = allCircuits.indexOf(_selectedCircuit!); // <-- salva indice
+                                _lastSelectedIndex = allCircuits.indexOf(
+                                  _selectedCircuit!,
+                                );
                                 _selectedCircuit = null;
                               });
-                              // muovo la PageView dopo essere tornati indietro
                               WidgetsBinding.instance.addPostFrameCallback((_) {
                                 if (_lastSelectedIndex != null) {
-                                  _pageController.jumpToPage(_lastSelectedIndex!);
-                                  setState(() => _currentPage = _lastSelectedIndex!);
+                                  _pageController.jumpToPage(
+                                    _lastSelectedIndex!,
+                                  );
+                                  setState(
+                                    () => _currentPage = _lastSelectedIndex!,
+                                  );
                                 }
                               });
                             } else {
@@ -166,42 +223,47 @@ class _GamePageState extends State<GamePage_1> {
                           },
                           child: const Icon(Icons.arrow_back),
                         ),
-                        // START / TIMER CENTRALI
                         SizedBox(
                           width: centralWidgetWidth,
                           height: centralWidgetHeight,
                           child: _teamSelected
                               ? !_timerRunning
-                                  ? StartLights(
-                                      showStartButton: true,
-                                      onSequenceComplete: () {
-                                        _startTimer();
-                                      },
-                                    )
-                                  : Container(
-                                      alignment: Alignment.center,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.06),
-                                        borderRadius: BorderRadius.circular(
-                                          8,
+                                    ? StartLights(
+                                        showStartButton: true,
+                                        onSequenceComplete: () {
+                                          if (_gameScreenKey
+                                                  .currentState
+                                                  ?.mounted ??
+                                              false) {
+                                            _gameScreenKey.currentState!
+                                                .startGame();
+                                          }
+                                          _startTimer();
+                                        },
+                                      )
+                                    : Container(
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.06),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.white24,
+                                          ),
                                         ),
-                                        border: Border.all(
-                                          color: Colors.white24,
+                                        child: Text(
+                                          _formatTime(_elapsedCentis),
+                                          style: const TextStyle(
+                                            color: Colors.greenAccent,
+                                            fontFamily: 'monospace',
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
-                                      ),
-                                      child: Text(
-                                        _formatTime(_elapsedCentis),
-                                        style: const TextStyle(
-                                          color: Colors.greenAccent,
-                                          fontFamily: 'monospace',
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    )
+                                      )
                               : const SizedBox.shrink(),
                         ),
-                        // NOME CIRCUITO A DESTRA
                         Text(
                           _selectedCircuit?.displayName ?? '',
                           style: const TextStyle(
@@ -214,7 +276,6 @@ class _GamePageState extends State<GamePage_1> {
                     ),
                   )
                 else
-                  // FRECCIA BACK nella pagina di selezione circuito
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
@@ -231,6 +292,7 @@ class _GamePageState extends State<GamePage_1> {
                             minimumSize: const Size(40, 40),
                           ),
                           onPressed: () {
+                            _resetGame();
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
@@ -244,7 +306,6 @@ class _GamePageState extends State<GamePage_1> {
                     ),
                   ),
                 const SizedBox(height: 20),
-                // CIRCUIT SELECTION
                 if (_selectedCircuit == null)
                   Expanded(
                     child: PageView.builder(
@@ -265,7 +326,7 @@ class _GamePageState extends State<GamePage_1> {
                           child: GestureDetector(
                             onTap: () {
                               setState(() {
-                                _lastSelectedIndex = index; // <-- salva l’indice selezionato
+                                _lastSelectedIndex = index;
                                 _selectedCircuit = circuit;
                                 _currentPage = index;
                                 _preloadFuture = _preloadCircuit(circuit);
@@ -315,7 +376,6 @@ class _GamePageState extends State<GamePage_1> {
                       },
                     ),
                   )
-                // TEAM SELECTION
                 else if (!_teamSelected)
                   Expanded(
                     child: Stack(
@@ -392,12 +452,16 @@ class _GamePageState extends State<GamePage_1> {
                       ],
                     ),
                   )
-                // GAME ACTIVE
                 else
                   Expanded(
                     child: GameScreen(
+                      key: _gameScreenKey,
                       circuit: _selectedCircuit!,
                       car: _selectedTeam!,
+                      onGameFinished: (lapTimes) {
+                        // callback opzionale
+                      },
+                      elapsedCentis: _elapsedCentis,
                     ),
                   ),
               ],
