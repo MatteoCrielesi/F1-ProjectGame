@@ -76,6 +76,11 @@ class GameController extends ChangeNotifier {
     }
   }
 
+  void respawn() {
+    _applySpawnPoint();
+    notifyListeners();
+  }
+
   void _applySpawnPoint() {
     if (_spawnPoint == null || _trackPoints.isEmpty) return;
     speed = 0.0;
@@ -112,12 +117,7 @@ class GameController extends ChangeNotifier {
       speed = (speed - frictionStep).clamp(0, maxSpeed);
     }
 
-    speed = _applyCurvePhysics(
-      _playerIndex,
-      speed,
-      maxSpeed,
-      isPlayer: true,
-    );
+    speed = _applyCurvePhysics(_playerIndex, speed, maxSpeed, isPlayer: true);
 
     _previousPlayerIndex = _playerIndex;
     _playerIndex += speed.round();

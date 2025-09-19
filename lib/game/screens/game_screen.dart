@@ -11,7 +11,8 @@ class GameScreen extends StatefulWidget {
   final Circuit circuit;
   final CarModel car;
   final bool showTouchControls;
-  final void Function(List<int> lapTimes)? onGameFinished; // callback verso GamePage_1
+  final void Function(List<int> lapTimes)?
+  onGameFinished; // callback verso GamePage_1
 
   const GameScreen({
     super.key,
@@ -166,7 +167,9 @@ class _GameScreenState extends State<GameScreen> {
                                 const SizedBox(height: 12),
                                 for (int i = 0; i < 5; i++)
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                    ),
                                     child: Text(
                                       "Lap ${i + 1}   Time: ${i < _lapTimes.length ? _formatTime(_lapTimes[i]) : "--:--:--"}",
                                       style: const TextStyle(
@@ -192,65 +195,119 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                     ),
                   ),
+
                   // TRACK + CONTROLS
                   Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final maxWidth = constraints.maxWidth;
-                          final maxHeight = constraints.maxHeight;
+                    child: AnimatedBuilder(
+                      animation: controller, // <-- ascolta il controller
+                      builder: (context, _) {
+                        return Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final maxWidth = constraints.maxWidth;
+                              final maxHeight = constraints.maxHeight;
 
-                          return Stack(
-                            children: [
-                              Positioned.fill(
-                                child: SvgPicture.asset(
-                                  widget.circuit.svgPath,
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                              Positioned.fill(
-                                child: CustomPaint(
-                                  size: Size(maxWidth, maxHeight),
-                                  painter: _TrackPainter(
-                                    controller.trackPoints,
-                                    controller.spawnPoint,
-                                    controller.carPosition,
-                                    widget.circuit,
-                                    widget.car,
-                                    canvasWidth: maxWidth,
-                                    canvasHeight: maxHeight,
+                              return Stack(
+                                children: [
+                                  // Pista
+                                  Positioned.fill(
+                                    child: SvgPicture.asset(
+                                      widget.circuit.svgPath,
+                                      fit: BoxFit.contain,
+                                    ),
                                   ),
-                                ),
-                              ),
-                              if (_countdown != null)
-                                Positioned.fill(
-                                  child: Container(
-                                    color: Colors.black.withOpacity(0.35),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      '$_countdown',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 120,
+
+                                  // Linea del tracciato + macchina
+                                  Positioned.fill(
+                                    child: CustomPaint(
+                                      size: Size(maxWidth, maxHeight),
+                                      painter: _TrackPainter(
+                                        controller.trackPoints,
+                                        controller.spawnPoint,
+                                        controller.carPosition,
+                                        widget.circuit,
+                                        widget.car,
+                                        canvasWidth: maxWidth,
+                                        canvasHeight: maxHeight,
                                       ),
                                     ),
                                   ),
-                                ),
-                              if (widget.showTouchControls)
-                                Positioned(
-                                  bottom: 24,
-                                  right: 24,
-                                  child: GameControls(
-                                    controller: controller,
-                                    controlsEnabled: false,
-                                  ),
-                                ),
-                            ],
-                          );
-                        },
-                      ),
+
+                                  // Countdown
+                                  if (_countdown != null)
+                                    Positioned.fill(
+                                      child: Container(
+                                        color: Colors.black.withOpacity(0.35),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          '$_countdown',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 120,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                  // Maschera di crash SOPRA pista
+                                  if (controller.disqualified)
+                                    Positioned.fill(
+                                      child: Container(
+                                        color: Colors.black.withOpacity(0.8),
+                                        alignment: Alignment.center,
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const Text(
+                                              "Ti sei schiantato!",
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 36,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 24),
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                controller.respawn();
+                                                controller.start();
+                                              },
+                                              child: const Text("Riprova"),
+                                            ),
+                                            const SizedBox(height: 12),
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                Navigator.pop(context);
+                                              },
+                                              child: const Text(
+                                                "Torna alla scelta pista",
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+
+                                  // Controlli
+                                  if (widget.showTouchControls)
+                                    Positioned(
+                                      bottom: 24,
+                                      right: 24,
+                                      child: GameControls(
+                                        controller: controller,
+                                        controlsEnabled:
+                                            !controller.disqualified,
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -290,8 +347,12 @@ class _TrackPainter extends CustomPainter {
     final scaleY = canvasHeight / circuit.viewBoxHeight;
     final scale = min(scaleX, scaleY);
 
-    final offsetX = (canvasWidth - circuit.viewBoxWidth * scale) / 2 - circuit.viewBoxX * scale;
-    final offsetY = (canvasHeight - circuit.viewBoxHeight * scale) / 2 - circuit.viewBoxY * scale;
+    final offsetX =
+        (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
+        circuit.viewBoxX * scale;
+    final offsetY =
+        (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
+        circuit.viewBoxY * scale;
 
     final trackPaint = Paint()
       ..color = Colors.yellow
@@ -299,7 +360,10 @@ class _TrackPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final path = Path()
-      ..moveTo(points.first.dx * scale + offsetX, points.first.dy * scale + offsetY);
+      ..moveTo(
+        points.first.dx * scale + offsetX,
+        points.first.dy * scale + offsetY,
+      );
     for (final p in points.skip(1)) {
       path.lineTo(p.dx * scale + offsetX, p.dy * scale + offsetY);
     }
