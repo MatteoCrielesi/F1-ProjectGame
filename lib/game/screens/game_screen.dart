@@ -124,6 +124,11 @@ class GameScreenState extends State<GameScreen> {
     super.dispose();
   }
 
+  bool _isPhone(BuildContext context) {
+    final shortestSide = MediaQuery.of(context).size.shortestSide;
+    return shortestSide < 600;
+  }
+
   @override
   Widget build(BuildContext context) {
     final totalTime = _lapTimes.isNotEmpty
@@ -135,7 +140,8 @@ class GameScreenState extends State<GameScreen> {
       _currentOrientation = orientation;
     }
 
-    final isDesktop = MediaQuery.of(context).size.width > 600;
+    final isPhone = _isPhone(context);
+    final isDesktop = !isPhone;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -155,13 +161,9 @@ class GameScreenState extends State<GameScreen> {
   }
 
   // LANDSCAPE
-
   Widget _buildLandscapeLayout(int totalTime, bool isDesktop) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final screenHeight = constraints.maxHeight;
-        final isSmallScreen = screenHeight < 500;
-
         return Row(
           children: [
             // INFO LAP TABLE O MOBILE
@@ -172,60 +174,68 @@ class GameScreenState extends State<GameScreen> {
                     child: _buildLapTable(totalTime),
                   )
                 : Container(
-                    width: 140,
+                    width: 160,
                     padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5), // maschera aggiunta
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(12),
+                        // Nome pista
+                        Text(
+                          widget.circuit.displayName,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
-                          child: Column(
-                            children: [
-                              if (widget.car.logoPath.isNotEmpty)
-                                Container(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  child: Image.asset(
-                                    widget.car.logoPath,
-                                    width: 40,
-                                    height: 40,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                              Text(
-                                _formatTime(totalTime),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: isSmallScreen ? 16 : 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 8),
-                              if (_lapTimes.isNotEmpty)
-                                Text(
-                                  'Last: ${_formatTime(_lapTimes.last)}',
-                                  style: TextStyle(
-                                    color: Colors.grey[300],
-                                    fontSize: isSmallScreen ? 14 : 16,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Laps: ${_lapTimes.length}/5',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: isSmallScreen ? 16 : 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Logo squadra
+                        if (widget.car.logoPath.isNotEmpty)
+                          Image.asset(
+                            widget.car.logoPath,
+                            width: 50,
+                            height: 50,
+                            fit: BoxFit.contain,
                           ),
+                        const SizedBox(height: 16),
+
+                        // Last lap
+                        if (_lapTimes.isNotEmpty)
+                          Text(
+                            'Last Lap: ${_formatTime(_lapTimes.last)}',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
+                          )
+                        else
+                          const Text(
+                            'Last Lap: --:--:--',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        const SizedBox(height: 8),
+
+                        // Total time
+                        Text(
+                          'Total: ${_formatTime(totalTime)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
@@ -267,7 +277,7 @@ class GameScreenState extends State<GameScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenHeight = constraints.maxHeight;
-        final isSmallScreen = screenHeight < 600;
+        final isSmallScreen = screenHeight < 500;
 
         return Column(
           children: [

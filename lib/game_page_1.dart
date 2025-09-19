@@ -4,7 +4,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'game/screens/game_screen.dart';
 import 'game/models/circuit.dart';
 import 'game/models/car.dart';
-import 'dashboard.dart';
 import 'game/controllers/game_controller.dart';
 import 'start_lights.dart';
 
@@ -112,6 +111,8 @@ class _GamePageState extends State<GamePage_1> {
   Widget build(BuildContext context) {
     const double centralWidgetWidth = 200;
     const double centralWidgetHeight = 40;
+    final isPortrait =
+        MediaQuery.of(context).orientation == Orientation.portrait;
 
     return Scaffold(
       body: Stack(
@@ -141,102 +142,157 @@ class _GamePageState extends State<GamePage_1> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Logo + title
+                // 🔝 Top bar
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                  child: Row(
-                    children: [
-                      SvgPicture.asset('assets/f1_logo.svg', height: 24),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Formula 1',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    isPortrait ? 14 : 1, // top ridotto in orizzontale
+                    16,
+                    isPortrait ? 10 : 0, // bottom ridotto in orizzontale
                   ),
-                ),
-
-                // Top row: back button, start lights/timer, circuit name
-                if (_selectedCircuit != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white10,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          if (_selectedCircuit != null)
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white10,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding: const EdgeInsets.all(8),
+                                minimumSize: const Size(36, 36),
+                              ),
+                              onPressed: () {
+                                _resetGame();
+                                if (_teamSelected) {
+                                  setState(() {
+                                    _teamSelected = false;
+                                    _selectedTeam = null;
+                                  });
+                                } else {
+                                  _lastSelectedIndex =
+                                      allCircuits.indexOf(_selectedCircuit!);
+                                  setState(() {
+                                    _selectedCircuit = null;
+                                    _currentPage = _lastSelectedIndex!;
+                                  });
+                                  WidgetsBinding.instance
+                                      .addPostFrameCallback((_) {
+                                    _pageController
+                                        .jumpToPage(_lastSelectedIndex!);
+                                  });
+                                }
+                              },
+                              child: const Icon(Icons.arrow_back, size: 20),
                             ),
-                            padding: const EdgeInsets.all(12),
-                            minimumSize: const Size(40, 40),
+                          const SizedBox(width: 12),
+                          SvgPicture.asset('assets/f1_logo.svg', height: 24),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Formula 1',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
                           ),
-                          onPressed: () {
-                            _resetGame();
-                            if (_teamSelected) {
-                              setState(() {
-                                _teamSelected = false;
-                                _selectedTeam = null;
-                              });
-                            } else {
-                              _lastSelectedIndex = allCircuits.indexOf(
-                                _selectedCircuit!,
-                              );
-                              setState(() {
-                                _selectedCircuit = null;
-                                _currentPage = _lastSelectedIndex!;
-                              });
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                _pageController.jumpToPage(_lastSelectedIndex!);
-                              });
-                            }
-                          },
-                          child: const Icon(Icons.arrow_back),
-                        ),
+                        ],
+                      ),
+                      // 👉 Solo in orizzontale: start/timer accanto al titolo
+                      if (!isPortrait && _selectedCircuit != null)
                         SizedBox(
                           width: centralWidgetWidth,
                           height: centralWidgetHeight,
                           child: _teamSelected
                               ? !_timerRunning
-                                    ? StartLights(
-                                        showStartButton: true,
-                                        onSequenceComplete: () {
-                                          if (_gameScreenKey
-                                                  .currentState
-                                                  ?.mounted ??
-                                              false) {
-                                            _gameScreenKey.currentState!
-                                                .startGame();
-                                          }
-                                          _startTimer();
-                                        },
-                                      )
-                                    : Container(
-                                        alignment: Alignment.center,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.06),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.white24,
-                                          ),
+                                  ? StartLights(
+                                      showStartButton: true,
+                                      onSequenceComplete: () {
+                                        if (_gameScreenKey
+                                                .currentState
+                                                ?.mounted ??
+                                            false) {
+                                          _gameScreenKey.currentState!
+                                              .startGame();
+                                        }
+                                        _startTimer();
+                                      },
+                                    )
+                                  : Container(
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.06),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: Colors.white24,
                                         ),
-                                        child: Text(
-                                          _formatTime(_elapsedCentis),
-                                          style: const TextStyle(
-                                            color: Colors.greenAccent,
-                                            fontFamily: 'monospace',
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                      ),
+                                      child: Text(
+                                        _formatTime(_elapsedCentis),
+                                        style: const TextStyle(
+                                          color: Colors.greenAccent,
+                                          fontFamily: 'monospace',
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
                                         ),
-                                      )
+                                      ),
+                                    )
+                              : const SizedBox.shrink(),
+                        ),
+                    ],
+                  ),
+                ),
+
+                // 👇 Solo in verticale: start/timer + nome circuito
+                if (isPortrait && _selectedCircuit != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        SizedBox(
+                          width: centralWidgetWidth,
+                          height: centralWidgetHeight,
+                          child: _teamSelected
+                              ? !_timerRunning
+                                  ? StartLights(
+                                      showStartButton: true,
+                                      onSequenceComplete: () {
+                                        if (_gameScreenKey
+                                                .currentState
+                                                ?.mounted ??
+                                            false) {
+                                          _gameScreenKey.currentState!
+                                              .startGame();
+                                        }
+                                        _startTimer();
+                                      },
+                                    )
+                                  : Container(
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.06),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: Colors.white24,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        _formatTime(_elapsedCentis),
+                                        style: const TextStyle(
+                                          color: Colors.greenAccent,
+                                          fontFamily: 'monospace',
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    )
                               : const SizedBox.shrink(),
                         ),
                         Text(
@@ -252,8 +308,6 @@ class _GamePageState extends State<GamePage_1> {
                   ),
 
                 const SizedBox(height: 20),
-
-                // CONTENT AREA
                 Expanded(child: _buildContentArea(context)),
               ],
             ),
@@ -298,7 +352,8 @@ class _GamePageState extends State<GamePage_1> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       color: const Color.fromARGB(120, 255, 6, 0),
-                      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 8),
                       child: Column(
                         children: [
                           const SizedBox(height: 6),
@@ -328,30 +383,6 @@ class _GamePageState extends State<GamePage_1> {
                 ),
               );
             },
-          ),
-          // 🔙 Bottone per tornare alla Dashboard
-          Positioned(
-            top: 16,
-            left: 16,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white10,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.all(12),
-                minimumSize: const Size(40, 40),
-              ),
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const DashboardPage()),
-                );
-              },
-              child: const Icon(Icons.arrow_back),
-            ),
           ),
         ],
       );
@@ -426,30 +457,6 @@ class _GamePageState extends State<GamePage_1> {
               ),
             ),
           ),
-          // 🔙 Bottone per tornare alla Dashboard anche qui
-          Positioned(
-            top: 16,
-            left: 16,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white10,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.all(12),
-                minimumSize: const Size(40, 40),
-              ),
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const DashboardPage()),
-                );
-              },
-              child: const Icon(Icons.arrow_back),
-            ),
-          ),
         ],
       );
     } else {
@@ -487,11 +494,9 @@ class _BackgroundTrackPainter extends CustomPainter {
     final scale = scaleX < scaleY ? scaleX : scaleY;
 
     final offsetX =
-        (size.width - circuit.viewBoxWidth * scale) / 2 -
-        circuit.viewBoxX * scale;
+        (size.width - circuit.viewBoxWidth * scale) / 2 - circuit.viewBoxX * scale;
     final offsetY =
-        (size.height - circuit.viewBoxHeight * scale) / 2 -
-        circuit.viewBoxY * scale;
+        (size.height - circuit.viewBoxHeight * scale) / 2 - circuit.viewBoxY * scale;
 
     final paint = Paint()
       ..color = Colors.yellow.withOpacity(0.5)
