@@ -39,21 +39,20 @@ class _GameScreenState extends State<GameScreen> {
     super.initState();
     controller = GameController(circuit: widget.circuit, carModel: widget.car);
 
-    // Gestione lap completati dal GameController
+    // Aggiorna tabella tempi appena finisce un giro
     controller.onLapCompleted = (lap) {
       final lapTime = _elapsedCentis - _lastLapCentis;
       _lastLapCentis = _elapsedCentis;
-
       setState(() {
-        _lapTimes.add(lapTime); // aggiorna la sidebar
+        _lapTimes.add(lapTime); // aggiorna subito la tabella
       });
 
-      // Notifica GamePage_1
+      // Notifica GamePage_1 se serve
       if (widget.onGameFinished != null) {
         widget.onGameFinished!(_lapTimes);
       }
 
-      // interrompe il timer se sono completati 5 giri
+      // Interrompe timer se sono completati 5 giri (modifica come vuoi)
       if (_lapTimes.length >= 5) {
         _stopTimer();
       }
@@ -164,11 +163,26 @@ class _GameScreenState extends State<GameScreen> {
                                     ),
                                   ),
                                 const SizedBox(height: 12),
-                                for (int i = 0; i < 5; i++)
+
+                                // MOSTRA TUTTI I LAP COMPLETATI SUBITO:
+                                for (int i = 0; i < _lapTimes.length; i++)
                                   Padding(
                                     padding: const EdgeInsets.symmetric(vertical: 4),
                                     child: Text(
-                                      "Lap ${i + 1}   Time: ${i < _lapTimes.length ? _formatTime(_lapTimes[i]) : "--:--:--"}",
+                                      "Lap ${i + 1}   Time: ${_formatTime(_lapTimes[i])}",
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                // Riempi fino a 5 lap con placeholder
+                                for (int i = _lapTimes.length; i < 5; i++)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 4),
+                                    child: Text(
+                                      "Lap ${i + 1}   Time: --:--:--",
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 14,
