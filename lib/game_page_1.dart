@@ -266,69 +266,94 @@ class _GamePageState extends State<GamePage_1> {
   Widget _buildContentArea(BuildContext context) {
     if (_selectedCircuit == null) {
       // Circuit selection
-      return PageView.builder(
-        controller: _pageController,
-        scrollDirection:
-            MediaQuery.of(context).orientation == Orientation.portrait
-            ? Axis.vertical
-            : Axis.horizontal,
-        itemCount: allCircuits.length,
-        onPageChanged: (index) => setState(() => _currentPage = index),
-        itemBuilder: (context, index) {
-          final circuit = allCircuits[index];
-          final double scale = (_currentPage == index) ? 1.0 : 0.85;
-          return AnimatedScale(
-            scale: scale,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedCircuit = circuit;
-                  _currentPage = index;
-                  _preloadFuture = _preloadCircuit(circuit);
-                });
-              },
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height * 0.3,
-                child: Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  color: const Color.fromARGB(120, 255, 6, 0),
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 8,
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 6),
-                      Text(
-                        circuit.displayName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+      return Stack(
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            scrollDirection:
+                MediaQuery.of(context).orientation == Orientation.portrait
+                    ? Axis.vertical
+                    : Axis.horizontal,
+            itemCount: allCircuits.length,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            itemBuilder: (context, index) {
+              final circuit = allCircuits[index];
+              final double scale = (_currentPage == index) ? 1.0 : 0.85;
+              return AnimatedScale(
+                scale: scale,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedCircuit = circuit;
+                      _currentPage = index;
+                      _preloadFuture = _preloadCircuit(circuit);
+                    });
+                  },
+                  child: SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.3,
+                    child: Card(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      const SizedBox(height: 4),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: FittedBox(
-                            fit: BoxFit.contain,
-                            child: SvgPicture.asset(circuit.svgPath),
+                      color: const Color.fromARGB(120, 255, 6, 0),
+                      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 6),
+                          Text(
+                            circuit.displayName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 4),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: FittedBox(
+                                fit: BoxFit.contain,
+                                child: SvgPicture.asset(circuit.svgPath),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                    ],
+                    ),
                   ),
                 ),
+              );
+            },
+          ),
+          // 🔙 Bottone per tornare alla Dashboard
+          Positioned(
+            top: 16,
+            left: 16,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white10,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.all(12),
+                minimumSize: const Size(40, 40),
               ),
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const DashboardPage()),
+                );
+              },
+              child: const Icon(Icons.arrow_back),
             ),
-          );
-        },
+          ),
+        ],
       );
     } else if (!_teamSelected) {
       // Team selection
@@ -399,6 +424,30 @@ class _GamePageState extends State<GamePage_1> {
                   );
                 }).toList(),
               ),
+            ),
+          ),
+          // 🔙 Bottone per tornare alla Dashboard anche qui
+          Positioned(
+            top: 16,
+            left: 16,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white10,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.all(12),
+                minimumSize: const Size(40, 40),
+              ),
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const DashboardPage()),
+                );
+              },
+              child: const Icon(Icons.arrow_back),
             ),
           ),
         ],
