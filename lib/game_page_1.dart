@@ -20,17 +20,13 @@ class _GamePageState extends State<GamePage_1> {
   int _currentPage = 0;
   Circuit? _selectedCircuit;
   CarModel? _selectedTeam;
-  
-
   bool _teamSelected = false;
-
   GameController? _preloadController;
   Future<void>? _preloadFuture;
-
   bool _timerRunning = false; // stato timer
   int _elapsedCentis = 0; // timer in centesimi
-
   Timer? _countdownTimer;
+  int? _lastSelectedIndex; // <-- AGGIUNTA: salva l’indice dell’ultima pista scelta
 
   @override
   void initState() {
@@ -68,6 +64,7 @@ class _GamePageState extends State<GamePage_1> {
   void dispose() {
     _preloadController?.disposeController();
     _countdownTimer?.cancel();
+    _pageController.dispose(); // <-- chiudi il controller
     super.dispose();
   }
 
@@ -121,7 +118,6 @@ class _GamePageState extends State<GamePage_1> {
                     ],
                   ),
                 ),
-
                 // BACK + START / TIMER + NOME CIRCUITO
                 if (_selectedCircuit != null)
                   Padding(
@@ -149,7 +145,15 @@ class _GamePageState extends State<GamePage_1> {
                               });
                             } else if (_selectedCircuit != null) {
                               setState(() {
+                                _lastSelectedIndex = allCircuits.indexOf(_selectedCircuit!); // <-- salva indice
                                 _selectedCircuit = null;
+                              });
+                              // muovo la PageView dopo essere tornati indietro
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (_lastSelectedIndex != null) {
+                                  _pageController.jumpToPage(_lastSelectedIndex!);
+                                  setState(() => _currentPage = _lastSelectedIndex!);
+                                }
                               });
                             } else {
                               Navigator.pushReplacement(
@@ -162,43 +166,41 @@ class _GamePageState extends State<GamePage_1> {
                           },
                           child: const Icon(Icons.arrow_back),
                         ),
-
                         // START / TIMER CENTRALI
                         SizedBox(
                           width: centralWidgetWidth,
                           height: centralWidgetHeight,
                           child: _teamSelected
                               ? !_timerRunning
-                                    ? StartLights(
-                                        showStartButton: true,
-                                        onSequenceComplete: () {
-                                          _startTimer();
-                                        },
-                                      )
-                                    : Container(
-                                        alignment: Alignment.center,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.06),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.white24,
-                                          ),
+                                  ? StartLights(
+                                      showStartButton: true,
+                                      onSequenceComplete: () {
+                                        _startTimer();
+                                      },
+                                    )
+                                  : Container(
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.06),
+                                        borderRadius: BorderRadius.circular(
+                                          8,
                                         ),
-                                        child: Text(
-                                          _formatTime(_elapsedCentis),
-                                          style: const TextStyle(
-                                            color: Colors.greenAccent,
-                                            fontFamily: 'monospace',
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                        border: Border.all(
+                                          color: Colors.white24,
                                         ),
-                                      )
+                                      ),
+                                      child: Text(
+                                        _formatTime(_elapsedCentis),
+                                        style: const TextStyle(
+                                          color: Colors.greenAccent,
+                                          fontFamily: 'monospace',
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    )
                               : const SizedBox.shrink(),
                         ),
-
                         // NOME CIRCUITO A DESTRA
                         Text(
                           _selectedCircuit?.displayName ?? '',
@@ -241,9 +243,7 @@ class _GamePageState extends State<GamePage_1> {
                       ],
                     ),
                   ),
-
                 const SizedBox(height: 20),
-
                 // CIRCUIT SELECTION
                 if (_selectedCircuit == null)
                   Expanded(
@@ -258,7 +258,6 @@ class _GamePageState extends State<GamePage_1> {
                         final double scale = (_currentPage == index)
                             ? 1.0
                             : 0.85;
-
                         return AnimatedScale(
                           scale: scale,
                           duration: const Duration(milliseconds: 300),
@@ -266,6 +265,7 @@ class _GamePageState extends State<GamePage_1> {
                           child: GestureDetector(
                             onTap: () {
                               setState(() {
+                                _lastSelectedIndex = index; // <-- salva l’indice selezionato
                                 _selectedCircuit = circuit;
                                 _currentPage = index;
                                 _preloadFuture = _preloadCircuit(circuit);

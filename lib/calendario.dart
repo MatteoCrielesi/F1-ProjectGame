@@ -213,7 +213,6 @@ class _Header extends StatelessWidget {
 // Pagina Calendario
 class CalendarioPage extends StatefulWidget {
   const CalendarioPage({super.key});
-
   @override
   State<CalendarioPage> createState() => _CalendarioPageState();
 }
@@ -235,15 +234,24 @@ class _CalendarioPageState extends State<CalendarioPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Calendario F1 2025',
-          style: TextStyle(
-              color: Colors.white, fontSize: isSmallScreen ? 18 : 22),
-        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        leading: const BackButton(color: Colors.white),
+        automaticallyImplyLeading: false,
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            BackButton(color: Colors.white),
+            SvgPicture.asset('assets/f1_logo.svg', height: 24),
+            const SizedBox(width: 12),
+            Text(
+              'Formula 1',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w700, color: Colors.white),
+            ),
+          ],
+        ),
       ),
       extendBodyBehindAppBar: true,
       body: Container(
@@ -263,20 +271,25 @@ class _CalendarioPageState extends State<CalendarioPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(8, 16, 8, 12),
-                  child: _Header(),
+                SizedBox(height: isSmallScreen ? 12 : 20),
+                Padding(
+                  padding: EdgeInsets.only(left: 8, bottom: 8, top: 2),
+                  child: Text(
+                    'Calendario F1 2025',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w600, color: Colors.white),
+                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Expanded(
                   child: FutureBuilder<List<Circuito>>(
                     future: futureCircuiti,
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(
-                            child:
-                                CircularProgressIndicator(color: Colors.red));
+                            child: CircularProgressIndicator(color: Colors.red));
                       } else if (snapshot.hasError) {
                         return Center(
                             child: Text(
@@ -284,8 +297,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
                           style: const TextStyle(color: Colors.white),
                           textAlign: TextAlign.center,
                         ));
-                      } else if (!snapshot.hasData ||
-                          snapshot.data!.isEmpty) {
+                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                         return const Center(
                             child: Text(
                           'Nessun circuito disponibile',
@@ -301,8 +313,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
                         itemBuilder: (context, index) {
                           final circuito = data[index];
                           final isExpanded = expandedId == circuito.id;
-                          final borderRadius =
-                              isSmallScreen ? 14.0 : 18.0;
+                          final borderRadius = isSmallScreen ? 14.0 : 18.0;
                           final padding = isExpanded
                               ? (isSmallScreen
                                   ? 14.0
@@ -320,32 +331,27 @@ class _CalendarioPageState extends State<CalendarioPage> {
                                   ? const Color.fromARGB(255, 173, 173, 173)
                                   : const Color.fromARGB(255, 100, 14, 14)
                                       .withOpacity(0.87),
-                              borderRadius:
-                                  BorderRadius.circular(borderRadius),
+                              borderRadius: BorderRadius.circular(borderRadius),
                               boxShadow: isExpanded
                                   ? [
                                       BoxShadow(
                                           color: const Color.fromARGB(
-                                                  255, 185, 185, 185)
-                                              .withOpacity(0.1),
+                                                      255, 185, 185, 185)
+                                                  .withOpacity(0.1),
                                           blurRadius: 8,
                                           offset: const Offset(0, 5))
                                     ]
                                   : null,
                             ),
                             child: InkWell(
-                              borderRadius:
-                                  BorderRadius.circular(borderRadius),
+                              borderRadius: BorderRadius.circular(borderRadius),
                               onTap: () => setState(() =>
-                                  expandedId =
-                                      isExpanded ? null : circuito.id),
+                                  expandedId = isExpanded ? null : circuito.id),
                               child: Padding(
                                 padding: EdgeInsets.all(padding),
                                 child: isExpanded
-                                    ? _buildExpandedView(
-                                        circuito, isSmallScreen, isLargeScreen)
-                                    : _buildCollapsedView(
-                                        circuito, isSmallScreen),
+                                    ? _buildExpandedView(circuito, isSmallScreen, isLargeScreen)
+                                    : _buildCollapsedView(circuito, isSmallScreen),
                               ),
                             ),
                           );
