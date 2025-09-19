@@ -48,6 +48,7 @@ class GameScreenState extends State<GameScreen> {
       if (widget.onGameFinished != null) {
         widget.onGameFinished!(_lapTimes);
       }
+
     };
 
     _initGame();
@@ -124,7 +125,9 @@ class GameScreenState extends State<GameScreen> {
   }
 
   @override
+
   void dispose() {
+    _timer?.cancel();
     controller.disposeController();
     super.dispose();
   }
@@ -133,7 +136,12 @@ class GameScreenState extends State<GameScreen> {
   Widget build(BuildContext context) {
     final totalTime = _lapTimes.isNotEmpty
         ? _lapTimes.reduce((a, b) => a + b)
-        : widget.elapsedCentis;
+        : _elapsedCentis;
+
+    final orientation = MediaQuery.of(context).orientation;
+    if (_currentOrientation != orientation) {
+      _currentOrientation = orientation;
+    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -142,89 +150,251 @@ class GameScreenState extends State<GameScreen> {
           children: [
             Container(height: 3, color: const Color(0xFFE10600)),
             Expanded(
-              child: Row(
+              child: orientation == Orientation.landscape
+                  ? _buildLandscapeLayout(totalTime)
+                  : _buildPortraitLayout(totalTime, context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLandscapeLayout(int totalTime) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenHeight = constraints.maxHeight;
+        final isSmallScreen = screenHeight < 500;
+        
+        return Row(
+          children: [
+            // PANNELLO INFO A SINISTRA (più grande)
+            Container(
+              width: 140, // Larghezza aumentata
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(
-                    width: 200,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        // Logo
+                        if (widget.car.logoPath.isNotEmpty)
                           Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.25),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.white24),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: Image.asset(
+                              widget.car.logoPath,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.contain,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (widget.car.logoPath.isNotEmpty)
-                                  Center(
-                                    child: Image.asset(
-                                      widget.car.logoPath,
-                                      width: 60,
-                                      height: 60,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                const SizedBox(height: 12),
-                                for (int i = 0; i < _lapTimes.length; i++)
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 4,
-                                    ),
-                                    child: Text(
-                                      "Lap ${i + 1}   Time: ${_formatTime(_lapTimes[i])}",
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                for (int i = _lapTimes.length; i < 5; i++)
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 4,
-                                    ),
-                                    child: Text(
-                                      "Lap ${i + 1}   Time: --:--:--",
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                const Divider(color: Colors.white24),
+                          ),
+                        
+                        // Tempo totale (più grande)
+                        Text(
+                          _formatTime(totalTime),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isSmallScreen ? 16 : 20, // Dimensione aumentata
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        
+                        const SizedBox(height: 8),
+                        
+                        // Ultimo giro (più grande)
+                        if (_lapTimes.isNotEmpty)
+                          Text(
+                            'Last: ${_formatTime(_lapTimes.last)}',
+                            style: TextStyle(
+                              color: Colors.grey[300],
+                              fontSize: isSmallScreen ? 14 : 16, // Dimensione aumentata
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        
+                        const SizedBox(height: 12),
+                        
+                        // Numero di giri completati (più grande)
+                        Text(
+                          'Laps: ${_lapTimes.length}/5',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isSmallScreen ? 16 : 18, // Dimensione aumentata
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // TRACK - Parte centrale
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Stack(
+                  children: [
+                    _buildTrackWithOverlays(),
+                    
+                    if (_countdown != null)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withOpacity(0.35),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '$_countdown',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: isSmallScreen ? 80 : 120,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // CONTROLLI A DESTRA (entrambi i pulsanti)
+            if (widget.showTouchControls)
+              Container(
+                width: 100,
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Pulsante acceleratore
+                    GameControls(
+                      controller: controller,
+                      controlsEnabled: true,
+                      isLandscape: true,
+                      isLeftSide: false,
+                      showBothButtons: true, // Mostra entrambi i pulsanti
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPortraitLayout(int totalTime, BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenHeight = constraints.maxHeight;
+        final isSmallScreen = screenHeight < 600;
+        
+        return Column(
+          children: [
+            // TRACK - Parte superiore
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: _buildTrackWithOverlays(),
+              ),
+            ),
+            
+            // INFO E CONTROLLI - Parte inferiore
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                children: [
+                  // Informazioni tempi e giri
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Logo e info tempi
+                      Row(
+                        children: [
+                          if (widget.car.logoPath.isNotEmpty)
+                            Image.asset(
+                              widget.car.logoPath,
+                              width: 24,
+                              height: 24,
+                              fit: BoxFit.contain,
+                            ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Total: ${_formatTime(totalTime)}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: isSmallScreen ? 14 : 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (_lapTimes.isNotEmpty)
                                 Text(
-                                  "Total Time: ${_formatTime(totalTime)}",
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                                  'Last: ${_formatTime(_lapTimes.last)}',
+                                  style: TextStyle(
+                                    color: Colors.grey[300],
+                                    fontSize: isSmallScreen ? 12 : 14,
                                   ),
                                 ),
-                              ],
-                            ),
+                            ],
                           ),
                         ],
                       ),
-                    ),
+                      
+                      // Contatore giri
+                      Text(
+                        'Laps: ${_lapTimes.length}/5',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isSmallScreen ? 14 : 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    child: AnimatedBuilder(
-                      animation: controller,
-                      builder: (context, _) {
-                        return Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              final maxWidth = constraints.maxWidth;
-                              final maxHeight = constraints.maxHeight;
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Controlli
+                  if (widget.showTouchControls)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: GameControls(
+                        controller: controller,
+                        controlsEnabled: true,
+                        isLandscape: false,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTrackWithOverlays() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final maxHeight = constraints.maxHeight;
 
                               return Stack(
                                 children: [
@@ -320,8 +490,8 @@ class GameScreenState extends State<GameScreen> {
               ),
             ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -353,12 +523,8 @@ class _TrackPainter extends CustomPainter {
     final scaleY = canvasHeight / circuit.viewBoxHeight;
     final scale = min(scaleX, scaleY);
 
-    final offsetX =
-        (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
-        circuit.viewBoxX * scale;
-    final offsetY =
-        (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
-        circuit.viewBoxY * scale;
+    final offsetX = (canvasWidth - circuit.viewBoxWidth * scale) / 2 - circuit.viewBoxX * scale;
+    final offsetY = (canvasHeight - circuit.viewBoxHeight * scale) / 2 - circuit.viewBoxY * scale;
 
     final trackPaint = Paint()
       ..color = Colors.yellow

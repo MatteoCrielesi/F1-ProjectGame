@@ -5,10 +5,18 @@ import 'package:flutter/services.dart';
 
 class GameControls extends StatefulWidget {
   final GameController controller;
+  final bool controlsEnabled;
+  final bool isLandscape;
+  final bool isLeftSide;
+  final bool showBothButtons;
+
   const GameControls({
     super.key,
     required this.controller,
-    required bool controlsEnabled,
+    required this.controlsEnabled,
+    this.isLandscape = false,
+    this.isLeftSide = true,
+    this.showBothButtons = false,
   });
 
   @override
@@ -56,12 +64,16 @@ class _GameControlsState extends State<GameControls> {
   }
 
   void _pressAccelerate(bool pressed) {
+    if (!widget.controlsEnabled) return;
+
     setState(() {
       widget.controller.acceleratePressed = pressed;
     });
   }
 
   void _pressBrake(bool pressed) {
+    if (!widget.controlsEnabled) return;
+
     setState(() {
       widget.controller.brakePressed = pressed;
     });
@@ -72,25 +84,69 @@ class _GameControlsState extends State<GameControls> {
     // Se non siamo su mobile, non mostrare i pulsanti touch
     if (!_isMobile) return const SizedBox.shrink();
 
+    // Se showBothButtons è true, mostra entrambi i pulsanti in colonna
+    if (widget.showBothButtons) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Pulsante Accelerare
+          _buildControlButton(
+            icon: Icons.arrow_upward,
+            color: Colors.green[700]!,
+            onPressed: () => _pressAccelerate(true),
+            onReleased: () => _pressAccelerate(false),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Pulsante Frenare
+          _buildControlButton(
+            icon: Icons.arrow_downward,
+            color: Colors.red[700]!,
+            onPressed: () => _pressBrake(true),
+            onReleased: () => _pressBrake(false),
+          ),
+        ],
+      );
+    }
+
+    // Layout per orientamento orizzontale (singolo pulsante per lato)
+    if (widget.isLandscape) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (widget.isLeftSide)
+            // Controllo acceleratore a sinistra
+            _buildControlButton(
+              icon: Icons.arrow_upward,
+              color: Colors.green[700]!,
+              onPressed: () => _pressAccelerate(true),
+              onReleased: () => _pressAccelerate(false),
+            )
+          else
+            // Controllo freno/retromarcia a destra
+            _buildControlButton(
+              icon: Icons.arrow_downward,
+              color: Colors.red[700]!,
+              onPressed: () => _pressBrake(true),
+              onReleased: () => _pressBrake(false),
+            ),
+        ],
+      );
+    }
+
+    // Layout per orientamento verticale (originale)
     return Column(
       children: [
         // Pulsante Accelerare
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            GestureDetector(
-              onTapDown: (_) => _pressAccelerate(true),
-              onTapUp: (_) => _pressAccelerate(false),
-              onTapCancel: () => _pressAccelerate(false),
-              child: Container(
-                width: 64,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.green[700],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.arrow_upward, color: Colors.white),
-              ),
+            _buildControlButton(
+              icon: Icons.arrow_upward,
+              color: Colors.green[700]!,
+              onPressed: () => _pressAccelerate(true),
+              onReleased: () => _pressAccelerate(false),
             ),
           ],
         ),
@@ -99,23 +155,38 @@ class _GameControlsState extends State<GameControls> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            GestureDetector(
-              onTapDown: (_) => _pressBrake(true),
-              onTapUp: (_) => _pressBrake(false),
-              onTapCancel: () => _pressBrake(false),
-              child: Container(
-                width: 64,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.red[700],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.arrow_downward, color: Colors.white),
-              ),
+            _buildControlButton(
+              icon: Icons.arrow_downward,
+              color: Colors.red[700]!,
+              onPressed: () => _pressBrake(true),
+              onReleased: () => _pressBrake(false),
             ),
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildControlButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+    required VoidCallback onReleased,
+  }) {
+    return GestureDetector(
+      onTapDown: (_) => onPressed(),
+      onTapUp: (_) => onReleased(),
+      onTapCancel: onReleased,
+      child: Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          color: color.withOpacity(widget.controlsEnabled ? 0.8 : 0.3),
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(color: Colors.white, width: 2),
+        ),
+        child: Icon(icon, color: Colors.white, size: 32),
+      ),
     );
   }
 }
