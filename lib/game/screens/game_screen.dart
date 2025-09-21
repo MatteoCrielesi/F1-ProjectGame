@@ -59,9 +59,14 @@ class GameScreenState extends State<GameScreen> {
   }
 
   void startGame() {
-    if (!mounted) return;
-    _respawnCarAndReset();
-  }
+  if (!mounted) return;
+  controller.disqualified = false;
+  print("[GameScreen] startGame chiamato");
+  controller.debugPrintState("startGame (prima respawn)");
+  _respawnCarAndReset();
+  controller.debugPrintState("startGame (dopo respawn)");
+}
+
 
   void respawnCar() {
     if (!mounted) return;
@@ -106,10 +111,12 @@ class GameScreenState extends State<GameScreen> {
   }
 
   void _respawnCarAndReset() {
-    controller.respawn();
-    _lastLapCentis = 0;
-    _lapTimes.clear();
-  }
+  controller.respawn();
+  _lastLapCentis = 0;
+  _lapTimes.clear();
+  controller.debugPrintState("_respawnCarAndReset");
+}
+
 
   String _formatTime(int centis) {
     final ms = (centis % 100).toString().padLeft(2, '0');
