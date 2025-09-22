@@ -10,8 +10,7 @@ class CarModel {
     required this.color,
     required this.logoPath,
   }) : assert(name != ''),
-       assert(logoPath != ''),
-       assert(color != null);
+       assert(logoPath != '');
 }
 
 const List<CarModel> allCars = [

@@ -9,13 +9,26 @@ import 'game/controllers/game_controller.dart';
 import 'start_lights.dart';
 
 class GamePage_1 extends StatefulWidget {
-  const GamePage_1({super.key});
+  final String selectedType;
+
+  const GamePage_1({super.key, required this.selectedType});
 
   @override
   State<GamePage_1> createState() => _GamePageState();
 }
 
 class _GamePageState extends State<GamePage_1> {
+  @override
+  void initState() {
+    super.initState();
+    print("Tipo selezionato: ${widget.selectedType}");
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        _currentPage = _pageController.initialPage;
+      });
+    });
+  }
+
   final PageController _pageController = PageController(viewportFraction: 0.5);
   int _currentPage = 0;
   Circuit? _selectedCircuit;
@@ -30,16 +43,6 @@ class _GamePageState extends State<GamePage_1> {
 
   final GlobalKey<GameScreenState> _gameScreenKey =
       GlobalKey<GameScreenState>();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        _currentPage = _pageController.initialPage;
-      });
-    });
-  }
 
   Future<void> _preloadCircuit(Circuit circuit) async {
     _preloadController = GameController(
@@ -198,11 +201,6 @@ class _GamePageState extends State<GamePage_1> {
                           const SizedBox(width: 12),
                           SvgPicture.asset('assets/f1_logo.svg', height: 24),
                           const SizedBox(width: 12),
-                          Text(
-                            'Formula 1',
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
                         ],
                       ),
 
@@ -217,9 +215,6 @@ class _GamePageState extends State<GamePage_1> {
                               onTap: () {
                                 if (!hasData) return;
                                 final records = snapshot.data!;
-                                final bestLap = records['bestLap'] ?? 0;
-                                final bestGame = records['bestGame'] ?? 0;
-
                                 showDialog(
                                   context: context,
                                   builder: (_) => AlertDialog(
@@ -235,19 +230,30 @@ class _GamePageState extends State<GamePage_1> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          'Giro più veloce: ${_formatTime(bestLap)}',
-                                          style: const TextStyle(
-                                            color: Colors.greenAccent,
+                                        if (widget.selectedType ==
+                                            "challenge") ...[
+                                          Text(
+                                            'Giro più veloce: ${_formatTime(records['bestLap'] ?? 0)}',
+                                            style: const TextStyle(
+                                              color: Colors.greenAccent,
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'Game più veloce: ${_formatTime(bestGame)}',
-                                          style: const TextStyle(
-                                            color: Colors.greenAccent,
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Game più veloce: ${_formatTime(records['bestGame'] ?? 0)}',
+                                            style: const TextStyle(
+                                              color: Colors.greenAccent,
+                                            ),
                                           ),
-                                        ),
+                                        ] else if (widget.selectedType ==
+                                            "bots") ...[
+                                          Text(
+                                            'Vittorie ottenute: ${records['bestGame'] ?? 0}',
+                                            style: const TextStyle(
+                                              color: Colors.greenAccent,
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                     actions: [

@@ -51,7 +51,7 @@ class GameScreenState extends State<GameScreen> {
       print("[LOG] Lap time saved: ${_formatTime(lapTime)}");
       await _printSavedRecords();
 
-      if (_lapTimes.length == 5) {
+      if (_lapTimes.length == 3) {
         final totalTime = _lapTimes.reduce((a, b) => a + b);
         final bestLap = _lapTimes.reduce((a, b) => a < b ? a : b);
         await GameRecords.save(widget.circuit.id, bestLap, totalTime);
@@ -363,7 +363,7 @@ class GameScreenState extends State<GameScreen> {
                           ],
                         ),
                         Text(
-                          'Laps: ${_lapTimes.length}/5',
+                          'Laps: ${_lapTimes.length}/3',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: isSmallScreen ? 14 : 16,
@@ -530,7 +530,8 @@ class GameScreenState extends State<GameScreen> {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const GamePage_1(),
+                                builder: (_) =>
+                                    const GamePage_1(selectedType: 'challenge'),
                               ),
                             );
                           });

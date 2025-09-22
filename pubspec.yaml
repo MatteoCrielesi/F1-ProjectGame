@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_svg: ^2.0.9
+  font_awesome_flutter: ^10.10.0
   path_drawing: ^1.0.1
   path_provider: ^2.1.5
   postgres: ^3.5.6

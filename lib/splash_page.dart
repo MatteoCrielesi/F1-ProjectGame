@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:f1_project/dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'start_lights.dart';
-import 'game_page_1.dart'; 
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -103,7 +103,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                                 if (!mounted) return;
                                 Navigator.of(context).pushReplacement(
                                   MaterialPageRoute(
-                                    builder: (_) => const GamePage_1(),
+                                    builder: (_) => const DashboardPage(),
                                   ),
                                 );
                               },
