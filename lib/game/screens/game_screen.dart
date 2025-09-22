@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:f1_project/game/saves/game_records.dart';
 import 'package:f1_project/game_page_1.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -39,12 +40,25 @@ class GameScreenState extends State<GameScreen> {
     super.initState();
     controller = GameController(circuit: widget.circuit, carModel: widget.car);
 
-    controller.onLapCompleted = (lap) {
+    controller.onLapCompleted = (lap) async {
       final lapTime = widget.elapsedCentis - _lastLapCentis;
       _lastLapCentis = widget.elapsedCentis;
       setState(() {
         _lapTimes.add(lapTime);
       });
+
+      await GameRecords.save(widget.circuit.id, lapTime, null);
+      print("[LOG] Lap time saved: ${_formatTime(lapTime)}");
+      await _printSavedRecords();
+
+      if (_lapTimes.length == 5) {
+        final totalTime = _lapTimes.reduce((a, b) => a + b);
+        final bestLap = _lapTimes.reduce((a, b) => a < b ? a : b);
+        await GameRecords.save(widget.circuit.id, bestLap, totalTime);
+        print(
+          "[LOG] Game finished. Total time: ${_formatTime(totalTime)}, Best lap: ${_formatTime(bestLap)}",
+        );
+      }
 
       if (widget.onGameFinished != null) {
         widget.onGameFinished!(_lapTimes);
@@ -52,6 +66,22 @@ class GameScreenState extends State<GameScreen> {
     };
 
     _initGame();
+  }
+
+  // All'interno di GameScreenState
+  Future<void> _printSavedRecords() async {
+    final records = await GameRecords.get(widget.circuit.id);
+    if (records.isEmpty) {
+      print(
+        "[DEBUG] Nessun record salvato per il circuito ${widget.circuit.displayName}",
+      );
+    } else {
+      final bestLap = records['bestLap'] ?? 0;
+      final bestGame = records['bestGame'] ?? 0;
+      print("[DEBUG] Records salvati per ${widget.circuit.displayName}:");
+      print("  Miglior Lap: ${_formatTime(bestLap)}");
+      print("  Miglior Game: ${_formatTime(bestGame)}");
+    }
   }
 
   Future<void> _initGame() async {

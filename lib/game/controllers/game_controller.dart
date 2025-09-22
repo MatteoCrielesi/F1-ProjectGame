@@ -18,8 +18,8 @@ class GameController extends ChangeNotifier {
   Offset? get spawnPoint => _spawnPoint;
 
   bool waitingForStart = true;
-  bool freeMove = true; // il giocatore può muovere la macchina anche prima del via
-
+  bool freeMove =
+      true; // il giocatore può muovere la macchina anche prima del via
 
   double speed = 0.0;
   bool disqualified = false;
@@ -83,33 +83,35 @@ class GameController extends ChangeNotifier {
   }
 
   void debugPrintState([String from = ""]) {
-  print("[GameController][$from] "
+    print(
+      "[GameController][$from] "
       "pos=(${carPosition.dx.toStringAsFixed(2)}, ${carPosition.dy.toStringAsFixed(2)}) "
       "speed=${speed.toStringAsFixed(2)} "
       "waitingForStart=$waitingForStart "
-      "disqualified=$disqualified");
-}
-
+      "disqualified=$disqualified",
+    );
+  }
 
   void respawn() {
-  print("[GameController] Respawn chiamato");
-  _applySpawnPoint();
-  waitingForStart = true;
-  disqualified = false;
-  notifyListeners();  
-}
+    print("[GameController] Respawn chiamato");
+    _applySpawnPoint();
+    waitingForStart = true;
+    disqualified = false;
+    notifyListeners();
+  }
 
-void _applySpawnPoint() {
-  if (_spawnPoint == null || _trackPoints.isEmpty) return;
-  speed = 0.0;
-  disqualified = false;
-  _playerIndex = _findNearestIndex(_spawnPoint!);
-  _previousPlayerIndex = _playerIndex;
-  _playerLap = 0;
-  _startIndex = _playerIndex;
-  print("[GameController] Respawn effettuato allo spawn point, index=$_playerIndex");
-}
-
+  void _applySpawnPoint() {
+    if (_spawnPoint == null || _trackPoints.isEmpty) return;
+    speed = 0.0;
+    disqualified = false;
+    _playerIndex = _findNearestIndex(_spawnPoint!);
+    _previousPlayerIndex = _playerIndex;
+    _playerLap = 0;
+    _startIndex = _playerIndex;
+    print(
+      "[GameController] Respawn effettuato allo spawn point, index=$_playerIndex",
+    );
+  }
 
   void tick() {
     if (_trackPoints.isEmpty || disqualified) {
@@ -122,10 +124,10 @@ void _applySpawnPoint() {
   }
 
   void _updatePlayer() {
-  if (disqualified) {
-    print("[GameController] Update ignorato: giocatore disqualified");
-    return;
-  }
+    if (disqualified) {
+      print("[GameController] Update ignorato: giocatore disqualified");
+      return;
+    }
 
     const double maxSpeed = 2.5;
     const double accelerationStep = 0.10;
