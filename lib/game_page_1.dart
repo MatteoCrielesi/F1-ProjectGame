@@ -128,9 +128,9 @@ class _GamePageState extends State<GamePage_1> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color.fromARGB(255, 71, 71, 71),
-                  Color.fromARGB(255, 71, 0, 0),
-                  Color.fromARGB(255, 33, 0, 0),
+                  Color.fromARGB(255, 78, 1, 1),
+                  Color.fromARGB(255, 104, 104, 104),
+                  Color.fromARGB(255, 88, 1, 1),
                 ],
               ),
             ),
@@ -160,7 +160,6 @@ class _GamePageState extends State<GamePage_1> {
                       // Lato sinistro: back + logo + titolo
                       Row(
                         children: [
-                          if (_selectedCircuit != null)
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.white10,
@@ -173,13 +172,11 @@ class _GamePageState extends State<GamePage_1> {
                                 minimumSize: const Size(36, 36),
                               ),
                               onPressed: () {
-                                _resetGame();
-                                if (_teamSelected) {
-                                  setState(() {
-                                    _teamSelected = false;
-                                    _selectedTeam = null;
-                                  });
-                                } else {
+                                if (_selectedCircuit == null) {
+                                  // Sei nella schermata scelta circuiti → vai a dashboard
+                                  Navigator.pop(context);
+                                } else if (!_teamSelected) {
+                                  // Sei nella schermata scelta scuderie → torna ai circuiti
                                   _lastSelectedIndex = allCircuits.indexOf(
                                     _selectedCircuit!,
                                   );
@@ -194,10 +191,28 @@ class _GamePageState extends State<GamePage_1> {
                                       _lastSelectedIndex!,
                                     );
                                   });
+                                } else {
+                                  // Sei nel gioco → torna alla scelta scuderia
+                                  _resetGame();
+                                  setState(() {
+                                    _teamSelected = false;
+                                    _selectedTeam = null;
+                                  });
                                 }
                               },
-                              child: const Icon(Icons.arrow_back, size: 20),
+                              child: Icon(
+                                _selectedCircuit == null
+                                    ? Icons
+                                          .arrow_back // se scegli il circuito → pulsante home
+                                    : _selectedCircuit != null && _teamSelected == false
+                                    ? Icons
+                                          .arrow_back // se scegli la scuderia → back ai circuiti
+                                    : Icons
+                                          .arrow_back, // se sei in gioco → torna alla scuderia
+                                size: 20,
+                              ),
                             ),
+
                           const SizedBox(width: 12),
                           SvgPicture.asset('assets/f1_logo.svg', height: 24),
                           const SizedBox(width: 12),
@@ -588,7 +603,7 @@ class _BackgroundTrackPainter extends CustomPainter {
         circuit.viewBoxY * scale;
 
     final paint = Paint()
-      ..color = Colors.yellow.withOpacity(0.5)
+      ..color = const Color.fromARGB(255, 0, 0, 0).withOpacity(0.5)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 

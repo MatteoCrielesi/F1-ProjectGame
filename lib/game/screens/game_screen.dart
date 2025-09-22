@@ -29,6 +29,8 @@ class GameScreen extends StatefulWidget {
 }
 
 class GameScreenState extends State<GameScreen> {
+  bool _raceFinished = false;
+
   late GameController controller;
   int _lastLapCentis = 0;
   final List<int> _lapTimes = [];
