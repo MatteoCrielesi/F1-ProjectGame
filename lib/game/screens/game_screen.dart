@@ -12,7 +12,7 @@ class GameScreen extends StatefulWidget {
   final CarModel car;
   final bool showTouchControls;
   final void Function(List<int> lapTimes)? onGameFinished;
-  final int elapsedCentis; // riceve timer da GamePage_1
+  final int elapsedCentis;
 
   const GameScreen({
     super.key,
@@ -32,6 +32,7 @@ class GameScreenState extends State<GameScreen> {
   int _lastLapCentis = 0;
   final List<int> _lapTimes = [];
   Orientation? _currentOrientation;
+  bool _gameStarted = false;
 
   @override
   void initState() {
@@ -55,18 +56,17 @@ class GameScreenState extends State<GameScreen> {
 
   Future<void> _initGame() async {
     await controller.loadTrackFromJson();
-    controller.start();
+    // controller.start(); <-- rimuovi questa riga
   }
 
   void startGame() {
-  if (!mounted) return;
-  controller.disqualified = false;
-  print("[GameScreen] startGame chiamato");
-  controller.debugPrintState("startGame (prima respawn)");
-  _respawnCarAndReset();
-  controller.debugPrintState("startGame (dopo respawn)");
-}
+    if (!mounted) return;
 
+    _gameStarted = true; // il gioco può iniziare
+    controller.disqualified = false;
+    _respawnCarAndReset();
+    controller.start(); // ora avviamo il controller solo qui
+  }
 
   void respawnCar() {
     if (!mounted) return;
@@ -111,12 +111,11 @@ class GameScreenState extends State<GameScreen> {
   }
 
   void _respawnCarAndReset() {
-  controller.respawn();
-  _lastLapCentis = 0;
-  _lapTimes.clear();
-  controller.debugPrintState("_respawnCarAndReset");
-}
-
+    controller.respawn();
+    _lastLapCentis = 0;
+    _lapTimes.clear();
+    controller.debugPrintState("_respawnCarAndReset");
+  }
 
   String _formatTime(int centis) {
     final ms = (centis % 100).toString().padLeft(2, '0');
@@ -226,10 +225,7 @@ class GameScreenState extends State<GameScreen> {
                         else
                           const Text(
                             'Last Lap: --:--:--',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 14,
-                            ),
+                            style: TextStyle(color: Colors.grey, fontSize: 14),
                             textAlign: TextAlign.center,
                           ),
                         const SizedBox(height: 8),
@@ -263,7 +259,7 @@ class GameScreenState extends State<GameScreen> {
                 padding: const EdgeInsets.all(12),
                 child: GameControls(
                   controller: controller,
-                  controlsEnabled: !controller.disqualified,
+                  controlsEnabled: _gameStarted && !controller.disqualified,
                   isLandscape: true,
                   isLeftSide: false,
                   showBothButtons: true,
@@ -357,7 +353,8 @@ class GameScreenState extends State<GameScreen> {
                       ),
                       child: GameControls(
                         controller: controller,
-                        controlsEnabled: !controller.disqualified,
+                        controlsEnabled:
+                            _gameStarted && !controller.disqualified,
                         isLandscape: false,
                       ),
                     ),
