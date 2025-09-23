@@ -69,9 +69,11 @@ class _GamePageState extends State<GamePage_1> {
 
       setState(() => _elapsedCentis++);
 
-      if (_gameScreenKey.currentState!.controller.disqualified) {
+      if (_gameScreenKey.currentState!.controller.disqualified || _gameScreenKey.currentState!.controller.gameComplete) {
         _stopTimer();
       }
+
+      
     });
   }
 

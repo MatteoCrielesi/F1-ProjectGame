@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:f1_project/game/saves/game_records.dart';
 import 'package:f1_project/game_page_1.dart';
+import 'package:f1_project/dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../controllers/game_controller.dart';
@@ -30,54 +31,41 @@ class GameScreen extends StatefulWidget {
 
 class GameScreenState extends State<GameScreen> {
   bool _raceFinished = false;
-
   late GameController controller;
   int _lastLapCentis = 0;
   final List<int> _lapTimes = [];
   Orientation? _currentOrientation;
   bool _gameStarted = false;
 
+  // ✅ Modifica: variabile normale con valore di default
+  String _selectedMode = 'challenge';
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is String) {
+      _selectedMode = args; // riassegnabile senza LateInitializationError
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     controller = GameController(circuit: widget.circuit, carModel: widget.car);
 
-    controller.onLapCompleted = (lap) async {
-      final lapTime = widget.elapsedCentis - _lastLapCentis;
-      _lastLapCentis = widget.elapsedCentis;
-      setState(() {
-        _lapTimes.add(lapTime);
-      });
-
-      await GameRecords.save(widget.circuit.id, lapTime, null);
-      print("[LOG] Lap time saved: ${_formatTime(lapTime)}");
-      await _printSavedRecords();
-
-      if (_lapTimes.length == 3) {
-        final totalTime = _lapTimes.reduce((a, b) => a + b);
-        final bestLap = _lapTimes.reduce((a, b) => a < b ? a : b);
-        await GameRecords.save(widget.circuit.id, bestLap, totalTime);
-        print(
-          "[LOG] Game finished. Total time: ${_formatTime(totalTime)}, Best lap: ${_formatTime(bestLap)}",
-        );
-      }
-
-      if (widget.onGameFinished != null) {
-        widget.onGameFinished!(_lapTimes);
-      }
-    };
+    controller.onLapCompleted = _handleLapCompleted;
 
     _initGame();
   }
 
-  // All'interno di GameScreenState
+  Future<void> _initGame() async {
+    await controller.loadTrackFromJson();
+  }
+
   Future<void> _printSavedRecords() async {
     final records = await GameRecords.get(widget.circuit.id);
-    if (records.isEmpty) {
-      print(
-        "[DEBUG] Nessun record salvato per il circuito ${widget.circuit.displayName}",
-      );
-    } else {
+    if (records.isNotEmpty) {
       final bestLap = records['bestLap'] ?? 0;
       final bestGame = records['bestGame'] ?? 0;
       print("[DEBUG] Records salvati per ${widget.circuit.displayName}:");
@@ -86,18 +74,43 @@ class GameScreenState extends State<GameScreen> {
     }
   }
 
-  Future<void> _initGame() async {
-    await controller.loadTrackFromJson();
-    // controller.start(); <-- rimuovi questa riga
+  void _handleLapCompleted(int lap) async {
+    final lapTime = widget.elapsedCentis - _lastLapCentis;
+    _lastLapCentis = widget.elapsedCentis;
+
+    setState(() {
+      _lapTimes.add(lapTime);
+    });
+
+    await GameRecords.save(widget.circuit.id, lapTime, null);
+    await _printSavedRecords();
+
+    if (_lapTimes.length == 3) {
+      final totalTime = _lapTimes.reduce((a, b) => a + b);
+      final bestLapTime = _lapTimes.reduce((a, b) => a < b ? a : b);
+      final bestLapIndex = _lapTimes.indexOf(bestLapTime) + 1;
+
+      await GameRecords.save(widget.circuit.id, bestLapTime, totalTime);
+
+      if (_selectedMode == 'challenge') {
+        setState(() {
+          _raceFinished = true;
+          controller.stop();
+        });
+      }
+
+      widget.onGameFinished?.call(_lapTimes);
+    } else {
+      widget.onGameFinished?.call(_lapTimes);
+    }
   }
 
   void startGame() {
     if (!mounted) return;
-
-    _gameStarted = true; // il gioco può iniziare
+    _gameStarted = true;
     controller.disqualified = false;
     _respawnCarAndReset();
-    controller.start(); // ora avviamo il controller solo qui
+    controller.start();
   }
 
   void respawnCar() {
@@ -114,26 +127,14 @@ class GameScreenState extends State<GameScreen> {
     if (!mounted) return;
 
     controller.disposeController();
-
     controller = GameController(circuit: widget.circuit, carModel: widget.car);
-
-    controller.onLapCompleted = (lap) {
-      final lapTime = widget.elapsedCentis - _lastLapCentis;
-      _lastLapCentis = widget.elapsedCentis;
-      setState(() {
-        _lapTimes.add(lapTime);
-      });
-
-      if (widget.onGameFinished != null) {
-        widget.onGameFinished!(_lapTimes);
-      }
-    };
+    controller.onLapCompleted = _handleLapCompleted;
 
     _lastLapCentis = 0;
     _lapTimes.clear();
+    _raceFinished = false;
 
     _initGame();
-
     setState(() {});
   }
 
@@ -152,7 +153,7 @@ class GameScreenState extends State<GameScreen> {
   String _formatTime(int centis) {
     final ms = (centis % 100).toString().padLeft(2, '0');
     final seconds = ((centis ~/ 100) % 60).toString().padLeft(2, '0');
-    final minutes = (centis ~/ 6000).toString().padLeft(2, '0');
+    final minutes = (centis ~/ 6000).toString();
     return "$minutes:$seconds:$ms";
   }
 
@@ -181,16 +182,83 @@ class GameScreenState extends State<GameScreen> {
     final isPhone = _isPhone(context);
     final isDesktop = !isPhone;
 
+    final bestLapTime =
+        _lapTimes.isNotEmpty ? _lapTimes.reduce((a, b) => a < b ? a : b) : 0;
+    final bestLapIndex =
+        _lapTimes.isNotEmpty ? _lapTimes.indexOf(bestLapTime) + 1 : 0;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            Container(height: 3, color: const Color(0xFFE10600)),
-            Expanded(
-              child: orientation == Orientation.landscape
-                  ? _buildLandscapeLayout(totalTime, isDesktop)
-                  : _buildPortraitLayout(totalTime, context, isDesktop),
+            Column(
+              children: [
+                Container(height: 3, color: const Color(0xFFE10600)),
+                Expanded(
+                  child: orientation == Orientation.landscape
+                      ? _buildLandscapeLayout(totalTime, isDesktop)
+                      : _buildPortraitLayout(totalTime, context, isDesktop),
+                ),
+              ],
+            ),
+            if (controller.disqualified) _buildCrashMask(),
+            if (_raceFinished && _selectedMode == 'challenge')
+              _buildVictoryMask(bestLapIndex, bestLapTime),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- Maschere e UI ---
+  Widget _buildCrashMask() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withOpacity(0.8),
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              "Ti sei schiantato!",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => resetGame(),
+              child: const Text("Riprova"),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () {
+                resetGame();
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) =>
+                            const GamePage_1(selectedType: 'challenge')),
+                  );
+                });
+              },
+              child: const Text("Torna alla scelta pista"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                resetGame();
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DashboardPage()),
+                  );
+                });
+              },
+              child: const Text("Torna alla dashboard"),
             ),
           ],
         ),
@@ -198,13 +266,79 @@ class GameScreenState extends State<GameScreen> {
     );
   }
 
-  // LANDSCAPE
+  Widget _buildVictoryMask(int bestLapIndex, int bestLapTime) {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withOpacity(0.8),
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              "Congratulazioni!\nHai completato i 3 giri!",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                height: 1.2,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            if (_lapTimes.isNotEmpty)
+              Text(
+                "Miglior Giro: Lap $bestLapIndex: ${_formatTime(bestLapTime)}",
+                style: const TextStyle(
+                  color: Colors.greenAccent,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => resetGame(),
+              child: const Text("Riscendi in pista"),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () {
+                resetGame();
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) =>
+                            const GamePage_1(selectedType: 'challenge')),
+                  );
+                });
+              },
+              child: const Text("Torna alla scelta pista"),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () {
+                resetGame();
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DashboardPage()),
+                  );
+                });
+              },
+              child: const Text("Torna alla dashboard"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- Layout Landscape e Portrait ---
   Widget _buildLandscapeLayout(int totalTime, bool isDesktop) {
     return LayoutBuilder(
       builder: (context, constraints) {
         return Row(
           children: [
-            // INFO LAP TABLE O MOBILE
             isDesktop
                 ? Container(
                     width: 200,
@@ -215,14 +349,13 @@ class GameScreenState extends State<GameScreen> {
                     width: 160,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5), // maschera aggiunta
+                      color: Colors.black.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Nome pista
                         Text(
                           widget.circuit.displayName,
                           textAlign: TextAlign.center,
@@ -233,8 +366,6 @@ class GameScreenState extends State<GameScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-
-                        // Logo squadra
                         if (widget.car.logoPath.isNotEmpty)
                           Image.asset(
                             widget.car.logoPath,
@@ -243,8 +374,6 @@ class GameScreenState extends State<GameScreen> {
                             fit: BoxFit.contain,
                           ),
                         const SizedBox(height: 16),
-
-                        // Last lap
                         if (_lapTimes.isNotEmpty)
                           Text(
                             'Last Lap: ${_formatTime(_lapTimes.last)}',
@@ -261,8 +390,6 @@ class GameScreenState extends State<GameScreen> {
                             textAlign: TextAlign.center,
                           ),
                         const SizedBox(height: 8),
-
-                        // Total time
                         Text(
                           'Total: ${_formatTime(totalTime)}',
                           style: const TextStyle(
@@ -275,16 +402,12 @@ class GameScreenState extends State<GameScreen> {
                       ],
                     ),
                   ),
-
-            // TRACK
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(8),
                 child: _buildTrackWithOverlays(),
               ),
             ),
-
-            // CONTROLLI A DESTRA
             if (widget.showTouchControls)
               Container(
                 width: 100,
@@ -303,12 +426,7 @@ class GameScreenState extends State<GameScreen> {
     );
   }
 
-  // PORTRAIT
-  Widget _buildPortraitLayout(
-    int totalTime,
-    BuildContext context,
-    bool isDesktop,
-  ) {
+  Widget _buildPortraitLayout(int totalTime, BuildContext context, bool isDesktop) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenHeight = constraints.maxHeight;
@@ -385,8 +503,7 @@ class GameScreenState extends State<GameScreen> {
                       ),
                       child: GameControls(
                         controller: controller,
-                        controlsEnabled:
-                            _gameStarted && !controller.disqualified,
+                        controlsEnabled: _gameStarted && !controller.disqualified,
                         isLandscape: false,
                       ),
                     ),
@@ -399,7 +516,6 @@ class GameScreenState extends State<GameScreen> {
     );
   }
 
-  // LAP TABLE PER DESKTOP
   Widget _buildLapTable(int totalTime) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -472,7 +588,6 @@ class GameScreenState extends State<GameScreen> {
     );
   }
 
-  // TRACK + OVERLAYS
   Widget _buildTrackWithOverlays() {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -501,49 +616,6 @@ class GameScreenState extends State<GameScreen> {
                 ),
               ),
             ),
-            if (controller.disqualified)
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black.withOpacity(0.8),
-                  alignment: Alignment.center,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        "Ti sei schiantato!",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: () {
-                          resetGame();
-                        },
-                        child: const Text("Riprova"),
-                      ),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: () {
-                          resetGame();
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    const GamePage_1(selectedType: 'challenge'),
-                              ),
-                            );
-                          });
-                        },
-                        child: const Text("Torna alla scelta pista"),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
           ],
         );
       },
@@ -578,11 +650,9 @@ class _TrackPainter extends CustomPainter {
     final scaleY = canvasHeight / circuit.viewBoxHeight;
     final scale = min(scaleX, scaleY);
 
-    final offsetX =
-        (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
+    final offsetX = (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
         circuit.viewBoxX * scale;
-    final offsetY =
-        (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
+    final offsetY = (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
         circuit.viewBoxY * scale;
 
     final trackPaint = Paint()
@@ -591,10 +661,7 @@ class _TrackPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final path = Path()
-      ..moveTo(
-        points.first.dx * scale + offsetX,
-        points.first.dy * scale + offsetY,
-      );
+      ..moveTo(points.first.dx * scale + offsetX, points.first.dy * scale + offsetY);
     for (final p in points.skip(1)) {
       path.lineTo(p.dx * scale + offsetX, p.dy * scale + offsetY);
     }
@@ -609,10 +676,12 @@ class _TrackPainter extends CustomPainter {
     }
 
     if (carPosition != Offset.zero) {
-      final playerPaint = Paint()..color = car.color;
+      final carPaint = Paint()
+        ..color = car.color
+        ..style = PaintingStyle.fill;
       final px = carPosition.dx * scale + offsetX;
       final py = carPosition.dy * scale + offsetY;
-      canvas.drawCircle(Offset(px, py), 8.0, playerPaint);
+      canvas.drawCircle(Offset(px, py), 8.0, carPaint);
     }
   }
 

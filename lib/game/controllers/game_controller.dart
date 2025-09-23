@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'package:f1_project/game_page_1.dart';
 import 'package:flame/extensions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -23,6 +24,7 @@ class GameController extends ChangeNotifier {
 
   double speed = 0.0;
   bool disqualified = false;
+  bool gameComplete = false;
   int _playerIndex = 0;
 
   int _playerLap = 0;
@@ -157,6 +159,13 @@ class GameController extends ChangeNotifier {
         debugPrint("[GameController] Lap completato ($_playerLap)");
         if (onLapCompleted != null) {
           onLapCompleted!(_playerLap);
+        }
+        if (onLapCompleted != null && _playerLap == 3) {
+          print("[GameController]   Gito concluso");
+          gameComplete = true;
+          stop();
+          waitingForStart = false;
+          notifyListeners();
         }
       }
     }
