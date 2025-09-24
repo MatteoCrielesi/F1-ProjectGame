@@ -1,0 +1,80 @@
+// mp_client.dart
+
+import 'dart:convert';
+import 'dart:io';
+
+import 'mp_messages.dart';
+
+typedef OnLobbyUpdate = void Function(Map<String, dynamic> lobby);
+typedef OnStateUpdate = void Function(Map<String, dynamic> stateData);
+
+class MpClient {
+  Socket? _sock;
+  final String id;
+  final String name;
+  OnLobbyUpdate? onLobbyUpdate;
+  OnStateUpdate? onStateUpdate;
+
+  MpClient({
+    required this.id,
+    required this.name,
+  });
+
+  Future<void> connect(String host, {int port = 4040}) async {
+    _sock = await Socket.connect(host, port);
+    print("[MpClient] Connesso a $host:$port");
+    _send({'type': MpMessageType.join, 'id': id, 'name': name});
+
+    _sock!.listen(
+      (data) {
+        final raw = utf8.decode(data);
+        Map msg;
+        try {
+          msg = jsonDecode(raw);
+        } catch (e) {
+          print("[MpClient] Errore parsing: $e");
+          return;
+        }
+
+        final type = msg['type'];
+        switch (type) {
+          case MpMessageType.lobbyUpdate:
+            if (onLobbyUpdate != null) {
+              onLobbyUpdate!(msg['lobby']);
+            }
+            break;
+          case MpMessageType.stateUpdate:
+            if (onStateUpdate != null) {
+              onStateUpdate!(msg['data']);
+            }
+            break;
+          default:
+            print("[MpClient] Tipo messaggio sconosciuto: $type");
+        }
+      },
+      onDone: () {
+        print("[MpClient] Connessione chiusa");
+      },
+      onError: (e) {
+        print("[MpClient] Errore socket: $e");
+      },
+    );
+  }
+
+  void selectCar(String car) {
+    _send({'type': MpMessageType.carSelect, 'id': id, 'car': car});
+  }
+
+  void sendState(Map<String, dynamic> stateData) {
+    _send({'type': MpMessageType.stateUpdate, 'data': stateData});
+  }
+
+  void leave() {
+    _send({'type': MpMessageType.leave, 'id': id});
+    _sock?.destroy();
+  }
+
+  void _send(Map<String, dynamic> msg) {
+    _sock?.add(utf8.encode(jsonEncode(msg)));
+  }
+}
