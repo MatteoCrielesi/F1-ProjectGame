@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:f1_project/game/local/mp_client.dart';
 import 'package:f1_project/game/local/mp_lobby.dart';
 import 'package:f1_project/game/local/mp_server.dart';
 import 'package:f1_project/game/saves/game_records.dart';
@@ -28,8 +29,22 @@ class _GamePageState extends State<GamePage_1> {
     print("Tipo selezionato: ${widget.selectedType}");
 
     if (widget.selectedType == "local") {
-      // Se è una gara locale, prima mostra la maschera Lobby
       _lobbyStep = true;
+
+      // Inizializza il client per ricevere le lobby
+      _mpclient = MpClient(
+        id: "guest_${DateTime.now().millisecondsSinceEpoch}",
+        name: "Player",
+      );
+
+      _mpclient!.listenForLobbies((id, ip, port) {
+        final exists = _foundLobbies.any((l) => l['id'] == id);
+        if (!exists) {
+          setState(() {
+            _foundLobbies.add({'id': id, 'ip': ip, 'port': port});
+          });
+        }
+      });
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -52,10 +67,12 @@ class _GamePageState extends State<GamePage_1> {
   int? _lastSelectedIndex;
   bool _lobbyStep = false;
   MpServer? _server;
+  MpClient? _mpclient;
   Socket? _client;
   MpLobby? _lobby;
   String? _playerId;
   bool _isHost = false;
+  List<Map<String, dynamic>> _foundLobbies = [];
 
   final GlobalKey<GameScreenState> _gameScreenKey =
       GlobalKey<GameScreenState>();
@@ -443,15 +460,18 @@ class _GamePageState extends State<GamePage_1> {
           children: [
             ElevatedButton(
               onPressed: () async {
+                // Crea la lobby come host
                 final lobby = MpLobby(id: "lobby1");
                 final server = MpServer(lobby: lobby);
-                await server.start(port: 4040);
+                await server.start(startPort: 4040);
+                server.announceLobby();
 
                 setState(() {
                   _server = server;
                   _lobby = lobby;
                   _isHost = true;
                   _playerId = "host"; // id univoco
+                  _lobbyStep = true; // rimani in lobbyStep per mostrare lista
                 });
               },
               style: ElevatedButton.styleFrom(
@@ -470,39 +490,45 @@ class _GamePageState extends State<GamePage_1> {
               ),
             ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
-                final sock = await Socket.connect(
-                  "127.0.0.1",
-                  4040,
-                ); // o IP host
-                setState(() {
-                  _client = sock;
-                  _isHost = false;
-                  _playerId = "guest_${DateTime.now().millisecondsSinceEpoch}";
-                });
-                sock.write(
-                  jsonEncode({
-                    "type": "join",
-                    "id": _playerId,
-                    "name": "Player",
-                  }),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                "Unisciti ad una Lobby",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+            Expanded(
+              child: _foundLobbies.isEmpty
+                  ? const Center(child: Text("Nessuna lobby trovata"))
+                  : ListView.builder(
+                      itemCount: _foundLobbies.length,
+                      itemBuilder: (context, index) {
+                        final lobby = _foundLobbies[index];
+                        return ListTile(
+                          title: Text("Lobby ${lobby['id']}"),
+                          subtitle: Text("${lobby['ip']}:${lobby['port']}"),
+                          trailing: ElevatedButton(
+                            onPressed: () async {
+                              // Connetti al server della lobby selezionata
+                              final sock = await Socket.connect(
+                                lobby['ip'],
+                                lobby['port'],
+                              );
+                              setState(() {
+                                _client = sock;
+                                _isHost = false;
+                                _playerId =
+                                    "guest_${DateTime.now().millisecondsSinceEpoch}";
+                                _lobbyStep = false; // esci dalla lobbyStep
+                              });
+
+                              // Invia messaggio di join
+                              sock.write(
+                                jsonEncode({
+                                  "type": "join",
+                                  "id": _playerId,
+                                  "name": "Player",
+                                }),
+                              );
+                            },
+                            child: const Text("Unisciti"),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),

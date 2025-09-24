@@ -77,4 +77,28 @@ class MpClient {
   void _send(Map<String, dynamic> msg) {
     _sock?.add(utf8.encode(jsonEncode(msg)));
   }
+
+  void listenForLobbies(void Function(String id, String ip, int port) onFound) async {
+  final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 4041);
+  socket.broadcastEnabled = true;
+
+  socket.listen((event) {
+    if (event == RawSocketEvent.read) {
+      Datagram? dg;
+      while ((dg = socket.receive()) != null) {
+        try {
+          final msg = jsonDecode(utf8.decode(dg!.data));
+          final id = msg['id'] as String;
+          final port = msg['port'] as int;
+          final ip = dg!.address.address;
+          onFound(id, ip, port);
+        } catch (e) {
+          print("[MpClient] Errore parsing UDP: $e");
+        }
+      }
+    }
+  });
+}
+
+
 }

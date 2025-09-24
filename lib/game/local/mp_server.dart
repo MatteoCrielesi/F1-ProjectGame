@@ -1,5 +1,6 @@
 // mp_server.dart
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -19,8 +20,16 @@ class MpServer {
 
   MpServer({required this.lobby});
 
-  Future<void> start({int port = 4040}) async {
-    _server = await ServerSocket.bind(InternetAddress.anyIPv4, port);
+  Future<void> start({int startPort = 4040}) async {
+    int port = startPort;
+    while (true) {
+      try {
+        _server = await ServerSocket.bind(InternetAddress.anyIPv4, port);
+        break;
+      } catch (e) {
+        port++; // porta occupata → prova la successiva
+      }
+    }
     print("[MpServer] In ascolto sulla porta $port (lobby ${lobby.id})");
 
     _server!.listen((sock) {
@@ -105,6 +114,28 @@ class MpServer {
         print("[MpServer] Messaggio tipo sconosciuto: $type");
     }
   }
+
+  void announceLobby() async {
+  final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+  socket.broadcastEnabled = true;
+
+  Timer.periodic(const Duration(seconds: 2), (_) {
+    if (_server == null) return;
+    final msg = jsonEncode({'id': lobby.id, 'port': _server!.port});
+    try {
+      // Usa l'indirizzo broadcast corretto della rete locale
+      socket.send(
+        utf8.encode(msg),
+        InternetAddress('255.255.255.255'),
+        4041,
+      );
+    } catch (e) {
+      print("[MpServer] Errore broadcast UDP: $e");
+    }
+  });
+}
+
+
 
   void _remove(Socket sock) {
     final pid = _sockToPlayer[sock];
