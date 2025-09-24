@@ -17,7 +17,7 @@ class MpServer {
   OnLobbyState? onLobbyChange;
   OnStateBroadcast? onStateBroadcast;
 
-  MpServer({ required this.lobby });
+  MpServer({required this.lobby});
 
   Future<void> start({int port = 4040}) async {
     _server = await ServerSocket.bind(InternetAddress.anyIPv4, port);
@@ -72,10 +72,7 @@ class MpServer {
             _broadcastLobby();
           } else {
             // potresti inviare un messaggio di rifiuto solo a quel client
-            _sendTo(sock, {
-              'type': 'car_select_failed',
-              'car': car,
-            });
+            _sendTo(sock, {'type': 'car_select_failed', 'car': car});
           }
         }
         break;
@@ -94,10 +91,7 @@ class MpServer {
             player.disqualified = data['disqualified'];
           }
           // broadcast lo stato a tutti (compresi mittente)
-          _broadcast({
-            'type': MpMessageType.stateUpdate,
-            'data': data,
-          });
+          _broadcast({'type': MpMessageType.stateUpdate, 'data': data});
         }
         break;
 
@@ -123,11 +117,9 @@ class MpServer {
   }
 
   void _broadcastLobby() {
-    final playersList = lobby.players.values.map((p) => {
-      'id': p.id,
-      'name': p.name,
-      'car': p.car,
-    }).toList();
+    final playersList = lobby.players.values
+        .map((p) => {'id': p.id, 'name': p.name, 'car': p.car})
+        .toList();
 
     final msg = {
       'type': MpMessageType.lobbyUpdate,
@@ -136,7 +128,7 @@ class MpServer {
         'maxPlayers': lobby.maxPlayers,
         'players': playersList,
         'cars': lobby.cars,
-      }
+      },
     };
     _broadcast(msg);
     if (onLobbyChange != null) {

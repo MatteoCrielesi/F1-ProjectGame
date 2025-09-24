@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
-import 'mp_server.dart';
-import 'mp_client.dart';
-import 'mp_lobby.dart';
-import 'mp_game_controller.dart';
+import '../local/mp_server.dart';
+import '../local/mp_client.dart';
+import '../local/mp_lobby.dart';
+import '../local/mp_game_controller.dart';
 import '../models/circuit.dart';
 import '../models/car.dart';
 
@@ -125,9 +125,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
   Widget build(BuildContext context) {
     _logger.v("Build MpGameScreen");
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Multiplayer Game: ${widget.mode}"),
-      ),
+      appBar: AppBar(title: Text("Multiplayer Game: ${widget.mode}")),
       body: Column(
         children: [
           if (latestLobbyState != null) _buildLobbyView(latestLobbyState!),
@@ -162,7 +160,9 @@ class _MpGameScreenState extends State<MpGameScreen> {
 
     return Column(
       children: [
-        Text("Lobby: ${lobby['id']}  (${players.length}/${lobby['maxPlayers']})"),
+        Text(
+          "Lobby: ${lobby['id']}  (${players.length}/${lobby['maxPlayers']})",
+        ),
         Wrap(
           children: players.map((p) {
             final pid = p['id'];
@@ -192,7 +192,9 @@ class _MpGameScreenState extends State<MpGameScreen> {
               onPressed: occupied
                   ? null
                   : () {
-                      _logger.d("Click sul pulsante auto $car (occupied=$occupied)");
+                      _logger.d(
+                        "Click sul pulsante auto $car (occupied=$occupied)",
+                      );
                       if (widget.mode == MpMode.client) {
                         client?.selectCar(car);
                         _logger.i("Client seleziona auto $car");
@@ -201,13 +203,9 @@ class _MpGameScreenState extends State<MpGameScreen> {
                         _logger.i("Host assegna auto $car a host");
                         server?.onLobbyChange?.call({
                           'players': lobbyModel!.players.values.map((p) {
-                            return {
-                              'id': p.id,
-                              'name': p.name,
-                              'car': p.car
-                            };
+                            return {'id': p.id, 'name': p.name, 'car': p.car};
                           }).toList(),
-                          'cars': lobbyModel!.cars
+                          'cars': lobbyModel!.cars,
                         });
                       }
                     },

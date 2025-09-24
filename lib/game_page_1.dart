@@ -1,4 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'package:f1_project/game/local/mp_lobby.dart';
+import 'package:f1_project/game/local/mp_server.dart';
 import 'package:f1_project/game/saves/game_records.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -22,6 +26,12 @@ class _GamePageState extends State<GamePage_1> {
   void initState() {
     super.initState();
     print("Tipo selezionato: ${widget.selectedType}");
+
+    if (widget.selectedType == "local") {
+      // Se è una gara locale, prima mostra la maschera Lobby
+      _lobbyStep = true;
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
         _currentPage = _pageController.initialPage;
@@ -40,6 +50,12 @@ class _GamePageState extends State<GamePage_1> {
   int _elapsedCentis = 0;
   Timer? _countdownTimer;
   int? _lastSelectedIndex;
+  bool _lobbyStep = false;
+  MpServer? _server;
+  Socket? _client;
+  MpLobby? _lobby;
+  String? _playerId;
+  bool _isHost = false;
 
   final GlobalKey<GameScreenState> _gameScreenKey =
       GlobalKey<GameScreenState>();
@@ -69,11 +85,10 @@ class _GamePageState extends State<GamePage_1> {
 
       setState(() => _elapsedCentis++);
 
-      if (_gameScreenKey.currentState!.controller.disqualified || _gameScreenKey.currentState!.controller.gameComplete) {
+      if (_gameScreenKey.currentState!.controller.disqualified ||
+          _gameScreenKey.currentState!.controller.gameComplete) {
         _stopTimer();
       }
-
-      
     });
   }
 
@@ -162,58 +177,59 @@ class _GamePageState extends State<GamePage_1> {
                       // Lato sinistro: back + logo + titolo
                       Row(
                         children: [
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white10,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                padding: const EdgeInsets.all(8),
-                                minimumSize: const Size(36, 36),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white10,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                              onPressed: () {
-                                if (_selectedCircuit == null) {
-                                  // Sei nella schermata scelta circuiti → vai a dashboard
-                                  Navigator.pop(context);
-                                } else if (!_teamSelected) {
-                                  // Sei nella schermata scelta scuderie → torna ai circuiti
-                                  _lastSelectedIndex = allCircuits.indexOf(
-                                    _selectedCircuit!,
-                                  );
-                                  setState(() {
-                                    _selectedCircuit = null;
-                                    _currentPage = _lastSelectedIndex!;
-                                  });
-                                  WidgetsBinding.instance.addPostFrameCallback((
-                                    _,
-                                  ) {
-                                    _pageController.jumpToPage(
-                                      _lastSelectedIndex!,
-                                    );
-                                  });
-                                } else {
-                                  // Sei nel gioco → torna alla scelta scuderia
-                                  _resetGame();
-                                  setState(() {
-                                    _teamSelected = false;
-                                    _selectedTeam = null;
-                                  });
-                                }
-                              },
-                              child: Icon(
-                                _selectedCircuit == null
-                                    ? Icons
-                                          .arrow_back // se scegli il circuito → pulsante home
-                                    : _selectedCircuit != null && _teamSelected == false
-                                    ? Icons
-                                          .arrow_back // se scegli la scuderia → back ai circuiti
-                                    : Icons
-                                          .arrow_back, // se sei in gioco → torna alla scuderia
-                                size: 20,
-                              ),
+                              padding: const EdgeInsets.all(8),
+                              minimumSize: const Size(36, 36),
                             ),
+                            onPressed: () {
+                              if (_selectedCircuit == null) {
+                                // Sei nella schermata scelta circuiti → vai a dashboard
+                                Navigator.pop(context);
+                              } else if (!_teamSelected) {
+                                // Sei nella schermata scelta scuderie → torna ai circuiti
+                                _lastSelectedIndex = allCircuits.indexOf(
+                                  _selectedCircuit!,
+                                );
+                                setState(() {
+                                  _selectedCircuit = null;
+                                  _currentPage = _lastSelectedIndex!;
+                                });
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  _pageController.jumpToPage(
+                                    _lastSelectedIndex!,
+                                  );
+                                });
+                              } else {
+                                // Sei nel gioco → torna alla scelta scuderia
+                                _resetGame();
+                                setState(() {
+                                  _teamSelected = false;
+                                  _selectedTeam = null;
+                                });
+                              }
+                            },
+                            child: Icon(
+                              _selectedCircuit == null
+                                  ? Icons
+                                        .arrow_back // se scegli il circuito → pulsante home
+                                  : _selectedCircuit != null &&
+                                        _teamSelected == false
+                                  ? Icons
+                                        .arrow_back // se scegli la scuderia → back ai circuiti
+                                  : Icons
+                                        .arrow_back, // se sei in gioco → torna alla scuderia
+                              size: 20,
+                            ),
+                          ),
 
                           const SizedBox(width: 12),
                           SvgPicture.asset('assets/f1_logo.svg', height: 24),
@@ -420,7 +436,78 @@ class _GamePageState extends State<GamePage_1> {
   }
 
   Widget _buildContentArea(BuildContext context) {
-    if (_selectedCircuit == null) {
+    if (_lobbyStep) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: () async {
+                final lobby = MpLobby(id: "lobby1");
+                final server = MpServer(lobby: lobby);
+                await server.start(port: 4040);
+
+                setState(() {
+                  _server = server;
+                  _lobby = lobby;
+                  _isHost = true;
+                  _playerId = "host"; // id univoco
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                "Crea Lobby",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                final sock = await Socket.connect(
+                  "127.0.0.1",
+                  4040,
+                ); // o IP host
+                setState(() {
+                  _client = sock;
+                  _isHost = false;
+                  _playerId = "guest_${DateTime.now().millisecondsSinceEpoch}";
+                });
+                sock.write(
+                  jsonEncode({
+                    "type": "join",
+                    "id": _playerId,
+                    "name": "Player",
+                  }),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                "Unisciti ad una Lobby",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (_selectedCircuit == null) {
       // Circuit selection
       return Stack(
         children: [
