@@ -58,7 +58,6 @@ class _GamePageState extends State<GamePage_1> {
     if (widget.selectedType == "local") {
       _lobbyStep = true;
 
-      // Inizializza il client per ricevere le lobby
       _mpclient = MpClient(
         id: "guest_${DateTime.now().millisecondsSinceEpoch}",
         name: "Player",
@@ -73,7 +72,6 @@ class _GamePageState extends State<GamePage_1> {
         }
       });
 
-      // Aggiorna le scuderie già selezionate dai messaggi della lobby
       _mpclient!.onLobbyUpdate = (lobbyData) {
         setState(() {
           _takenCars = List<String>.from(lobbyData['cars']);
@@ -105,7 +103,8 @@ class _GamePageState extends State<GamePage_1> {
 
     _gameScreenKey.currentState?.respawnCarAndReset();
 
-    _countdownTimer = Timer.periodic(const Duration(milliseconds: 10), (timer) {
+    _countdownTimer =
+        Timer.periodic(const Duration(milliseconds: 10), (timer) {
       if (!mounted || _gameScreenKey.currentState == null) {
         timer.cancel();
         return;
@@ -338,7 +337,7 @@ class _GamePageState extends State<GamePage_1> {
                                         _startTimer();
                                       },
                                     )
-                                  : _buildTimerDisplay()
+                                  : Container() // Timer già gestito nel game screen
                               : const SizedBox.shrink(),
                         ),
                     ],
@@ -368,7 +367,7 @@ class _GamePageState extends State<GamePage_1> {
                                         _startTimer();
                                       },
                                     )
-                                  : _buildTimerDisplay()
+                                  : Container() // Timer già gestito nel game screen
                               : const SizedBox.shrink(),
                         ),
                         Text(
@@ -392,121 +391,93 @@ class _GamePageState extends State<GamePage_1> {
     );
   }
 
-  Widget _buildTimerDisplay() {
-    return Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Text(
-        _formatTime(_elapsedCentis),
-        style: const TextStyle(
-          color: Colors.greenAccent,
-          fontFamily: 'monospace',
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
   Widget _buildContentArea(BuildContext context) {
-  // Se siamo ancora nella fase di lobby (crea/unisciti)
-  if (_lobbyStep) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ElevatedButton(
-            onPressed: () async {
-              final lobby = MpLobby(id: "lobby1");
-              final server = MpServer(lobby: lobby);
-              await server.start(startPort: 4040);
-              server.announceLobby();
+    if (_lobbyStep) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: () async {
+                final lobby = MpLobby(id: "lobby1");
+                final server = MpServer(lobby: lobby);
+                await server.start(startPort: 4040);
+                server.announceLobby();
 
-              setState(() {
-                _server = server;
-                _lobby = lobby;
-                _isHost = true;
-                _playerId = "host";
-                _lobbyStep = false;       // <-- Passa alla selezione circuito
-                _selectedCircuit = null;   // <-- Mostra il carosello
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                setState(() {
+                  _server = server;
+                  _lobby = lobby;
+                  _isHost = true;
+                  _playerId = "host";
+                  _lobbyStep = false;
+                  _selectedCircuit = null;
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                "Crea Lobby",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
-            child: const Text(
-              "Crea Lobby",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            const SizedBox(height: 20),
+            Expanded(
+              child: _foundLobbies.isEmpty
+                  ? const Center(child: Text("Nessuna lobby trovata"))
+                  : ListView.builder(
+                      itemCount: _foundLobbies.length,
+                      itemBuilder: (context, index) {
+                        final lobby = _foundLobbies[index];
+                        return ListTile(
+                          title: Text("Lobby ${lobby['id']}"),
+                          subtitle: Text("${lobby['ip']}:${lobby['port']}"),
+                          trailing: ElevatedButton(
+                            onPressed: () async {
+                              final sock = await Socket.connect(
+                                  lobby['ip'], lobby['port']);
+                              setState(() {
+                                _client = sock;
+                                _isHost = false;
+                                _playerId =
+                                    "guest_${DateTime.now().millisecondsSinceEpoch}";
+                                _lobbyStep = false;
+                                _selectedCircuit = null;
+                              });
+                              sock.write(jsonEncode({
+                                "type": "join",
+                                "id": _playerId,
+                                "name": "Player",
+                              }));
+                            },
+                            child: const Text("Unisciti"),
+                          ),
+                        );
+                      },
+                    ),
             ),
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: _foundLobbies.isEmpty
-                ? const Center(child: Text("Nessuna lobby trovata"))
-                : ListView.builder(
-                    itemCount: _foundLobbies.length,
-                    itemBuilder: (context, index) {
-                      final lobby = _foundLobbies[index];
-                      return ListTile(
-                        title: Text("Lobby ${lobby['id']}"),
-                        subtitle: Text("${lobby['ip']}:${lobby['port']}"),
-                        trailing: ElevatedButton(
-                          onPressed: () async {
-                            final sock = await Socket.connect(
-                                lobby['ip'], lobby['port']);
-                            setState(() {
-                              _client = sock;
-                              _isHost = false;
-                              _playerId =
-                                  "guest_${DateTime.now().millisecondsSinceEpoch}";
-                              _lobbyStep = false;       // <-- Passa alla selezione circuito
-                              _selectedCircuit = null;   // <-- Mostra il carosello
-                            });
-                            sock.write(jsonEncode({
-                              "type": "join",
-                              "id": _playerId,
-                              "name": "Player",
-                            }));
-                          },
-                          child: const Text("Unisciti"),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  } 
-  // Selezione circuito
-  else if (_selectedCircuit == null) {
-    return _buildCircuitSelection();
-  } 
-  // Selezione team
-  else if (!_teamSelected) {
-    return _buildTeamSelection();
-  } 
-  // Gioco
-  else {
-    return GameScreen(
-      key: _gameScreenKey,
-      circuit: _selectedCircuit!,
-      car: _selectedTeam!,
-      elapsedCentis: _elapsedCentis,
-      onGameFinished: (lapTimes) {},
-    );
+          ],
+        ),
+      );
+    } else if (_selectedCircuit == null) {
+      return _buildCircuitSelection();
+    } else if (!_teamSelected) {
+      return _buildTeamSelection();
+    } else {
+      return GameScreen(
+        key: _gameScreenKey,
+        circuit: _selectedCircuit!,
+        car: _selectedTeam!,
+        elapsedCentis: _elapsedCentis,
+        onGameFinished: (lapTimes) {},
+      );
+    }
   }
-}
-
 
   Widget _buildCircuitSelection() {
     return Stack(
@@ -668,7 +639,6 @@ class _GamePageState extends State<GamePage_1> {
   }
 }
 
-// Dummy painter placeholder
 class _BackgroundTrackPainter extends CustomPainter {
   final List<Offset> trackPoints;
   final Circuit circuit;

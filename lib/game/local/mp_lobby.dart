@@ -1,5 +1,3 @@
-// mp_lobby.dart
-
 class MpPlayer {
   final String id;
   String name;
@@ -29,6 +27,8 @@ class MpLobby {
   final int maxPlayers;
   final Map<String, MpPlayer> players = {};
   final Map<String, bool> cars = {}; // auto disponibili (false = libera, true = presa)
+
+  String? selectedCircuit; // <--- nuovo campo
 
   MpLobby({required this.id, this.maxPlayers = 4, List<String>? carList}) {
     // inizializza auto disponibili
@@ -63,6 +63,11 @@ class MpLobby {
     return cars.entries.where((e) => e.value).map((e) => e.key).toList();
   }
 
+  /// Imposta il circuito scelto dall'host
+  void setCircuit(String circuitId) {
+    selectedCircuit = circuitId;
+  }
+
   /// Restituisce lo stato della lobby come Map, utile per invio broadcast
   Map<String, dynamic> toMap() {
     return {
@@ -79,6 +84,7 @@ class MpLobby {
             'disqualified': p.disqualified,
           }).toList(),
       'cars': cars,
+      'selectedCircuit': selectedCircuit, // <--- aggiunto al broadcast
     };
   }
 }

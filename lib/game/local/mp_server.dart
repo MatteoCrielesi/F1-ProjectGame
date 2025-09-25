@@ -59,7 +59,16 @@ class MpServer {
           _sockToPlayer[sock] = pid;
           broadcastLobby();
         }
+        case MpMessageType.circuitSelect:
+        {
+          final pid = msg['id'];
+          if (_sockToPlayer[sock] == pid) {
+            final circuit = msg['circuit'];
+            setCircuit(circuit);
+          }
+        }
         break;
+
 
       case MpMessageType.leave:
         {
@@ -141,24 +150,37 @@ class MpServer {
   }
 
   void broadcastLobby() {
-    final playersList = lobby.players.values
-        .map((p) => {'id': p.id, 'name': p.name, 'car': p.car})
-        .toList();
+  final playersList = lobby.players.values
+      .map((p) => {'id': p.id, 'name': p.name, 'car': p.car})
+      .toList();
 
-    final msg = {
-      'type': MpMessageType.lobbyUpdate,
-      'lobby': {
-        'id': lobby.id,
-        'maxPlayers': lobby.maxPlayers,
-        'players': playersList,
-        'cars': lobby.cars,
-      },
-    };
-    _broadcast(msg);
-    if (onLobbyChange != null) {
-      onLobbyChange!(msg['lobby'] as Map<String, dynamic>);
-    }
+  final msg = {
+    'type': MpMessageType.lobbyUpdate,
+    'lobby': {
+      'id': lobby.id,
+      'maxPlayers': lobby.maxPlayers,
+      'players': playersList,
+      'cars': lobby.cars,
+      'selectedCircuit': lobby.selectedCircuit, // <--- aggiunto
+    },
+  };
+  _broadcast(msg);
+  if (onLobbyChange != null) {
+    onLobbyChange!(msg['lobby'] as Map<String, dynamic>);
   }
+}
+
+// Nuova funzione per impostare il circuito
+void setCircuit(String circuitId) {
+  lobby.setCircuit(circuitId);
+  // broadcast a tutti i client
+  final msg = {
+    'type': MpMessageType.circuitSelect,
+    'circuit': circuitId,
+  };
+  _broadcast(msg);
+}
+
 
   void _broadcast(Map<String, dynamic> msg) {
     final bytes = utf8.encode(jsonEncode(msg));
