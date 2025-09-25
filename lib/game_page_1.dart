@@ -80,7 +80,24 @@ class _GamePageState extends State<GamePage_1> {
 
       _mpclient!.onLobbyUpdate = (lobbyData) {
         setState(() {
-          _takenCars = List<String>.from(lobbyData['cars']);
+          // Correggi l'estrazione delle auto occupate
+          final carsMap = Map<String, bool>.from(lobbyData['cars']);
+          _takenCars = carsMap.entries
+              .where(
+                (entry) => entry.value == true,
+              ) // Prendi solo le auto occupate (value = true)
+              .map((entry) => entry.key) // Prendi il nome dell'auto
+              .toList();
+
+          // Aggiorna anche il circuito se presente
+          if (lobbyData['selectedCircuit'] != null) {
+            final circuitId = lobbyData['selectedCircuit'] as String;
+            final circuit = allCircuits.firstWhere(
+              (c) => c.id == circuitId,
+              orElse: () => allCircuits.first,
+            );
+            _selectedCircuit = circuit;
+          }
         });
       };
     }
@@ -92,25 +109,44 @@ class _GamePageState extends State<GamePage_1> {
     });
   }
 
-  void _createLobbyAfterCircuitSelection() {
-    final lobby = MpLobby(id: "lobby_${DateTime.now().millisecondsSinceEpoch}");
-    final server = MpServer(lobby: lobby);
+  // Modifica il metodo per creare la lobby
+  void _createLobbyAfterCircuitSelection() async {
+    try {
+      final lobby = MpLobby(
+        id: "lobby_${DateTime.now().millisecondsSinceEpoch}",
+      );
+      final server = MpServer(lobby: lobby);
 
-    server.start(startPort: 4040).then((_) {
-      server.setCircuit(
-        _selectedCircuit!.id,
-      ); // Imposta il circuito selezionato
+      await server.start(startPort: 4040);
+      server.setCircuit(_selectedCircuit!.id);
       server.announceLobby();
+
+      // Configura i callback per l'host
+      server.onLobbyChange = (lobbyData) {
+        setState(() {
+          final carsMap = Map<String, bool>.from(lobbyData['cars']);
+          _takenCars = carsMap.entries
+              .where((entry) => entry.value == true)
+              .map((entry) => entry.key)
+              .toList();
+        });
+      };
 
       setState(() {
         _server = server;
         _lobby = lobby;
         _isHost = true;
-        _playerId = "host";
-        _lobbyStep = false; // Esci dalla fase lobby
+        _playerId = "host_${DateTime.now().millisecondsSinceEpoch}";
+        _lobbyStep = false;
         _creatingLobby = false;
       });
-    });
+    } catch (e) {
+      print("Errore nella creazione della lobby: $e");
+      setState(() {
+        _creatingLobby = false;
+        _lobbyStep = true;
+      });
+    }
   }
 
   void _handleCreateLobby() {
@@ -559,6 +595,7 @@ class _GamePageState extends State<GamePage_1> {
         ],
       );
     }
+
     // Se siamo ancora nella fase di lobby (crea/unisciti)
     if (_lobbyStep) {
       return Center(
@@ -566,7 +603,7 @@ class _GamePageState extends State<GamePage_1> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ElevatedButton(
-              onPressed: _handleCreateLobby, // Usa il nuovo metodo
+              onPressed: _handleCreateLobby,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
                 padding: const EdgeInsets.symmetric(
@@ -606,33 +643,78 @@ class _GamePageState extends State<GamePage_1> {
                           ),
                           trailing: ElevatedButton(
                             onPressed: () async {
-                              final sock = await Socket.connect(
-                                lobby['ip'],
-                                lobby['port'],
-                              );
-
-                              // Configura il client per ricevere aggiornamenti sul circuito
-                              _mpclient!.onCircuitSelect = (circuitId) {
-                                final circuit = allCircuits.firstWhere(
-                                  (c) => c.id == circuitId,
+                              try {
+                                // Crea un nuovo client per questa connessione
+                                final client = MpClient(
+                                  id: "guest_${DateTime.now().millisecondsSinceEpoch}",
+                                  name: "Player",
                                 );
+
+                                // Configura i callback PRIMA di connetterti
+                                client.onCircuitSelect = (circuitId) {
+                                  print("Circuit select received: $circuitId");
+                                  final circuit = allCircuits.firstWhere(
+                                    (c) => c.id == circuitId,
+                                    orElse: () => allCircuits.first,
+                                  );
+                                  setState(() {
+                                    _selectedCircuit = circuit;
+                                    _lobbyStep = false;
+                                    _preloadFuture = _preloadCircuit(circuit);
+                                  });
+                                };
+
+                                client.onLobbyUpdate = (lobbyData) {
+                                  print("Lobby update received");
+                                  setState(() {
+                                    // Estrai le auto occupate correttamente
+                                    if (lobbyData['cars'] is Map) {
+                                      final carsMap = Map<String, bool>.from(
+                                        lobbyData['cars'] as Map,
+                                      );
+                                      _takenCars = carsMap.entries
+                                          .where((entry) => entry.value == true)
+                                          .map((entry) => entry.key)
+                                          .toList();
+                                    }
+
+                                    // Aggiorna anche il circuito se presente
+                                    if (lobbyData['selectedCircuit'] != null) {
+                                      final circuitId =
+                                          lobbyData['selectedCircuit']
+                                              as String;
+                                      final circuit = allCircuits.firstWhere(
+                                        (c) => c.id == circuitId,
+                                        orElse: () => allCircuits.first,
+                                      );
+                                      _selectedCircuit = circuit;
+                                      _lobbyStep = false;
+                                    }
+                                  });
+                                };
+
+                                // Connetti al server
+                                await client.connect(
+                                  lobby['ip'],
+                                  port: lobby['port'],
+                                );
+
                                 setState(() {
-                                  _selectedCircuit = circuit;
-                                  _lobbyStep = false;
+                                  _mpclient = client;
+                                  _isHost = false;
+                                  _playerId = client.id;
+                                  // Non impostare _lobbyStep = false qui, aspetta il callback
                                 });
-                              };
-
-                              await _mpclient!.connect(
-                                lobby['ip'],
-                                port: lobby['port'],
-                              );
-
-                              setState(() {
-                                _client = sock;
-                                _isHost = false;
-                                _playerId =
-                                    "guest_${DateTime.now().millisecondsSinceEpoch}";
-                              });
+                              } catch (e) {
+                                print("Errore durante la connessione: $e");
+                                // Mostra un messaggio di errore all'utente
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text("Errore di connessione: $e"),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
                             },
                             child: const Text("Unisciti"),
                           ),
@@ -644,77 +726,28 @@ class _GamePageState extends State<GamePage_1> {
         ),
       );
     } else if (_selectedCircuit == null) {
-      // Circuit selection
-      return Stack(
-        children: [
-          PageView.builder(
-            controller: _pageController,
-            scrollDirection:
-                MediaQuery.of(context).orientation == Orientation.portrait
-                ? Axis.vertical
-                : Axis.horizontal,
-            itemCount: allCircuits.length,
-            onPageChanged: (index) => setState(() => _currentPage = index),
-            itemBuilder: (context, index) {
-              final circuit = allCircuits[index];
-              final double scale = (_currentPage == index) ? 1.0 : 0.85;
-              return AnimatedScale(
-                scale: scale,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOut,
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedCircuit = circuit;
-                      _currentPage = index;
-                      _preloadFuture = _preloadCircuit(circuit);
-                    });
-                  },
-                  child: SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.3,
-                    child: Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      color: const Color.fromARGB(120, 255, 6, 0),
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 8,
-                      ),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 6),
-                          Text(
-                            circuit.displayName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: FittedBox(
-                                fit: BoxFit.contain,
-                                child: SvgPicture.asset(circuit.svgPath),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
+      // Questo caso non dovrebbe più verificarsi con il nuovo flusso
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text("Caricamento...", style: TextStyle(color: Colors.white)),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _lobbyStep = true;
+                  _selectedCircuit = null;
+                  _teamSelected = false;
+                });
+              },
+              child: const Text("Torna alle Lobby"),
+            ),
+          ],
+        ),
       );
     } else if (!_teamSelected) {
-      // Team selection
+      // Team selection - MOSTRA SOLO AUTO DISPONIBILI
       return Stack(
         children: [
           if (_preloadFuture != null)
@@ -730,84 +763,118 @@ class _GamePageState extends State<GamePage_1> {
                     ),
                   );
                 } else {
-                  return const SizedBox.shrink();
+                  return const Center(child: CircularProgressIndicator());
                 }
               },
             ),
           Container(
             color: Colors.black54,
             child: Center(
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                alignment: WrapAlignment.center,
-                children: allCars
-                    .where((car) {
-                      // Filtra solo le auto non occupate
-                      if (_isHost)
-                        return true; // Host può scegliere qualsiasi auto
-                      return !_takenCars.contains(car.name);
-                    })
-                    .map((car) {
-                      return GestureDetector(
-                        onTap: () {
-                          if (!_isHost) {
-                            // Client invia la selezione al server
-                            _mpclient?.selectCar(car.name);
-                          }
-                          setState(() {
-                            _teamSelected = true;
-                            _selectedTeam = car;
-                          });
-                        },
-                        child: Container(
-                          width: 100,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            color: _takenCars.contains(car.name)
-                                ? Colors.grey.withOpacity(0.5) // Auto occupata
-                                : car.color,
-                            borderRadius: BorderRadius.circular(8),
-                            border: _takenCars.contains(car.name)
-                                ? Border.all(color: Colors.red, width: 2)
-                                : null,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              if (car.logoPath.isNotEmpty)
-                                SizedBox(
-                                  height: 50,
-                                  child: Image.asset(
-                                    car.logoPath,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                              const SizedBox(height: 8),
-                              Text(
-                                car.name,
-                                style: TextStyle(
-                                  color: _takenCars.contains(car.name)
-                                      ? Colors.grey
-                                      : Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Seleziona la tua scuderia",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    alignment: WrapAlignment.center,
+                    children: allCars
+                        .where((car) {
+                          // Filtra solo le auto non occupate
+                          if (_isHost)
+                            return true; // Host può scegliere qualsiasi auto
+                          return !_takenCars.contains(car.name);
+                        })
+                        .map((car) {
+                          return GestureDetector(
+                            onTap: () {
+                              if (!_isHost) {
+                                // Client invia la selezione al server
+                                _mpclient?.selectCar(car.name);
+                              } else {
+                                // Host assegna l'auto direttamente sulla lobby
+                                _lobby?.tryAssignCar(_playerId!, car.name);
+                                _server
+                                    ?.broadcastLobby(); // Aggiorna tutti i client
+                              }
+                              setState(() {
+                                _teamSelected = true;
+                                _selectedTeam = car;
+                              });
+                            },
+                            child: Container(
+                              width: 100,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                color: _takenCars.contains(car.name)
+                                    ? Colors.grey.withOpacity(
+                                        0.5,
+                                      ) // Auto occupata
+                                    : car.color,
+                                borderRadius: BorderRadius.circular(8),
+                                border: _takenCars.contains(car.name)
+                                    ? Border.all(color: Colors.red, width: 2)
+                                    : Border.all(
+                                        color: Colors.white24,
+                                        width: 1,
+                                      ),
                               ),
-                              if (_takenCars.contains(car.name))
-                                const Text(
-                                  "Occupata",
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 10,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (car.logoPath.isNotEmpty)
+                                    SizedBox(
+                                      height: 50,
+                                      child: Image.asset(
+                                        car.logoPath,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    car.name,
+                                    style: TextStyle(
+                                      color: _takenCars.contains(car.name)
+                                          ? Colors.grey
+                                          : Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    })
-                    .toList(),
+                                  if (_takenCars.contains(car.name))
+                                    const Text(
+                                      "Occupata",
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        })
+                        .toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _lobbyStep = true;
+                        _selectedCircuit = null;
+                      });
+                    },
+                    child: const Text("Torna alle Lobby"),
+                  ),
+                ],
               ),
             ),
           ),

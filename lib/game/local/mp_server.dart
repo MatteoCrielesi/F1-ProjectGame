@@ -168,10 +168,10 @@ class MpServer {
   // Nuova funzione per impostare il circuito
   void setCircuit(String circuitId) {
     lobby.setCircuit(circuitId);
-    // Broadcast a tutti i client
+    // Invia immediatamente l'aggiornamento a tutti i client
     final msg = {'type': MpMessageType.circuitSelect, 'circuit': circuitId};
     _broadcast(msg);
-    print("[MpServer] Circuito impostato: $circuitId");
+    broadcastLobby(); // Aggiorna anche lo stato della lobby
   }
 
   void _broadcast(Map<String, dynamic> msg) {
