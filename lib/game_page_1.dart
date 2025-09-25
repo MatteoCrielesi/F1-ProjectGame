@@ -45,6 +45,11 @@ class _GamePageState extends State<GamePage_1> {
   MpLobby? _lobby;
   String? _playerId;
   bool _isHost = false;
+
+  bool _gameOver = false;
+  bool _crashState = false;
+  bool _victoryState = false;
+
   List<Map<String, dynamic>> _foundLobbies = [];
 
   final GlobalKey<GameScreenState> _gameScreenKey =
@@ -85,32 +90,6 @@ class _GamePageState extends State<GamePage_1> {
       });
     });
   }
-
-  final PageController _pageController = PageController(viewportFraction: 0.5);
-  int _currentPage = 0;
-  Circuit? _selectedCircuit;
-  CarModel? _selectedTeam;
-  bool _teamSelected = false;
-  GameController? _preloadController;
-  Future<void>? _preloadFuture;
-  bool _timerRunning = false;
-  int _elapsedCentis = 0;
-  Timer? _countdownTimer;
-  int? _lastSelectedIndex;
-  bool _lobbyStep = false;
-  MpServer? _server;
-  MpClient? _mpclient;
-  Socket? _client;
-  MpLobby? _lobby;
-  String? _playerId;
-  bool _isHost = false;
-  bool _gameOver = false;
-  bool _crashState = false;
-  bool _victoryState = false;
-  List<Map<String, dynamic>> _foundLobbies = [];
-
-  final GlobalKey<GameScreenState> _gameScreenKey =
-      GlobalKey<GameScreenState>();
 
   Future<void> _preloadCircuit(Circuit circuit) async {
     _preloadController = GameController(
