@@ -1,5 +1,3 @@
-// mp_client.dart
-
 import 'dart:convert';
 import 'dart:io';
 
@@ -7,6 +5,7 @@ import 'mp_messages.dart';
 
 typedef OnLobbyUpdate = void Function(Map<String, dynamic> lobby);
 typedef OnStateUpdate = void Function(Map<String, dynamic> stateData);
+typedef OnCircuitSelect = void Function(String circuitId); // <--- nuovo callback
 
 class MpClient {
   Socket? _sock;
@@ -14,6 +13,7 @@ class MpClient {
   final String name;
   OnLobbyUpdate? onLobbyUpdate;
   OnStateUpdate? onStateUpdate;
+  OnCircuitSelect? onCircuitSelect; // <--- nuovo
 
   MpClient({
     required this.id,
@@ -42,12 +42,23 @@ class MpClient {
             if (onLobbyUpdate != null) {
               onLobbyUpdate!(msg['lobby']);
             }
+            // Aggiorna circuito se presente
+            if (msg['lobby'] != null && msg['lobby']['selectedCircuit'] != null) {
+              onCircuitSelect?.call(msg['lobby']['selectedCircuit']);
+            }
             break;
+
+          case MpMessageType.circuitSelect: // nuovo messaggio diretto
+            final circuit = msg['circuit'] as String;
+            onCircuitSelect?.call(circuit);
+            break;
+
           case MpMessageType.stateUpdate:
             if (onStateUpdate != null) {
               onStateUpdate!(msg['data']);
             }
             break;
+
           default:
             print("[MpClient] Tipo messaggio sconosciuto: $type");
         }
@@ -79,26 +90,24 @@ class MpClient {
   }
 
   void listenForLobbies(void Function(String id, String ip, int port) onFound) async {
-  final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 4041);
-  socket.broadcastEnabled = true;
+    final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 4041);
+    socket.broadcastEnabled = true;
 
-  socket.listen((event) {
-    if (event == RawSocketEvent.read) {
-      Datagram? dg;
-      while ((dg = socket.receive()) != null) {
-        try {
-          final msg = jsonDecode(utf8.decode(dg!.data));
-          final id = msg['id'] as String;
-          final port = msg['port'] as int;
-          final ip = dg!.address.address;
-          onFound(id, ip, port);
-        } catch (e) {
-          print("[MpClient] Errore parsing UDP: $e");
+    socket.listen((event) {
+      if (event == RawSocketEvent.read) {
+        Datagram? dg;
+        while ((dg = socket.receive()) != null) {
+          try {
+            final msg = jsonDecode(utf8.decode(dg!.data));
+            final id = msg['id'] as String;
+            final port = msg['port'] as int;
+            final ip = dg!.address.address;
+            onFound(id, ip, port);
+          } catch (e) {
+            print("[MpClient] Errore parsing UDP: $e");
+          }
         }
       }
-    }
-  });
-}
-
-
+    });
+  }
 }

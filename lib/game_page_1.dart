@@ -58,7 +58,6 @@ class _GamePageState extends State<GamePage_1> {
     if (widget.selectedType == "local") {
       _lobbyStep = true;
 
-      // Inizializza il client per ricevere le lobby
       _mpclient = MpClient(
         id: "guest_${DateTime.now().millisecondsSinceEpoch}",
         name: "Player",
@@ -73,7 +72,6 @@ class _GamePageState extends State<GamePage_1> {
         }
       });
 
-      // Aggiorna le scuderie già selezionate dai messaggi della lobby
       _mpclient!.onLobbyUpdate = (lobbyData) {
         setState(() {
           _takenCars = List<String>.from(lobbyData['cars']);
@@ -475,26 +473,6 @@ class _GamePageState extends State<GamePage_1> {
     );
   }
 
-  Widget _buildTimerDisplay() {
-    return Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Text(
-        _formatTime(_elapsedCentis),
-        style: const TextStyle(
-          color: Colors.greenAccent,
-          fontFamily: 'monospace',
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
   Widget _buildContentArea(BuildContext context) {
     // Se siamo ancora nella fase di lobby (crea/unisciti)
     if (_lobbyStep) {
@@ -740,7 +718,6 @@ class _GamePageState extends State<GamePage_1> {
   }
 }
 
-// Dummy painter placeholder
 class _BackgroundTrackPainter extends CustomPainter {
   final List<Offset> trackPoints;
   final Circuit circuit;
