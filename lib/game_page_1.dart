@@ -45,6 +45,7 @@ class _GamePageState extends State<GamePage_1> {
   MpLobby? _lobby;
   String? _playerId;
   bool _isHost = false;
+  bool _creatingLobby = false;
 
   bool _gameOver = false;
   bool _crashState = false;
@@ -88,6 +89,35 @@ class _GamePageState extends State<GamePage_1> {
       setState(() {
         _currentPage = _pageController.initialPage;
       });
+    });
+  }
+
+  void _createLobbyAfterCircuitSelection() {
+    final lobby = MpLobby(id: "lobby_${DateTime.now().millisecondsSinceEpoch}");
+    final server = MpServer(lobby: lobby);
+
+    server.start(startPort: 4040).then((_) {
+      server.setCircuit(
+        _selectedCircuit!.id,
+      ); // Imposta il circuito selezionato
+      server.announceLobby();
+
+      setState(() {
+        _server = server;
+        _lobby = lobby;
+        _isHost = true;
+        _playerId = "host";
+        _lobbyStep = false; // Esci dalla fase lobby
+        _creatingLobby = false;
+      });
+    });
+  }
+
+  void _handleCreateLobby() {
+    setState(() {
+      _creatingLobby = true;
+      _lobbyStep =
+          false; // Nascondi la schermata lobby per mostrare selezione circuito
     });
   }
 
@@ -166,7 +196,13 @@ class _GamePageState extends State<GamePage_1> {
   }
 
   void _handleBackButton() {
-    if (_selectedCircuit == null) {
+    if (_creatingLobby) {
+      setState(() {
+        _creatingLobby = false;
+        _lobbyStep = true;
+        _selectedCircuit = null;
+      });
+    } else if (_selectedCircuit == null) {
       Navigator.pop(context);
     } else if (!_teamSelected) {
       _lastSelectedIndex = allCircuits.indexOf(_selectedCircuit!);
@@ -453,6 +489,76 @@ class _GamePageState extends State<GamePage_1> {
   }
 
   Widget _buildContentArea(BuildContext context) {
+    if (_creatingLobby) {
+      return Stack(
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            scrollDirection:
+                MediaQuery.of(context).orientation == Orientation.portrait
+                ? Axis.vertical
+                : Axis.horizontal,
+            itemCount: allCircuits.length,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            itemBuilder: (context, index) {
+              final circuit = allCircuits[index];
+              final double scale = (_currentPage == index) ? 1.0 : 0.85;
+              return AnimatedScale(
+                scale: scale,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedCircuit = circuit;
+                      _currentPage = index;
+                    });
+                    _createLobbyAfterCircuitSelection(); // Crea lobby dopo selezione
+                  },
+                  child: SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.3,
+                    child: Card(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      color: const Color.fromARGB(120, 255, 6, 0),
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 6),
+                          Text(
+                            circuit.displayName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: FittedBox(
+                                fit: BoxFit.contain,
+                                child: SvgPicture.asset(circuit.svgPath),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      );
+    }
     // Se siamo ancora nella fase di lobby (crea/unisciti)
     if (_lobbyStep) {
       return Center(
@@ -460,20 +566,7 @@ class _GamePageState extends State<GamePage_1> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ElevatedButton(
-              onPressed: () async {
-                final lobby = MpLobby(id: "lobby1");
-                final server = MpServer(lobby: lobby);
-                await server.start(startPort: 4040);
-                server.announceLobby();
-
-                setState(() {
-                  _server = server;
-                  _lobby = lobby;
-                  _isHost = true;
-                  _playerId = "host"; // id univoco
-                  _lobbyStep = true; // rimani in lobbyStep per mostrare lista
-                });
-              },
+              onPressed: _handleCreateLobby, // Usa il nuovo metodo
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
                 padding: const EdgeInsets.symmetric(
@@ -492,37 +585,54 @@ class _GamePageState extends State<GamePage_1> {
             const SizedBox(height: 20),
             Expanded(
               child: _foundLobbies.isEmpty
-                  ? const Center(child: Text("Nessuna lobby trovata"))
+                  ? const Center(
+                      child: Text(
+                        "Nessuna lobby trovata",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    )
                   : ListView.builder(
                       itemCount: _foundLobbies.length,
                       itemBuilder: (context, index) {
                         final lobby = _foundLobbies[index];
                         return ListTile(
-                          title: Text("Lobby ${lobby['id']}"),
-                          subtitle: Text("${lobby['ip']}:${lobby['port']}"),
+                          title: Text(
+                            "Lobby ${lobby['id']}",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          subtitle: Text(
+                            "${lobby['ip']}:${lobby['port']}",
+                            style: TextStyle(color: Colors.white70),
+                          ),
                           trailing: ElevatedButton(
                             onPressed: () async {
-                              // Connetti al server della lobby selezionata
                               final sock = await Socket.connect(
                                 lobby['ip'],
                                 lobby['port'],
                               );
+
+                              // Configura il client per ricevere aggiornamenti sul circuito
+                              _mpclient!.onCircuitSelect = (circuitId) {
+                                final circuit = allCircuits.firstWhere(
+                                  (c) => c.id == circuitId,
+                                );
+                                setState(() {
+                                  _selectedCircuit = circuit;
+                                  _lobbyStep = false;
+                                });
+                              };
+
+                              await _mpclient!.connect(
+                                lobby['ip'],
+                                port: lobby['port'],
+                              );
+
                               setState(() {
                                 _client = sock;
                                 _isHost = false;
                                 _playerId =
                                     "guest_${DateTime.now().millisecondsSinceEpoch}";
-                                _lobbyStep = false; // esci dalla lobbyStep
                               });
-
-                              // Invia messaggio di join
-                              sock.write(
-                                jsonEncode({
-                                  "type": "join",
-                                  "id": _playerId,
-                                  "name": "Player",
-                                }),
-                              );
                             },
                             child: const Text("Unisciti"),
                           ),
@@ -631,46 +741,73 @@ class _GamePageState extends State<GamePage_1> {
                 spacing: 12,
                 runSpacing: 12,
                 alignment: WrapAlignment.center,
-                children: allCars.map((car) {
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _teamSelected = true;
-                        _selectedTeam = car;
-                      });
-                    },
-                    child: Container(
-                      width: 100,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: car.color,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (car.logoPath.isNotEmpty)
-                            SizedBox(
-                              height: 50,
-                              child: Image.asset(
-                                car.logoPath,
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                          const SizedBox(height: 8),
-                          Text(
-                            car.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
+                children: allCars
+                    .where((car) {
+                      // Filtra solo le auto non occupate
+                      if (_isHost)
+                        return true; // Host può scegliere qualsiasi auto
+                      return !_takenCars.contains(car.name);
+                    })
+                    .map((car) {
+                      return GestureDetector(
+                        onTap: () {
+                          if (!_isHost) {
+                            // Client invia la selezione al server
+                            _mpclient?.selectCar(car.name);
+                          }
+                          setState(() {
+                            _teamSelected = true;
+                            _selectedTeam = car;
+                          });
+                        },
+                        child: Container(
+                          width: 100,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: _takenCars.contains(car.name)
+                                ? Colors.grey.withOpacity(0.5) // Auto occupata
+                                : car.color,
+                            borderRadius: BorderRadius.circular(8),
+                            border: _takenCars.contains(car.name)
+                                ? Border.all(color: Colors.red, width: 2)
+                                : null,
                           ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (car.logoPath.isNotEmpty)
+                                SizedBox(
+                                  height: 50,
+                                  child: Image.asset(
+                                    car.logoPath,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              const SizedBox(height: 8),
+                              Text(
+                                car.name,
+                                style: TextStyle(
+                                  color: _takenCars.contains(car.name)
+                                      ? Colors.grey
+                                      : Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              if (_takenCars.contains(car.name))
+                                const Text(
+                                  "Occupata",
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    })
+                    .toList(),
               ),
             ),
           ),

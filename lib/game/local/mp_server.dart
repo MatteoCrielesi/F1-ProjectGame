@@ -59,7 +59,7 @@ class MpServer {
           _sockToPlayer[sock] = pid;
           broadcastLobby();
         }
-        case MpMessageType.circuitSelect:
+      case MpMessageType.circuitSelect:
         {
           final pid = msg['id'];
           if (_sockToPlayer[sock] == pid) {
@@ -68,7 +68,6 @@ class MpServer {
           }
         }
         break;
-
 
       case MpMessageType.leave:
         {
@@ -128,11 +127,7 @@ class MpServer {
       if (_server == null) return;
       final msg = jsonEncode({'id': lobby.id, 'port': _server!.port});
       try {
-        socket.send(
-          utf8.encode(msg),
-          InternetAddress('255.255.255.255'),
-          4041,
-        );
+        socket.send(utf8.encode(msg), InternetAddress('255.255.255.255'), 4041);
       } catch (e) {
         print("[MpServer] Errore broadcast UDP: $e");
       }
@@ -150,37 +145,34 @@ class MpServer {
   }
 
   void broadcastLobby() {
-  final playersList = lobby.players.values
-      .map((p) => {'id': p.id, 'name': p.name, 'car': p.car})
-      .toList();
+    final playersList = lobby.players.values
+        .map((p) => {'id': p.id, 'name': p.name, 'car': p.car})
+        .toList();
 
-  final msg = {
-    'type': MpMessageType.lobbyUpdate,
-    'lobby': {
-      'id': lobby.id,
-      'maxPlayers': lobby.maxPlayers,
-      'players': playersList,
-      'cars': lobby.cars,
-      'selectedCircuit': lobby.selectedCircuit, // <--- aggiunto
-    },
-  };
-  _broadcast(msg);
-  if (onLobbyChange != null) {
-    onLobbyChange!(msg['lobby'] as Map<String, dynamic>);
+    final msg = {
+      'type': MpMessageType.lobbyUpdate,
+      'lobby': {
+        'id': lobby.id,
+        'maxPlayers': lobby.maxPlayers,
+        'players': playersList,
+        'cars': lobby.cars,
+        'selectedCircuit': lobby.selectedCircuit, // <--- aggiunto
+      },
+    };
+    _broadcast(msg);
+    if (onLobbyChange != null) {
+      onLobbyChange!(msg['lobby'] as Map<String, dynamic>);
+    }
   }
-}
 
-// Nuova funzione per impostare il circuito
-void setCircuit(String circuitId) {
-  lobby.setCircuit(circuitId);
-  // broadcast a tutti i client
-  final msg = {
-    'type': MpMessageType.circuitSelect,
-    'circuit': circuitId,
-  };
-  _broadcast(msg);
-}
-
+  // Nuova funzione per impostare il circuito
+  void setCircuit(String circuitId) {
+    lobby.setCircuit(circuitId);
+    // Broadcast a tutti i client
+    final msg = {'type': MpMessageType.circuitSelect, 'circuit': circuitId};
+    _broadcast(msg);
+    print("[MpServer] Circuito impostato: $circuitId");
+  }
 
   void _broadcast(Map<String, dynamic> msg) {
     final bytes = utf8.encode(jsonEncode(msg));
