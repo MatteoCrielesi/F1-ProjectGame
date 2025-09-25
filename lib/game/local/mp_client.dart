@@ -6,6 +6,7 @@ import 'mp_messages.dart';
 typedef OnLobbyUpdate = void Function(Map<String, dynamic> lobby);
 typedef OnStateUpdate = void Function(Map<String, dynamic> stateData);
 typedef OnCircuitSelect = void Function(String circuitId); // <--- nuovo callback
+typedef OnLobbyClosed = void Function(String reason);
 
 class MpClient {
   Socket? _sock;
@@ -14,6 +15,7 @@ class MpClient {
   OnLobbyUpdate? onLobbyUpdate;
   OnStateUpdate? onStateUpdate;
   OnCircuitSelect? onCircuitSelect; // <--- nuovo
+  OnLobbyClosed? onLobbyClosed;
 
   MpClient({
     required this.id,
@@ -57,6 +59,13 @@ class MpClient {
             if (onStateUpdate != null) {
               onStateUpdate!(msg['data']);
             }
+            break;
+
+            case 'lobby_closed': // <--- nuovo caso
+            final reason = msg['reason'] as String;
+            print("[MpClient] Lobby chiusa dal host: $reason");
+            onLobbyClosed?.call(reason);
+            _sock?.destroy();
             break;
 
           default:
@@ -110,4 +119,6 @@ class MpClient {
       }
     });
   }
+
+  
 }

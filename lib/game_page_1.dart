@@ -46,6 +46,7 @@ class _GamePageState extends State<GamePage_1> {
   String? _playerId;
   bool _isHost = false;
   bool _creatingLobby = false;
+  bool _lobbyClosedByHost = false;
 
   bool _gameOver = false;
   bool _crashState = false;
@@ -99,6 +100,19 @@ class _GamePageState extends State<GamePage_1> {
             _selectedCircuit = circuit;
           }
         });
+      };
+
+      _mpclient!.onLobbyClosed = (reason) {
+        if (mounted) {
+          setState(() {
+            _lobbyClosedByHost = true;
+          });
+
+          // Mostra dialog informativo
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showLobbyClosedDialog();
+          });
+        }
       };
     }
 
@@ -231,7 +245,142 @@ class _GamePageState extends State<GamePage_1> {
     _gameScreenKey.currentState?.resetGame();
   }
 
+  void _showExitConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.black87,
+          title: Text(
+            _isHost ? "Chiudi lobby" : "Lascia lobby",
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            _isHost
+                ? "Così facendo chiuderai la lobby. Vuoi continuare?"
+                : "Così facendo lascerai la lobby. Vuoi continuare?",
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(), // Annulla
+              child: Text("Annulla", style: TextStyle(color: Colors.white)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Chiudi il dialog
+                _handleExitLobby(); // Procedi con l'uscita
+              },
+              child: Text(
+                "Conferma",
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _handleExitLobby() {
+    // Chiudi connessioni multiplayer
+    if (_isHost) {
+      _server
+          ?.closeWithNotification(); // Usa il metodo pubblico invece di _server?._server?.close()
+      _server = null;
+    } else {
+      _mpclient?.leave(); // Lascia la lobby come client
+      _mpclient = null;
+    }
+
+    // Reset stato della lobby
+    setState(() {
+      _lobbyStep = true;
+      _selectedCircuit = null;
+      _teamSelected = false;
+      _selectedTeam = null;
+      _takenCars = [];
+      _foundLobbies = [];
+      _creatingLobby = false;
+      _isHost = false; // Aggiungi questa linea per resettare lo stato host
+      _lobbyClosedByHost = false;
+    });
+  }
+
+  void _showLobbyClosedDialogAndRedirect() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.black87,
+          title: Text("Lobby chiusa", style: TextStyle(color: Colors.white)),
+          content: Text(
+            "L'host ha chiuso la lobby.\nVerrai reindirizzato all'inizio.",
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _redirectToLobbyScreen();
+              },
+              child: Text("OK", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _redirectToLobbyScreen() {
+    // Reset completo dello stato
+    setState(() {
+      _lobbyStep = true;
+      _selectedCircuit = null;
+      _teamSelected = false;
+      _selectedTeam = null;
+      _takenCars = [];
+      _foundLobbies = [];
+      _creatingLobby = false;
+      _isHost = false;
+      _lobbyClosedByHost = false; // IMPORTANTE: reset del flag
+    });
+  }
+
+  void _showLobbyClosedDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // L'utente deve premere il pulsante
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.black87,
+          title: Text("Lobby chiusa", style: TextStyle(color: Colors.white)),
+          content: Text(
+            "L'host ha chiuso la lobby.\nVerrai reindirizzato all'inizio.",
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _handleExitLobby(); // Torna alla pagina lobby
+              },
+              child: Text("OK", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _handleBackButton() {
+    if (_selectedCircuit != null &&
+        _teamSelected == false &&
+        _lobbyStep == false) {
+      _showExitConfirmationDialog();
+      return;
+    }
     if (_creatingLobby) {
       setState(() {
         _creatingLobby = false;
@@ -525,6 +674,24 @@ class _GamePageState extends State<GamePage_1> {
   }
 
   Widget _buildContentArea(BuildContext context) {
+    if (_lobbyClosedByHost) {
+      // Usa un Future.delayed per evitare problemi con il rendering
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showLobbyClosedDialogAndRedirect();
+      });
+
+      // Mentre aspettiamo, mostra un loading
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text("Reindirizzamento...", style: TextStyle(color: Colors.white)),
+          ],
+        ),
+      );
+    }
     if (_creatingLobby) {
       return Stack(
         children: [
@@ -773,15 +940,6 @@ class _GamePageState extends State<GamePage_1> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    "Seleziona la tua scuderia",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,
@@ -863,16 +1021,6 @@ class _GamePageState extends State<GamePage_1> {
                           );
                         })
                         .toList(),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _lobbyStep = true;
-                        _selectedCircuit = null;
-                      });
-                    },
-                    child: const Text("Torna alle Lobby"),
                   ),
                 ],
               ),
