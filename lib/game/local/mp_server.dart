@@ -1,5 +1,3 @@
-// mp_server.dart
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -27,7 +25,7 @@ class MpServer {
         _server = await ServerSocket.bind(InternetAddress.anyIPv4, port);
         break;
       } catch (e) {
-        port++; // porta occupata → prova la successiva
+        port++;
       }
     }
     print("[MpServer] In ascolto sulla porta $port (lobby ${lobby.id})");
@@ -59,7 +57,7 @@ class MpServer {
           final name = msg['name'];
           lobby.players[pid] = MpPlayer(id: pid, name: name);
           _sockToPlayer[sock] = pid;
-          _broadcastLobby();
+          broadcastLobby();
         }
         break;
 
@@ -68,7 +66,7 @@ class MpServer {
           final pid = msg['id'];
           lobby.removePlayer(pid);
           _sockToPlayer.remove(sock);
-          _broadcastLobby();
+          broadcastLobby();
         }
         break;
 
@@ -77,10 +75,10 @@ class MpServer {
           final pid = msg['id'];
           final car = msg['car'];
           bool ok = lobby.tryAssignCar(pid, car);
+
           if (ok) {
-            _broadcastLobby();
+            broadcastLobby();
           } else {
-            // potresti inviare un messaggio di rifiuto solo a quel client
             _sendTo(sock, {'type': 'car_select_failed', 'car': car});
           }
         }
@@ -89,7 +87,6 @@ class MpServer {
       case MpMessageType.stateUpdate:
         {
           final data = msg['data'];
-          // aggiorna lo stato locale del giocatore
           final pid = data['id'];
           final player = lobby.players[pid];
           if (player != null) {
@@ -99,14 +96,13 @@ class MpServer {
             player.lap = data['lap'];
             player.disqualified = data['disqualified'];
           }
-          // broadcast lo stato a tutti (compresi mittente)
           _broadcast({'type': MpMessageType.stateUpdate, 'data': data});
         }
         break;
 
       case MpMessageType.hostTransfer:
         {
-          // Implementare se vuoi trasferire ruolo host
+          // opzionale: implementare se necessario
         }
         break;
 
@@ -116,38 +112,35 @@ class MpServer {
   }
 
   void announceLobby() async {
-  final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
-  socket.broadcastEnabled = true;
+    final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+    socket.broadcastEnabled = true;
 
-  Timer.periodic(const Duration(seconds: 2), (_) {
-    if (_server == null) return;
-    final msg = jsonEncode({'id': lobby.id, 'port': _server!.port});
-    try {
-      // Usa l'indirizzo broadcast corretto della rete locale
-      socket.send(
-        utf8.encode(msg),
-        InternetAddress('255.255.255.255'),
-        4041,
-      );
-    } catch (e) {
-      print("[MpServer] Errore broadcast UDP: $e");
-    }
-  });
-}
-
-
+    Timer.periodic(const Duration(seconds: 2), (_) {
+      if (_server == null) return;
+      final msg = jsonEncode({'id': lobby.id, 'port': _server!.port});
+      try {
+        socket.send(
+          utf8.encode(msg),
+          InternetAddress('255.255.255.255'),
+          4041,
+        );
+      } catch (e) {
+        print("[MpServer] Errore broadcast UDP: $e");
+      }
+    });
+  }
 
   void _remove(Socket sock) {
     final pid = _sockToPlayer[sock];
     if (pid != null) {
       lobby.removePlayer(pid);
       _sockToPlayer.remove(sock);
-      _broadcastLobby();
+      broadcastLobby();
     }
     sock.destroy();
   }
 
-  void _broadcastLobby() {
+  void broadcastLobby() {
     final playersList = lobby.players.values
         .map((p) => {'id': p.id, 'name': p.name, 'car': p.car})
         .toList();
