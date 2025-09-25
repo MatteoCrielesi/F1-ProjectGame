@@ -15,6 +15,7 @@ class GameScreen extends StatefulWidget {
   final bool showTouchControls;
   final void Function(List<int> lapTimes)? onGameFinished;
   final int elapsedCentis;
+  final void Function(bool crash, bool victory)? onGameStateChanged;
 
   const GameScreen({
     super.key,
@@ -23,6 +24,7 @@ class GameScreen extends StatefulWidget {
     this.showTouchControls = true,
     this.onGameFinished,
     required this.elapsedCentis,
+    this.onGameStateChanged,
   });
 
   @override
@@ -31,11 +33,16 @@ class GameScreen extends StatefulWidget {
 
 class GameScreenState extends State<GameScreen> {
   bool _raceFinished = false;
+  bool _crashState = false;
   late GameController controller;
   int _lastLapCentis = 0;
   final List<int> _lapTimes = [];
   Orientation? _currentOrientation;
   bool _gameStarted = false;
+
+  void _notifyGameState() {
+    widget.onGameStateChanged?.call(_crashState, _raceFinished);
+  }
 
   // ✅ Modifica: variabile normale con valore di default
   String _selectedMode = 'challenge';
@@ -55,6 +62,15 @@ class GameScreenState extends State<GameScreen> {
     controller = GameController(circuit: widget.circuit, carModel: widget.car);
 
     controller.onLapCompleted = _handleLapCompleted;
+
+    controller.addListener(() {
+      if (controller.disqualified && !_crashState) {
+        setState(() {
+          _crashState = true;
+        });
+        _notifyGameState();
+      }
+    });
 
     _initGame();
   }
@@ -95,8 +111,10 @@ class GameScreenState extends State<GameScreen> {
       if (_selectedMode == 'challenge') {
         setState(() {
           _raceFinished = true;
+          _crashState = false;
           controller.stop();
         });
+        _notifyGameState();
       }
 
       widget.onGameFinished?.call(_lapTimes);
@@ -109,8 +127,11 @@ class GameScreenState extends State<GameScreen> {
     if (!mounted) return;
     _gameStarted = true;
     controller.disqualified = false;
+    _crashState = false;
+    _raceFinished = false;
     _respawnCarAndReset();
     controller.start();
+    _notifyGameState();
   }
 
   void respawnCar() {
@@ -133,8 +154,19 @@ class GameScreenState extends State<GameScreen> {
     _lastLapCentis = 0;
     _lapTimes.clear();
     _raceFinished = false;
+    _crashState = false;
+
+    controller.addListener(() {
+      if (controller.disqualified && !_crashState) {
+        setState(() {
+          _crashState = true;
+        });
+        _notifyGameState();
+      }
+    });
 
     _initGame();
+    _notifyGameState();
     setState(() {});
   }
 
@@ -147,6 +179,7 @@ class GameScreenState extends State<GameScreen> {
     controller.respawn();
     _lastLapCentis = 0;
     _lapTimes.clear();
+    _crashState = false;
     controller.debugPrintState("_respawnCarAndReset");
   }
 
@@ -182,10 +215,12 @@ class GameScreenState extends State<GameScreen> {
     final isPhone = _isPhone(context);
     final isDesktop = !isPhone;
 
-    final bestLapTime =
-        _lapTimes.isNotEmpty ? _lapTimes.reduce((a, b) => a < b ? a : b) : 0;
-    final bestLapIndex =
-        _lapTimes.isNotEmpty ? _lapTimes.indexOf(bestLapTime) + 1 : 0;
+    final bestLapTime = _lapTimes.isNotEmpty
+        ? _lapTimes.reduce((a, b) => a < b ? a : b)
+        : 0;
+    final bestLapIndex = _lapTimes.isNotEmpty
+        ? _lapTimes.indexOf(bestLapTime) + 1
+        : 0;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -241,8 +276,9 @@ class GameScreenState extends State<GameScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                        builder: (_) =>
-                            const GamePage_1(selectedType: 'challenge')),
+                      builder: (_) =>
+                          const GamePage_1(selectedType: 'challenge'),
+                    ),
                   );
                 });
               },
@@ -307,8 +343,9 @@ class GameScreenState extends State<GameScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                        builder: (_) =>
-                            const GamePage_1(selectedType: 'challenge')),
+                      builder: (_) =>
+                          const GamePage_1(selectedType: 'challenge'),
+                    ),
                   );
                 });
               },
@@ -426,7 +463,11 @@ class GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildPortraitLayout(int totalTime, BuildContext context, bool isDesktop) {
+  Widget _buildPortraitLayout(
+    int totalTime,
+    BuildContext context,
+    bool isDesktop,
+  ) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenHeight = constraints.maxHeight;
@@ -503,7 +544,8 @@ class GameScreenState extends State<GameScreen> {
                       ),
                       child: GameControls(
                         controller: controller,
-                        controlsEnabled: _gameStarted && !controller.disqualified,
+                        controlsEnabled:
+                            _gameStarted && !controller.disqualified,
                         isLandscape: false,
                       ),
                     ),
@@ -650,9 +692,11 @@ class _TrackPainter extends CustomPainter {
     final scaleY = canvasHeight / circuit.viewBoxHeight;
     final scale = min(scaleX, scaleY);
 
-    final offsetX = (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
+    final offsetX =
+        (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
         circuit.viewBoxX * scale;
-    final offsetY = (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
+    final offsetY =
+        (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
         circuit.viewBoxY * scale;
 
     final trackPaint = Paint()
@@ -661,7 +705,10 @@ class _TrackPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final path = Path()
-      ..moveTo(points.first.dx * scale + offsetX, points.first.dy * scale + offsetY);
+      ..moveTo(
+        points.first.dx * scale + offsetX,
+        points.first.dy * scale + offsetY,
+      );
     for (final p in points.skip(1)) {
       path.lineTo(p.dx * scale + offsetX, p.dy * scale + offsetY);
     }

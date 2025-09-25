@@ -72,6 +72,9 @@ class _GamePageState extends State<GamePage_1> {
   MpLobby? _lobby;
   String? _playerId;
   bool _isHost = false;
+  bool _gameOver = false;
+  bool _crashState = false;
+  bool _victoryState = false;
   List<Map<String, dynamic>> _foundLobbies = [];
 
   final GlobalKey<GameScreenState> _gameScreenKey =
@@ -91,6 +94,9 @@ class _GamePageState extends State<GamePage_1> {
     _countdownTimer?.cancel();
     _elapsedCentis = 0;
     _timerRunning = true;
+    _gameOver = false;
+    _crashState = false;
+    _victoryState = false;
 
     _gameScreenKey.currentState?.respawnCarAndReset();
 
@@ -106,6 +112,16 @@ class _GamePageState extends State<GamePage_1> {
           _gameScreenKey.currentState!.controller.gameComplete) {
         _stopTimer();
       }
+    });
+  }
+
+  void _handleGameState(bool crash, bool victory) {
+    if (!mounted) return;
+
+    setState(() {
+      _gameOver = crash || victory;
+      _crashState = crash;
+      _victoryState = victory;
     });
   }
 
@@ -132,6 +148,9 @@ class _GamePageState extends State<GamePage_1> {
   void _resetGame() {
     _stopTimer();
     _elapsedCentis = 0;
+    _gameOver = false;
+    _crashState = false;
+    _victoryState = false;
     _gameScreenKey.currentState?.resetGame();
   }
 
@@ -341,7 +360,7 @@ class _GamePageState extends State<GamePage_1> {
                           width: centralWidgetWidth,
                           height: centralWidgetHeight,
                           child: _teamSelected
-                              ? !_timerRunning
+                              ? !_timerRunning && !_gameOver
                                     ? StartLights(
                                         showStartButton: true,
                                         onSequenceComplete: () {
@@ -393,7 +412,7 @@ class _GamePageState extends State<GamePage_1> {
                           width: centralWidgetWidth,
                           height: centralWidgetHeight,
                           child: _teamSelected
-                              ? !_timerRunning
+                              ? !_timerRunning && !_gameOver
                                     ? StartLights(
                                         showStartButton: true,
                                         onSequenceComplete: () {
@@ -684,6 +703,7 @@ class _GamePageState extends State<GamePage_1> {
         car: _selectedTeam!,
         elapsedCentis: _elapsedCentis,
         onGameFinished: (lapTimes) {},
+        onGameStateChanged: _handleGameState,
       );
     }
   }
