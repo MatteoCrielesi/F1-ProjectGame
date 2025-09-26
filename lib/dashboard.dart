@@ -1,3 +1,4 @@
+import 'package:f1_project/game_page_0.dart';
 import 'package:f1_project/game_page_1.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -57,7 +58,7 @@ class _DashboardPageState extends State<DashboardPage>
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => const GamePage_1(selectedType: 'challenge'),
+              builder: (_) => const GamePage_0(selectedType: 'challenge'),
             ),
           );
         },
