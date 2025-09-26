@@ -63,6 +63,7 @@ class _GamePageState extends State<GamePage_1> {
   void initState() {
     super.initState();
     print("Tipo selezionato: ${widget.selectedType}");
+    _dialogShown = false;
 
     if (widget.selectedType == "local") {
       _lobbyStep = true;
@@ -105,10 +106,18 @@ class _GamePageState extends State<GamePage_1> {
       };
 
       _mpclient!.onLobbyClosed = (reason) {
+        print("[GamePage] onLobbyClosed chiamato, reason: $reason");
         if (mounted) {
           setState(() {
             _lobbyClosedByHost = true;
-            _dialogShown = false; // Reset per sicurezza
+          });
+
+          // Usa un delay per assicurarti che il setState sia completato
+          Future.delayed(Duration(milliseconds: 100), () {
+            if (mounted && !_dialogShown) {
+              _dialogShown = true;
+              _showLobbyClosedDialog();
+            }
           });
         }
       };
@@ -281,28 +290,20 @@ class _GamePageState extends State<GamePage_1> {
   }
 
   void _handleExitLobby() {
+    print("[GamePage] Host sta chiudendo la lobby");
+
     // Chiudi connessioni multiplayer
     if (_isHost) {
-      _server?.closeWithNotification(); // Usa il metodo che notifica i client
+      _server?.closeWithNotification();
     } else {
       _mpclient?.leave();
     }
 
-    // Reset stato della lobby
-    setState(() {
-      _lobbyStep = true;
-      _selectedCircuit = null;
-      _teamSelected = false;
-      _selectedTeam = null;
-      _takenCars = [];
-      _foundLobbies = [];
-      _creatingLobby = false;
-      _isHost = false;
-      _lobbyClosedByHost = false;
-    });
-
-    _redirectToLobbyScreen(); // Usa lo stesso metodo di reindirizzamento
+    // Reindirizza immediatamente
+    _redirectToLobbyScreen();
   }
+
+  // Reset stato della lobby
 
   //void _showLobbyClosedDialogAndRedirect() {
   //  showDialog(
@@ -331,9 +332,11 @@ class _GamePageState extends State<GamePage_1> {
   //}
 
   void _redirectToLobbyScreen() {
+    print("[GamePage] Reindirizzamento alla scelta lobby");
+
     if (!mounted) return;
 
-    // Reset completo di tutte le variabili di stato
+    // Reset completo di TUTTO lo stato
     setState(() {
       _lobbyStep = true;
       _selectedCircuit = null;
@@ -345,6 +348,11 @@ class _GamePageState extends State<GamePage_1> {
       _isHost = false;
       _lobbyClosedByHost = false;
       _dialogShown = false;
+      _gameOver = false;
+      _crashState = false;
+      _victoryState = false;
+      _timerRunning = false;
+      _elapsedCentis = 0;
 
       // Reset connessioni multiplayer
       _server?.close();
@@ -353,39 +361,62 @@ class _GamePageState extends State<GamePage_1> {
       _mpclient = null;
       _lobby = null;
       _playerId = null;
+      _client = null;
     });
+
+    // Ferma eventuali timer
+    _stopTimer();
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
+
+    print("[GamePage] Reindirizzamento completato");
   }
 
   void _showLobbyClosedDialog() {
-    // Assicurati che il context sia ancora valido
-    if (!mounted) return;
+    print("[GamePage] Mostrando dialog di chiusura lobby");
+
+    // Assicurati che il context sia valido
+    if (!mounted) {
+      print("[GamePage] Context non valido, dialog non mostrato");
+      return;
+    }
 
     showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.black87,
-          title: Text("Lobby chiusa", style: TextStyle(color: Colors.white)),
-          content: Text(
-            "L'host ha chiuso la lobby.\nVerrai reindirizzato alla scelta della lobby.",
-            style: TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _redirectToLobbyScreen();
-              },
-              child: Text("OK", style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    ).then((_) {
-      // Reset della variabile quando il dialog viene chiuso
-      _dialogShown = false;
-    });
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              backgroundColor: Colors.black87,
+              title: Text(
+                "Lobby chiusa",
+                style: TextStyle(color: Colors.white),
+              ),
+              content: Text(
+                "L'host ha chiuso la lobby.\nVerrai reindirizzato alla scelta della lobby.",
+                style: TextStyle(color: Colors.white70),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _redirectToLobbyScreen();
+                  },
+                  child: Text("OK", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        )
+        .then((_) {
+          print("[GamePage] Dialog chiuso, reindirizzamento in corso");
+          _dialogShown = false;
+        })
+        .catchError((error) {
+          print("[GamePage] Errore nel dialog: $error");
+          _dialogShown = false;
+          // Fallback: reindirizza comunque
+          _redirectToLobbyScreen();
+        });
   }
 
   void _handleBackButton() {
@@ -689,27 +720,14 @@ class _GamePageState extends State<GamePage_1> {
 
   Widget _buildContentArea(BuildContext context) {
     if (_lobbyClosedByHost) {
-      // Usa un Future.delayed per assicurarti che il dialog si mostri dopo il build
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        // Controlla se il dialog è già stato mostrato per evitare duplicati
-        if (!_dialogShown) {
-          _dialogShown = true;
-          _showLobbyClosedDialog();
-        }
-      });
-
-      // Mostra solo un background semplice mentre si prepara il dialog
-      return Container(
-        color: Colors.black54,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 20),
-              Text("Lobby chiusa...", style: TextStyle(color: Colors.white)),
-            ],
-          ),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text("Lobby chiusa...", style: TextStyle(color: Colors.white)),
+          ],
         ),
       );
     }
