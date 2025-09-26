@@ -285,11 +285,10 @@ class _GamePageState extends State<GamePage_1> {
   void _handleExitLobby() {
     // Chiudi connessioni multiplayer
     if (_isHost) {
-      _server
-          ?.closeWithNotification(); // Usa il metodo pubblico invece di _server?._server?.close()
+      _server?.closeWithNotification(); // Usa il metodo che notifica i client
       _server = null;
     } else {
-      _mpclient?.leave(); // Lascia la lobby come client
+      _mpclient?.leave();
       _mpclient = null;
     }
 
@@ -302,39 +301,40 @@ class _GamePageState extends State<GamePage_1> {
       _takenCars = [];
       _foundLobbies = [];
       _creatingLobby = false;
-      _isHost = false; // Aggiungi questa linea per resettare lo stato host
+      _isHost = false;
       _lobbyClosedByHost = false;
     });
   }
 
-  void _showLobbyClosedDialogAndRedirect() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.black87,
-          title: Text("Lobby chiusa", style: TextStyle(color: Colors.white)),
-          content: Text(
-            "L'host ha chiuso la lobby.\nVerrai reindirizzato all'inizio.",
-            style: TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _redirectToLobbyScreen();
-              },
-              child: Text("OK", style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  //void _showLobbyClosedDialogAndRedirect() {
+  //  showDialog(
+  //    context: context,
+  //    barrierDismissible: false,
+  //    builder: (BuildContext context) {
+  //      return AlertDialog(
+  //        backgroundColor: Colors.black87,
+  //        title: Text("Lobby chiusa", style: TextStyle(color: Colors.white)),
+  //        content: Text(
+  //          "L'host ha chiuso la lobby.\nVerrai reindirizzato all'inizio.",
+  //          style: TextStyle(color: Colors.white70),
+  //        ),
+  //        actions: [
+  //          TextButton(
+  //            onPressed: () {
+  //              Navigator.of(context).pop();
+  //              _redirectToLobbyScreen();
+  //            },
+  //            child: Text("OK", style: TextStyle(color: Colors.white)),
+  //          ),
+  //        ],
+  //      );
+  //    },
+  //  );
+  //}
 
   void _redirectToLobbyScreen() {
-    // Reset completo dello stato
+    if (!mounted) return;
+
     setState(() {
       _lobbyStep = true;
       _selectedCircuit = null;
@@ -344,27 +344,36 @@ class _GamePageState extends State<GamePage_1> {
       _foundLobbies = [];
       _creatingLobby = false;
       _isHost = false;
-      _lobbyClosedByHost = false; // IMPORTANTE: reset del flag
+      _lobbyClosedByHost = false;
+
+      // Reset connessioni multiplayer
+      if (_isHost) {
+        _server?.close();
+        _server = null;
+      } else {
+        _mpclient?.leave();
+        _mpclient = null;
+      }
     });
   }
 
   void _showLobbyClosedDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false, // L'utente deve premere il pulsante
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: Colors.black87,
           title: Text("Lobby chiusa", style: TextStyle(color: Colors.white)),
           content: Text(
-            "L'host ha chiuso la lobby.\nVerrai reindirizzato all'inizio.",
+            "L'host ha chiuso la lobby.\nVerrai reindirizzato alla scelta della lobby.",
             style: TextStyle(color: Colors.white70),
           ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                _handleExitLobby(); // Torna alla pagina lobby
+                _redirectToLobbyScreen(); // Reindirizza alla scelta lobby
               },
               child: Text("OK", style: TextStyle(color: Colors.white)),
             ),
@@ -675,9 +684,9 @@ class _GamePageState extends State<GamePage_1> {
 
   Widget _buildContentArea(BuildContext context) {
     if (_lobbyClosedByHost) {
-      // Usa un Future.delayed per evitare problemi con il rendering
+      // Mostra un dialog di reindirizzamento
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showLobbyClosedDialogAndRedirect();
+        _showLobbyClosedDialog();
       });
 
       // Mentre aspettiamo, mostra un loading
