@@ -26,7 +26,8 @@ class MpLobby {
   final String id;
   final int maxPlayers;
   final Map<String, MpPlayer> players = {};
-  final Map<String, bool> cars = {}; // auto disponibili (false = libera, true = presa)
+  final Map<String, bool> cars =
+      {}; // auto disponibili (false = libera, true = presa)
 
   String? selectedCircuit; // <--- nuovo campo
 
@@ -40,7 +41,21 @@ class MpLobby {
   /// Prova ad assegnare un'auto a un giocatore.
   /// Restituisce true se l'auto era disponibile e assegnata correttamente.
   bool tryAssignCar(String playerId, String car) {
-    if (!cars.containsKey(car) || cars[car] == true) return false;
+    // Verifica se il giocatore ha già un'auto assegnata
+    final currentPlayerCar = players[playerId]?.car;
+
+    // Se il giocatore sta cercando di cambiare auto, libera quella attuale
+    if (currentPlayerCar != null && currentPlayerCar != car) {
+      cars[currentPlayerCar] = false;
+    }
+
+    // Se l'auto richiesta non esiste o è già occupata da un altro giocatore
+    if (!cars.containsKey(car) ||
+        (cars[car] == true && currentPlayerCar != car)) {
+      return false;
+    }
+
+    // Assegna l'auto
     cars[car] = true;
     players[playerId]?.car = car;
     return true;
@@ -53,9 +68,13 @@ class MpLobby {
     final car = players[playerId]!.car;
     if (car != null && cars.containsKey(car)) {
       cars[car] = false; // libera l'auto
+      print("[MpLobby] Auto $car liberata dopo che $playerId ha lasciato");
     }
 
     players.remove(playerId);
+    print(
+      "[MpLobby] Giocatore $playerId rimosso. Auto occupate: ${takenCars()}",
+    );
   }
 
   /// Restituisce una lista di auto attualmente prese
@@ -73,16 +92,20 @@ class MpLobby {
     return {
       'id': id,
       'maxPlayers': maxPlayers,
-      'players': players.values.map((p) => {
-            'id': p.id,
-            'name': p.name,
-            'car': p.car,
-            'x': p.x,
-            'y': p.y,
-            'speed': p.speed,
-            'lap': p.lap,
-            'disqualified': p.disqualified,
-          }).toList(),
+      'players': players.values
+          .map(
+            (p) => {
+              'id': p.id,
+              'name': p.name,
+              'car': p.car,
+              'x': p.x,
+              'y': p.y,
+              'speed': p.speed,
+              'lap': p.lap,
+              'disqualified': p.disqualified,
+            },
+          )
+          .toList(),
       'cars': cars,
       'selectedCircuit': selectedCircuit, // <--- aggiunto al broadcast
     };

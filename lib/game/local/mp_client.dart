@@ -8,6 +8,7 @@ typedef OnStateUpdate = void Function(Map<String, dynamic> stateData);
 typedef OnCircuitSelect =
     void Function(String circuitId); // <--- nuovo callback
 typedef OnLobbyClosed = void Function(String reason);
+typedef OnCarSelectFailed = void Function(String carName);
 
 class MpClient {
   Socket? _sock;
@@ -17,6 +18,7 @@ class MpClient {
   OnStateUpdate? onStateUpdate;
   OnCircuitSelect? onCircuitSelect; // <--- nuovo
   OnLobbyClosed? onLobbyClosed;
+  OnCarSelectFailed? onCarSelectFailed;
 
   MpClient({required this.id, required this.name});
 
@@ -66,6 +68,11 @@ class MpClient {
 
             _sock?.destroy();
             onLobbyClosed?.call(reason);
+            break;
+
+          case 'car_select_failed':
+            final car = msg['car'] as String;
+            onCarSelectFailed?.call(car);
             break;
 
           default:

@@ -108,6 +108,24 @@ class MpServer {
         }
         break;
 
+      case MpMessageType.carSelect:
+        {
+          final pid = msg['id'];
+          final car = msg['car'];
+          bool ok = lobby.tryAssignCar(pid, car);
+
+          if (ok) {
+            broadcastLobby();
+          } else {
+            _sendTo(sock, {
+              'type': 'car_select_failed',
+              'car': car,
+              'reason': 'Auto già occupata',
+            });
+          }
+        }
+        break;
+
       case MpMessageType.hostTransfer:
         {
           // opzionale: implementare se necessario

@@ -84,13 +84,11 @@ class _GamePageState extends State<GamePage_1> {
 
       _mpclient!.onLobbyUpdate = (lobbyData) {
         setState(() {
-          // Correggi l'estrazione delle auto occupate
+          // Estrai le auto occupate correttamente
           final carsMap = Map<String, bool>.from(lobbyData['cars']);
           _takenCars = carsMap.entries
-              .where(
-                (entry) => entry.value == true,
-              ) // Prendi solo le auto occupate (value = true)
-              .map((entry) => entry.key) // Prendi il nome dell'auto
+              .where((entry) => entry.value == true)
+              .map((entry) => entry.key)
               .toList();
 
           // Aggiorna anche il circuito se presente
@@ -102,7 +100,37 @@ class _GamePageState extends State<GamePage_1> {
             );
             _selectedCircuit = circuit;
           }
+
+          // ✅ PER I CLIENT: verifica se la propria auto è stata assegnata
+          if (lobbyData['players'] is List) {
+            final playersList = lobbyData['players'] as List;
+            for (var playerData in playersList) {
+              if (playerData['id'] == _playerId && playerData['car'] != null) {
+                final carName = playerData['car'] as String;
+                final car = allCars.firstWhere(
+                  (c) => c.name == carName,
+                  orElse: () => allCars.first,
+                );
+                setState(() {
+                  _teamSelected = true;
+                  _selectedTeam = car;
+                });
+                break;
+              }
+            }
+          }
         });
+      };
+
+      _mpclient!.onCarSelectFailed = (carName) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "$carName è già stata selezionata da un altro giocatore",
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
       };
 
       _mpclient!.onLobbyClosed = (reason) {
@@ -983,83 +1011,92 @@ class _GamePageState extends State<GamePage_1> {
                     spacing: 12,
                     runSpacing: 12,
                     alignment: WrapAlignment.center,
-                    children: allCars
-                        .where((car) {
-                          // Filtra solo le auto non occupate
-                          if (_isHost)
-                            return true; // Host può scegliere qualsiasi auto
-                          return !_takenCars.contains(car.name);
-                        })
-                        .map((car) {
-                          return GestureDetector(
-                            onTap: () {
-                              if (!_isHost) {
-                                // Client invia la selezione al server
-                                _mpclient?.selectCar(car.name);
-                              } else {
-                                // Host assegna l'auto direttamente sulla lobby
-                                _lobby?.tryAssignCar(_playerId!, car.name);
-                                _server
-                                    ?.broadcastLobby(); // Aggiorna tutti i client
+                    children: allCars.map((car) {
+                      final isTaken = _takenCars.contains(car.name);
+                      final isSelected = _selectedTeam?.name == car.name;
+
+                      final canSelect = !isTaken || isSelected;
+                      return GestureDetector(
+                        onTap: canSelect
+                            ? () {
+                                if (!_isHost) {
+                                  // Client: invia la selezione al server
+                                  _mpclient?.selectCar(car.name);
+                                  // Aspetta la conferma del server (onLobbyUpdate) prima di impostare _teamSelected
+                                } else {
+                                  // Host: verifica prima se l'auto è disponibile
+                                  if (_lobby?.tryAssignCar(
+                                        _playerId!,
+                                        car.name,
+                                      ) ??
+                                      false) {
+                                    // ✅ Auto assegnata con successo
+                                    _server?.broadcastLobby();
+                                    setState(() {
+                                      _teamSelected = true;
+                                      _selectedTeam = car;
+                                    });
+                                  } else {
+                                    // ❌ Auto già occupata - mostra errore
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          "${car.name} è già occupata da un altro giocatore!",
+                                        ),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
                               }
-                              setState(() {
-                                _teamSelected = true;
-                                _selectedTeam = car;
-                              });
-                            },
-                            child: Container(
-                              width: 100,
-                              height: 120,
-                              decoration: BoxDecoration(
-                                color: _takenCars.contains(car.name)
-                                    ? Colors.grey.withOpacity(
-                                        0.5,
-                                      ) // Auto occupata
-                                    : car.color,
-                                borderRadius: BorderRadius.circular(8),
-                                border: _takenCars.contains(car.name)
-                                    ? Border.all(color: Colors.red, width: 2)
-                                    : Border.all(
-                                        color: Colors.white24,
-                                        width: 1,
-                                      ),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  if (car.logoPath.isNotEmpty)
-                                    SizedBox(
-                                      height: 50,
-                                      child: Image.asset(
-                                        car.logoPath,
-                                        fit: BoxFit.contain,
-                                      ),
-                                    ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    car.name,
-                                    style: TextStyle(
-                                      color: _takenCars.contains(car.name)
-                                          ? Colors.grey
-                                          : Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
+                            : null,
+                        child: Container(
+                          width: 100,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: _takenCars.contains(car.name)
+                                ? Colors.grey.withOpacity(0.5) // Auto occupata
+                                : car.color,
+                            borderRadius: BorderRadius.circular(8),
+                            border: _takenCars.contains(car.name)
+                                ? Border.all(color: Colors.red, width: 2)
+                                : Border.all(color: Colors.white24, width: 1),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (car.logoPath.isNotEmpty)
+                                SizedBox(
+                                  height: 50,
+                                  child: Image.asset(
+                                    car.logoPath,
+                                    fit: BoxFit.contain,
                                   ),
-                                  if (_takenCars.contains(car.name))
-                                    const Text(
-                                      "Occupata",
-                                      style: TextStyle(
-                                        color: Colors.red,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                ],
+                                ),
+                              const SizedBox(height: 8),
+                              Text(
+                                car.name,
+                                style: TextStyle(
+                                  color: _takenCars.contains(car.name)
+                                      ? Colors.grey
+                                      : Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                            ),
-                          );
-                        })
-                        .toList(),
+                              if (_takenCars.contains(car.name))
+                                const Text(
+                                  "Occupata",
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ],
               ),
