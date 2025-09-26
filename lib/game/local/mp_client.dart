@@ -5,7 +5,8 @@ import 'mp_messages.dart';
 
 typedef OnLobbyUpdate = void Function(Map<String, dynamic> lobby);
 typedef OnStateUpdate = void Function(Map<String, dynamic> stateData);
-typedef OnCircuitSelect = void Function(String circuitId); // <--- nuovo callback
+typedef OnCircuitSelect =
+    void Function(String circuitId); // <--- nuovo callback
 typedef OnLobbyClosed = void Function(String reason);
 
 class MpClient {
@@ -17,10 +18,7 @@ class MpClient {
   OnCircuitSelect? onCircuitSelect; // <--- nuovo
   OnLobbyClosed? onLobbyClosed;
 
-  MpClient({
-    required this.id,
-    required this.name,
-  });
+  MpClient({required this.id, required this.name});
 
   Future<void> connect(String host, {int port = 4040}) async {
     _sock = await Socket.connect(host, port);
@@ -45,7 +43,8 @@ class MpClient {
               onLobbyUpdate!(msg['lobby']);
             }
             // Aggiorna circuito se presente
-            if (msg['lobby'] != null && msg['lobby']['selectedCircuit'] != null) {
+            if (msg['lobby'] != null &&
+                msg['lobby']['selectedCircuit'] != null) {
               onCircuitSelect?.call(msg['lobby']['selectedCircuit']);
             }
             break;
@@ -61,11 +60,12 @@ class MpClient {
             }
             break;
 
-            case 'lobby_closed': // <--- nuovo caso
+          case 'lobby_closed': // <--- nuovo caso
             final reason = msg['reason'] as String;
             print("[MpClient] Lobby chiusa dal host: $reason");
-            onLobbyClosed?.call(reason);
+
             _sock?.destroy();
+            onLobbyClosed?.call(reason);
             break;
 
           default:
@@ -98,7 +98,9 @@ class MpClient {
     _sock?.add(utf8.encode(jsonEncode(msg)));
   }
 
-  void listenForLobbies(void Function(String id, String ip, int port) onFound) async {
+  void listenForLobbies(
+    void Function(String id, String ip, int port) onFound,
+  ) async {
     final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 4041);
     socket.broadcastEnabled = true;
 
@@ -119,6 +121,4 @@ class MpClient {
       }
     });
   }
-
-  
 }

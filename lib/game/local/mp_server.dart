@@ -186,25 +186,21 @@ class MpServer {
   }
 
   void close() {
-  _server?.close();
-  _server = null;
-  print("[MpServer] Server chiuso");
-}
-
-// Aggiungi questo metodo alla classe MpServer
-void closeWithNotification() {
-  // Invia un messaggio di notifica a tutti i client prima di chiudere
-  final closeMsg = {
-    'type': 'lobby_closed',
-    'reason': 'host_left'
-  };
-  _broadcast(closeMsg);
-  
-  // Chiudi il server dopo un breve delay per dare tempo ai client di ricevere il messaggio
-  Timer(Duration(milliseconds: 100), () {
     _server?.close();
     _server = null;
-    print("[MpServer] Server chiuso con notifica ai client");
-  });
-}
+    print("[MpServer] Server chiuso");
+  }
+
+  void closeWithNotification() {
+    // Invia un messaggio di notifica a tutti i client prima di chiudere
+    final closeMsg = {'type': 'lobby_closed', 'reason': 'host_left'};
+    _broadcast(closeMsg);
+
+    // Chiudi il server dopo un breve delay per dare tempo ai client di ricevere il messaggio
+    Timer(Duration(milliseconds: 100), () {
+      _server?.close();
+      _server = null;
+      print("[MpServer] Server chiuso con notifica ai client");
+    });
+  }
 }

@@ -52,6 +52,8 @@ class _GamePageState extends State<GamePage_1> {
   bool _crashState = false;
   bool _victoryState = false;
 
+  bool _dialogShown = false;
+
   List<Map<String, dynamic>> _foundLobbies = [];
 
   final GlobalKey<GameScreenState> _gameScreenKey =
@@ -106,11 +108,7 @@ class _GamePageState extends State<GamePage_1> {
         if (mounted) {
           setState(() {
             _lobbyClosedByHost = true;
-          });
-
-          // Mostra dialog informativo
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showLobbyClosedDialog();
+            _dialogShown = false; // Reset per sicurezza
           });
         }
       };
@@ -286,10 +284,8 @@ class _GamePageState extends State<GamePage_1> {
     // Chiudi connessioni multiplayer
     if (_isHost) {
       _server?.closeWithNotification(); // Usa il metodo che notifica i client
-      _server = null;
     } else {
       _mpclient?.leave();
-      _mpclient = null;
     }
 
     // Reset stato della lobby
@@ -304,6 +300,8 @@ class _GamePageState extends State<GamePage_1> {
       _isHost = false;
       _lobbyClosedByHost = false;
     });
+
+    _redirectToLobbyScreen(); // Usa lo stesso metodo di reindirizzamento
   }
 
   //void _showLobbyClosedDialogAndRedirect() {
@@ -335,6 +333,7 @@ class _GamePageState extends State<GamePage_1> {
   void _redirectToLobbyScreen() {
     if (!mounted) return;
 
+    // Reset completo di tutte le variabili di stato
     setState(() {
       _lobbyStep = true;
       _selectedCircuit = null;
@@ -345,19 +344,22 @@ class _GamePageState extends State<GamePage_1> {
       _creatingLobby = false;
       _isHost = false;
       _lobbyClosedByHost = false;
+      _dialogShown = false;
 
       // Reset connessioni multiplayer
-      if (_isHost) {
-        _server?.close();
-        _server = null;
-      } else {
-        _mpclient?.leave();
-        _mpclient = null;
-      }
+      _server?.close();
+      _server = null;
+      _mpclient?.leave();
+      _mpclient = null;
+      _lobby = null;
+      _playerId = null;
     });
   }
 
   void _showLobbyClosedDialog() {
+    // Assicurati che il context sia ancora valido
+    if (!mounted) return;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -373,14 +375,17 @@ class _GamePageState extends State<GamePage_1> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                _redirectToLobbyScreen(); // Reindirizza alla scelta lobby
+                _redirectToLobbyScreen();
               },
               child: Text("OK", style: TextStyle(color: Colors.white)),
             ),
           ],
         );
       },
-    );
+    ).then((_) {
+      // Reset della variabile quando il dialog viene chiuso
+      _dialogShown = false;
+    });
   }
 
   void _handleBackButton() {
@@ -684,20 +689,27 @@ class _GamePageState extends State<GamePage_1> {
 
   Widget _buildContentArea(BuildContext context) {
     if (_lobbyClosedByHost) {
-      // Mostra un dialog di reindirizzamento
+      // Usa un Future.delayed per assicurarti che il dialog si mostri dopo il build
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showLobbyClosedDialog();
+        // Controlla se il dialog è già stato mostrato per evitare duplicati
+        if (!_dialogShown) {
+          _dialogShown = true;
+          _showLobbyClosedDialog();
+        }
       });
 
-      // Mentre aspettiamo, mostra un loading
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 20),
-            Text("Reindirizzamento...", style: TextStyle(color: Colors.white)),
-          ],
+      // Mostra solo un background semplice mentre si prepara il dialog
+      return Container(
+        color: Colors.black54,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 20),
+              Text("Lobby chiusa...", style: TextStyle(color: Colors.white)),
+            ],
+          ),
         ),
       );
     }
