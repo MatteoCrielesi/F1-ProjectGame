@@ -1,3 +1,5 @@
+import 'package:f1_project/game/models/car.dart';
+
 class MpPlayer {
   final String id;
   String name;
@@ -27,13 +29,16 @@ class MpLobby {
   final int maxPlayers;
   final Map<String, MpPlayer> players = {};
   final Map<String, bool> cars = {}; // auto disponibili (false = libera, true = presa)
+  final Map<String, String> carAssignments = {}; // Mappa carName -> playerId
+
 
   String? selectedCircuit; // <--- nuovo campo
 
-  MpLobby({required this.id, this.maxPlayers = 4, List<String>? carList}) {
-    // inizializza auto disponibili
-    for (var c in (carList ?? ["car1", "car2", "car3", "car4"])) {
-      cars[c] = false;
+  MpLobby({required this.id, this.maxPlayers = 10, List<String>? carList}) {
+    // inizializza auto disponibili usando i nomi delle macchine reali
+    final defaultCars = allCars.map((car) => car.name).toList();
+    for (var carName in (carList ?? defaultCars)) {
+      cars[carName] = false;
     }
   }
 
@@ -48,13 +53,10 @@ class MpLobby {
 
   /// Rimuove un giocatore dalla lobby e libera la sua auto, se presente
   void removePlayer(String playerId) {
-    if (!players.containsKey(playerId)) return;
-
     final car = players[playerId]!.car;
     if (car != null && cars.containsKey(car)) {
       cars[car] = false; // libera l'auto
     }
-
     players.remove(playerId);
   }
 

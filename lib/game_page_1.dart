@@ -70,27 +70,62 @@ class _GamePageState extends State<GamePage_1> {
         name: "Player",
       );
 
-      _mpclient!.listenForLobbies((id, ip, port) {
+      _mpclient!.listenForLobbies((id, ip, port, playerCount, maxPlayers) {
         final exists = _foundLobbies.any((l) => l['id'] == id);
         if (!exists) {
           setState(() {
-            _foundLobbies.add({'id': id, 'ip': ip, 'port': port});
+            _foundLobbies.add({
+              'id': id,
+              'ip': ip,
+              'port': port,
+              'playerCount': playerCount, // ← AGGIUNTO
+              'maxPlayers': maxPlayers, // ← AGGIUNTO
+            });
+          });
+        } else {
+          // Aggiorna le informazioni se la lobby esiste già
+          setState(() {
+            final index = _foundLobbies.indexWhere((l) => l['id'] == id);
+            if (index != -1) {
+              _foundLobbies[index]['playerCount'] = playerCount;
+              _foundLobbies[index]['maxPlayers'] = maxPlayers;
+            }
           });
         }
       });
 
-      _mpclient!.onLobbyUpdate = (lobbyData) {
-        setState(() {
-          // Correggi l'estrazione delle auto occupate
-          final carsMap = Map<String, bool>.from(lobbyData['cars']);
-          _takenCars = carsMap.entries
-              .where(
-                (entry) => entry.value == true,
-              ) // Prendi solo le auto occupate (value = true)
-              .map((entry) => entry.key) // Prendi il nome dell'auto
-              .toList();
+      CarModel _getCarModelByName(String carName) {
+        return allCars.firstWhere(
+          (car) => car.name == carName,
+          orElse: () => allCars.first, // Fallback alla prima macchina
+        );
+      }
 
-          // Aggiorna anche il circuito se presente
+      _mpclient!.onLobbyUpdate = (lobbyData) {
+        print("Lobby update received: $lobbyData");
+
+        setState(() {
+          // Auto occupate
+          if (lobbyData['cars'] is Map) {
+            final carsMap = Map<String, bool>.from(lobbyData['cars'] as Map);
+            _takenCars = carsMap.entries
+                .where((entry) => entry.value == true)
+                .map((entry) => entry.key)
+                .toList();
+          }
+
+          // Se il giocatore corrente ha già un'auto selezionata, mantienila
+          if (_selectedTeam != null &&
+              _takenCars.contains(_selectedTeam!.name)) {
+            // L'auto è ancora nostra, non fare nulla
+          } else if (_selectedTeam != null &&
+              !_takenCars.contains(_selectedTeam!.name)) {
+            // La nostra auto è stata liberata (probabilmente per errore)
+            _selectedTeam = null;
+            _teamSelected = false;
+          }
+
+          // Circuito selezionato - reindirizza immediatamente
           if (lobbyData['selectedCircuit'] != null) {
             final circuitId = lobbyData['selectedCircuit'] as String;
             final circuit = allCircuits.firstWhere(
@@ -98,6 +133,10 @@ class _GamePageState extends State<GamePage_1> {
               orElse: () => allCircuits.first,
             );
             _selectedCircuit = circuit;
+            _lobbyStep = false;
+
+            // Precarica il circuito
+            _preloadFuture = _preloadCircuit(circuit);
           }
         });
       };
@@ -132,6 +171,10 @@ class _GamePageState extends State<GamePage_1> {
       final server = MpServer(lobby: lobby);
 
       await server.start(startPort: 4040);
+
+      _playerId = "host_${DateTime.now().millisecondsSinceEpoch}";
+      lobby.players[_playerId!] = MpPlayer(id: _playerId!, name: "Host");
+
       server.setCircuit(_selectedCircuit!.id);
       server.announceLobby();
 
@@ -799,25 +842,43 @@ class _GamePageState extends State<GamePage_1> {
                       itemCount: _foundLobbies.length,
                       itemBuilder: (context, index) {
                         final lobby = _foundLobbies[index];
+
+                        // CORREGGI: usa playerCount direttamente dal messaggio UDP
+                        final playerCount =
+                            lobby['playerCount'] ?? 0; // ← CORRETTO
+                        final maxPlayers = lobby['maxPlayers'] ?? 4;
+
                         return ListTile(
                           title: Text(
                             "Lobby ${lobby['id']}",
                             style: TextStyle(color: Colors.white),
                           ),
-                          subtitle: Text(
-                            "${lobby['ip']}:${lobby['port']}",
-                            style: TextStyle(color: Colors.white70),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "${lobby['ip']}:${lobby['port']}",
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                              Text(
+                                "$playerCount/$maxPlayers giocatori",
+                                style: TextStyle(
+                                  color: playerCount >= maxPlayers
+                                      ? Colors.red
+                                      : Colors.green,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
                           trailing: ElevatedButton(
                             onPressed: () async {
                               try {
-                                // Crea un nuovo client per questa connessione
                                 final client = MpClient(
                                   id: "guest_${DateTime.now().millisecondsSinceEpoch}",
                                   name: "Player",
                                 );
 
-                                // Configura i callback PRIMA di connetterti
                                 client.onCircuitSelect = (circuitId) {
                                   print("Circuit select received: $circuitId");
                                   final circuit = allCircuits.firstWhere(
@@ -834,7 +895,6 @@ class _GamePageState extends State<GamePage_1> {
                                 client.onLobbyUpdate = (lobbyData) {
                                   print("Lobby update received");
                                   setState(() {
-                                    // Estrai le auto occupate correttamente
                                     if (lobbyData['cars'] is Map) {
                                       final carsMap = Map<String, bool>.from(
                                         lobbyData['cars'] as Map,
@@ -845,7 +905,6 @@ class _GamePageState extends State<GamePage_1> {
                                           .toList();
                                     }
 
-                                    // Aggiorna anche il circuito se presente
                                     if (lobbyData['selectedCircuit'] != null) {
                                       final circuitId =
                                           lobbyData['selectedCircuit']
@@ -860,7 +919,6 @@ class _GamePageState extends State<GamePage_1> {
                                   });
                                 };
 
-                                // Connetti al server
                                 await client.connect(
                                   lobby['ip'],
                                   port: lobby['port'],
@@ -870,11 +928,9 @@ class _GamePageState extends State<GamePage_1> {
                                   _mpclient = client;
                                   _isHost = false;
                                   _playerId = client.id;
-                                  // Non impostare _lobbyStep = false qui, aspetta il callback
                                 });
                               } catch (e) {
                                 print("Errore durante la connessione: $e");
-                                // Mostra un messaggio di errore all'utente
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text("Errore di connessione: $e"),
@@ -914,114 +970,180 @@ class _GamePageState extends State<GamePage_1> {
         ),
       );
     } else if (!_teamSelected) {
-      // Team selection - MOSTRA SOLO AUTO DISPONIBILI
       return Stack(
         children: [
-          if (_preloadFuture != null)
-            FutureBuilder(
-              future: _preloadFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.done) {
-                  return CustomPaint(
-                    size: Size.infinite,
-                    painter: _BackgroundTrackPainter(
-                      _preloadController!.trackPoints,
-                      _selectedCircuit!,
-                    ),
-                  );
-                } else {
-                  return const Center(child: CircularProgressIndicator());
-                }
-              },
-            ),
+          // ... background ...
           Container(
             color: Colors.black54,
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Text(
+                    "Seleziona la tua scuderia",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,
                     alignment: WrapAlignment.center,
-                    children: allCars
-                        .where((car) {
-                          // Filtra solo le auto non occupate
-                          if (_isHost)
-                            return true; // Host può scegliere qualsiasi auto
-                          return !_takenCars.contains(car.name);
-                        })
-                        .map((car) {
-                          return GestureDetector(
-                            onTap: () {
-                              if (!_isHost) {
-                                // Client invia la selezione al server
-                                _mpclient?.selectCar(car.name);
-                              } else {
-                                // Host assegna l'auto direttamente sulla lobby
-                                _lobby?.tryAssignCar(_playerId!, car.name);
-                                _server
-                                    ?.broadcastLobby(); // Aggiorna tutti i client
-                              }
-                              setState(() {
-                                _teamSelected = true;
-                                _selectedTeam = car;
-                              });
-                            },
-                            child: Container(
-                              width: 100,
-                              height: 120,
-                              decoration: BoxDecoration(
-                                color: _takenCars.contains(car.name)
-                                    ? Colors.grey.withOpacity(
-                                        0.5,
-                                      ) // Auto occupata
-                                    : car.color,
-                                borderRadius: BorderRadius.circular(8),
-                                border: _takenCars.contains(car.name)
-                                    ? Border.all(color: Colors.red, width: 2)
-                                    : Border.all(
-                                        color: Colors.white24,
-                                        width: 1,
-                                      ),
+                    children: allCars.map((car) {
+                      final isTaken = _takenCars.contains(car.name);
+                      final isSelected = _selectedTeam?.name == car.name;
+
+                      return GestureDetector(
+                        onTap: () {
+                          if (isTaken && !isSelected) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  "${car.name} è già stata selezionata!",
+                                ),
+                                backgroundColor: Colors.red,
                               ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  if (car.logoPath.isNotEmpty)
-                                    SizedBox(
-                                      height: 50,
-                                      child: Image.asset(
-                                        car.logoPath,
-                                        fit: BoxFit.contain,
-                                      ),
-                                    ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    car.name,
-                                    style: TextStyle(
-                                      color: _takenCars.contains(car.name)
-                                          ? Colors.grey
-                                          : Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
+                            );
+                            return;
+                          }
+
+                          if (!_isHost) {
+                            _mpclient?.selectCar(car.name);
+                          } else {
+                            final success =
+                                _lobby?.tryAssignCar(_playerId!, car.name) ??
+                                false;
+                            if (success) {
+                              _server?.broadcastLobby();
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    "Impossibile selezionare ${car.name}!",
                                   ),
-                                  if (_takenCars.contains(car.name))
-                                    const Text(
-                                      "Occupata",
-                                      style: TextStyle(
-                                        color: Colors.red,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                ],
-                              ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+                          }
+
+                          setState(() {
+                            _teamSelected = true;
+                            _selectedTeam = car;
+                          });
+                        },
+                        child: Container(
+                          width: 120,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            color: isTaken
+                                ? Colors.grey.withOpacity(
+                                    0.3,
+                                  ) // Auto occupata - OSCURATA
+                                : car.color.withOpacity(isSelected ? 1.0 : 0.7),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? Colors.yellow
+                                  : isTaken
+                                  ? Colors.red
+                                  : Colors.white,
+                              width: isSelected ? 3 : 2,
                             ),
-                          );
-                        })
-                        .toList(),
+                            boxShadow: [
+                              if (isSelected)
+                                BoxShadow(
+                                  color: Colors.yellow.withOpacity(0.5),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (car.logoPath.isNotEmpty)
+                                Container(
+                                  height: 60,
+                                  padding: const EdgeInsets.all(4),
+                                  child: ColorFiltered(
+                                    colorFilter: isTaken
+                                        ? ColorFilter.mode(
+                                            Colors.grey,
+                                            BlendMode.saturation,
+                                          )
+                                        : ColorFilter.mode(
+                                            Colors.transparent,
+                                            BlendMode.srcIn,
+                                          ),
+                                    child: Image.asset(
+                                      car.logoPath,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                              const SizedBox(height: 8),
+                              Text(
+                                car.name,
+                                style: TextStyle(
+                                  color: isTaken ? Colors.grey : Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              if (isTaken)
+                                const Text(
+                                  "OCCUPATA",
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              if (isSelected)
+                                const Text(
+                                  "SELEZIONATA",
+                                  style: TextStyle(
+                                    color: Colors.yellow,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
+                  const SizedBox(height: 20),
+                  if (_takenCars.isNotEmpty) ...[
+                    Text(
+                      "Scuderie già selezionate:",
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: _takenCars.map((carName) {
+                        final car = allCars.firstWhere(
+                          (c) => c.name == carName,
+                          orElse: () => allCars.first,
+                        );
+                        return Chip(
+                          backgroundColor: car.color,
+                          label: Text(
+                            carName,
+                            style: TextStyle(color: Colors.white, fontSize: 12),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ],
               ),
             ),
