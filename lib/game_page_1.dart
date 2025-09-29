@@ -81,12 +81,11 @@ class _GamePageState extends State<GamePage_1> {
               'id': id,
               'ip': ip,
               'port': port,
-              'playerCount': playerCount, // ← AGGIUNTO
-              'maxPlayers': maxPlayers, // ← AGGIUNTO
+              'playerCount': playerCount,
+              'maxPlayers': maxPlayers,
             });
           });
         } else {
-          // Aggiorna le informazioni se la lobby esiste già
           setState(() {
             final index = _foundLobbies.indexWhere((l) => l['id'] == id);
             if (index != -1) {
@@ -97,18 +96,10 @@ class _GamePageState extends State<GamePage_1> {
         }
       });
 
-      CarModel _getCarModelByName(String carName) {
-        return allCars.firstWhere(
-          (car) => car.name == carName,
-          orElse: () => allCars.first, // Fallback alla prima macchina
-        );
-      }
-
       _mpclient!.onLobbyUpdate = (lobbyData) {
         print("Lobby update received: $lobbyData");
 
         setState(() {
-          // Auto occupate
           if (lobbyData['cars'] is Map) {
             final carsMap = Map<String, bool>.from(lobbyData['cars'] as Map);
             _takenCars = carsMap.entries
@@ -117,18 +108,14 @@ class _GamePageState extends State<GamePage_1> {
                 .toList();
           }
 
-          // Se il giocatore corrente ha già un'auto selezionata, mantienila
           if (_selectedTeam != null &&
               _takenCars.contains(_selectedTeam!.name)) {
-            // L'auto è ancora nostra, non fare nulla
           } else if (_selectedTeam != null &&
               !_takenCars.contains(_selectedTeam!.name)) {
-            // La nostra auto è stata liberata (probabilmente per errore)
             _selectedTeam = null;
             _teamSelected = false;
           }
 
-          // Circuito selezionato - reindirizza immediatamente
           if (lobbyData['selectedCircuit'] != null) {
             final circuitId = lobbyData['selectedCircuit'] as String;
             final circuit = allCircuits.firstWhere(
@@ -138,7 +125,6 @@ class _GamePageState extends State<GamePage_1> {
             _selectedCircuit = circuit;
             _lobbyStep = false;
 
-            // Precarica il circuito
             _preloadFuture = _preloadCircuit(circuit);
           }
         });
@@ -162,7 +148,6 @@ class _GamePageState extends State<GamePage_1> {
             _lobbyClosedByHost = true;
           });
 
-          // Usa un delay per assicurarti che il setState sia completato
           Future.delayed(Duration(milliseconds: 100), () {
             if (mounted && !_dialogShown) {
               _dialogShown = true;
@@ -180,7 +165,18 @@ class _GamePageState extends State<GamePage_1> {
     });
   }
 
-  // Modifica il metodo per creare la lobby
+  /// NOTIFICA IL SERVER CHE STAI LIBERANDO L'AUTO
+  void _notifyServerImFree() {
+    if (_isHost) {
+      _lobby?.freePlayerCar(_playerId!);
+      _server?.broadcastLobby();
+      print("[GamePage] Host ha liberato la sua auto");
+    } else {
+      _mpclient?.freeCar();
+      print("[GamePage] Client ha inviato free_car al server");
+    }
+  }
+
   void _createLobbyAfterCircuitSelection() async {
     try {
       final lobby = MpLobby(
@@ -196,7 +192,6 @@ class _GamePageState extends State<GamePage_1> {
       server.setCircuit(_selectedCircuit!.id);
       server.announceLobby();
 
-      // Configura i callback per l'host
       server.onLobbyChange = (lobbyData) {
         setState(() {
           final carsMap = Map<String, bool>.from(lobbyData['cars']);
@@ -227,8 +222,7 @@ class _GamePageState extends State<GamePage_1> {
   void _handleCreateLobby() {
     setState(() {
       _creatingLobby = true;
-      _lobbyStep =
-          false; // Nascondi la schermata lobby per mostrare selezione circuito
+      _lobbyStep = false;
     });
   }
 
@@ -324,13 +318,13 @@ class _GamePageState extends State<GamePage_1> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(), // Annulla
+              onPressed: () => Navigator.of(context).pop(),
               child: Text("Annulla", style: TextStyle(color: Colors.white)),
             ),
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Chiudi il dialog
-                _handleExitLobby(); // Procedi con l'uscita
+                Navigator.of(context).pop();
+                _handleExitLobby();
               },
               child: Text(
                 "Conferma",
@@ -346,51 +340,20 @@ class _GamePageState extends State<GamePage_1> {
   void _handleExitLobby() {
     print("[GamePage] Host sta chiudendo la lobby");
 
-    // Chiudi connessioni multiplayer
     if (_isHost) {
       _server?.closeWithNotification();
     } else {
       _mpclient?.leave();
     }
 
-    // Reindirizza immediatamente
     _redirectToLobbyScreen();
   }
-
-  // Reset stato della lobby
-
-  //void _showLobbyClosedDialogAndRedirect() {
-  //  showDialog(
-  //    context: context,
-  //    barrierDismissible: false,
-  //    builder: (BuildContext context) {
-  //      return AlertDialog(
-  //        backgroundColor: Colors.black87,
-  //        title: Text("Lobby chiusa", style: TextStyle(color: Colors.white)),
-  //        content: Text(
-  //          "L'host ha chiuso la lobby.\nVerrai reindirizzato all'inizio.",
-  //          style: TextStyle(color: Colors.white70),
-  //        ),
-  //        actions: [
-  //          TextButton(
-  //            onPressed: () {
-  //              Navigator.of(context).pop();
-  //              _redirectToLobbyScreen();
-  //            },
-  //            child: Text("OK", style: TextStyle(color: Colors.white)),
-  //          ),
-  //        ],
-  //      );
-  //    },
-  //  );
-  //}
 
   void _redirectToLobbyScreen() {
     print("[GamePage] Reindirizzamento alla scelta lobby");
 
     if (!mounted) return;
 
-    // Reset completo di TUTTO lo stato
     setState(() {
       _lobbyStep = true;
       _selectedCircuit = null;
@@ -408,7 +371,6 @@ class _GamePageState extends State<GamePage_1> {
       _timerRunning = false;
       _elapsedCentis = 0;
 
-      // Reset connessioni multiplayer
       _server?.close();
       _server = null;
       _mpclient?.leave();
@@ -418,7 +380,6 @@ class _GamePageState extends State<GamePage_1> {
       _client = null;
     });
 
-    // Ferma eventuali timer
     _stopTimer();
     _countdownTimer?.cancel();
     _countdownTimer = null;
@@ -429,7 +390,6 @@ class _GamePageState extends State<GamePage_1> {
   void _showLobbyClosedDialog() {
     print("[GamePage] Mostrando dialog di chiusura lobby");
 
-    // Assicurati che il context sia valido
     if (!mounted) {
       print("[GamePage] Context non valido, dialog non mostrato");
       return;
@@ -468,7 +428,6 @@ class _GamePageState extends State<GamePage_1> {
         .catchError((error) {
           print("[GamePage] Errore nel dialog: $error");
           _dialogShown = false;
-          // Fallback: reindirizza comunque
           _redirectToLobbyScreen();
         });
   }
@@ -477,6 +436,7 @@ class _GamePageState extends State<GamePage_1> {
     if (_selectedCircuit != null &&
         _teamSelected == false &&
         _lobbyStep == false) {
+      _notifyServerImFree();
       _showExitConfirmationDialog();
       return;
     }
@@ -809,7 +769,7 @@ class _GamePageState extends State<GamePage_1> {
                       _selectedCircuit = circuit;
                       _currentPage = index;
                     });
-                    _createLobbyAfterCircuitSelection(); // Crea lobby dopo selezione
+                    _createLobbyAfterCircuitSelection();
                   },
                   child: SizedBox(
                     height: MediaQuery.of(context).size.height * 0.3,
@@ -856,7 +816,6 @@ class _GamePageState extends State<GamePage_1> {
       );
     }
 
-    // Se siamo ancora nella fase di lobby (crea/unisciti)
     if (_lobbyStep) {
       return Center(
         child: Column(
@@ -892,10 +851,7 @@ class _GamePageState extends State<GamePage_1> {
                       itemCount: _foundLobbies.length,
                       itemBuilder: (context, index) {
                         final lobby = _foundLobbies[index];
-
-                        // CORREGGI: usa playerCount direttamente dal messaggio UDP
-                        final playerCount =
-                            lobby['playerCount'] ?? 0; // ← CORRETTO
+                        final playerCount = lobby['playerCount'] ?? 0;
                         final maxPlayers = lobby['maxPlayers'] ?? 4;
 
                         return ListTile(
@@ -999,7 +955,6 @@ class _GamePageState extends State<GamePage_1> {
         ),
       );
     } else if (_selectedCircuit == null) {
-      // Questo caso non dovrebbe più verificarsi con il nuovo flusso
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1020,9 +975,15 @@ class _GamePageState extends State<GamePage_1> {
         ),
       );
     } else if (!_teamSelected) {
+      // NOTIFICA IL SERVER CHE STAI LIBERANDO L'AUTO QUANDO ENTRi IN QUESTA SEZIONE
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_teamSelected && _selectedCircuit != null) {
+          _notifyServerImFree();
+        }
+      });
+
       return Stack(
         children: [
-          // ... background ...
           Container(
             color: Colors.black54,
             child: Center(
@@ -1038,6 +999,25 @@ class _GamePageState extends State<GamePage_1> {
                     ),
                   ),
                   const SizedBox(height: 20),
+                  
+                  // AGGIUNTA: Messaggio informativo
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    margin: EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue),
+                    ),
+                    child: Text(
+                      "La tua auto precedente è stata liberata",
+                      style: TextStyle(
+                        color: Colors.blueAccent,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,
@@ -1091,9 +1071,7 @@ class _GamePageState extends State<GamePage_1> {
                           height: 140,
                           decoration: BoxDecoration(
                             color: isTaken
-                                ? Colors.grey.withOpacity(
-                                    0.3,
-                                  ) // Auto occupata - OSCURATA
+                                ? Colors.grey.withOpacity(0.3)
                                 : car.color.withOpacity(isSelected ? 1.0 : 0.7),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
@@ -1201,7 +1179,6 @@ class _GamePageState extends State<GamePage_1> {
         ],
       );
     } else {
-      // Game active
       return GameScreen(
         key: _gameScreenKey,
         circuit: _selectedCircuit!,

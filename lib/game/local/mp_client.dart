@@ -1,142 +1,194 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'mp_messages.dart';
 
-typedef OnLobbyUpdate = void Function(Map<String, dynamic> lobby);
-typedef OnStateUpdate = void Function(Map<String, dynamic> stateData);
-typedef OnCircuitSelect =
-    void Function(String circuitId); // <--- nuovo callback
-typedef OnLobbyClosed = void Function(String reason);
+typedef OnLobbyUpdate = void Function(Map<String, dynamic> lobbyData);
+typedef OnCircuitSelect = void Function(String circuitId);
 typedef OnCarSelectFailed = void Function(String carName);
+typedef OnLobbyClosed = void Function(String reason);
 
 class MpClient {
-  Socket? _sock;
   final String id;
   final String name;
+  Socket? _socket;
+  Timer? _pingTimer;
+
   OnLobbyUpdate? onLobbyUpdate;
-  OnStateUpdate? onStateUpdate;
-  OnCircuitSelect? onCircuitSelect; // <--- nuovo
-  OnLobbyClosed? onLobbyClosed;
+  OnCircuitSelect? onCircuitSelect;
   OnCarSelectFailed? onCarSelectFailed;
+  OnLobbyClosed? onLobbyClosed;
+
+  Function(String id, String ip, int port, int playerCount, int maxPlayers)? onLobbyFound;
 
   MpClient({required this.id, required this.name});
 
-  Future<void> connect(String host, {int port = 4040}) async {
-    _sock = await Socket.connect(host, port);
-    print("[MpClient] Connesso a $host:$port");
-    _send({'type': MpMessageType.join, 'id': id, 'name': name});
+  Future<void> connect(String ip, {int port = 4040}) async {
+    try {
+      _socket = await Socket.connect(ip, port, timeout: Duration(seconds: 5));
+      
+      // Invia messaggio di join immediatamente
+      _socket!.write(jsonEncode({
+        'type': MpMessageType.join,
+        'id': id,
+        'name': name,
+      }));
 
-    _sock!.listen(
-      (data) {
-        final raw = utf8.decode(data);
-        Map msg;
-        try {
-          msg = jsonDecode(raw);
-        } catch (e) {
-          print("[MpClient] Errore parsing: $e");
-          return;
-        }
+      _socket!.listen(
+        (data) => _handle(utf8.decode(data)),
+        onDone: () => _onDisconnect(),
+        onError: (e) => _onError(e),
+      );
 
-        final type = msg['type'];
-        switch (type) {
-          case MpMessageType.lobbyUpdate:
-            if (onLobbyUpdate != null) {
-              onLobbyUpdate!(msg['lobby']);
-            }
-            // Aggiorna circuito se presente
-            if (msg['lobby'] != null &&
-                msg['lobby']['selectedCircuit'] != null) {
-              onCircuitSelect?.call(msg['lobby']['selectedCircuit']);
-            }
-            break;
+      // Avvia ping per mantenere connessione
+      _startPing();
 
-          case MpMessageType.circuitSelect: // nuovo messaggio diretto
-            final circuit = msg['circuit'] as String;
-            onCircuitSelect?.call(circuit);
-            break;
-
-          case MpMessageType.stateUpdate:
-            if (onStateUpdate != null) {
-              onStateUpdate!(msg['data']);
-            }
-            break;
-
-          case 'lobby_closed': // <--- nuovo caso
-            final reason = msg['reason'] as String;
-            print("[MpClient] Lobby chiusa dal host: $reason");
-
-            _sock?.destroy();
-            onLobbyClosed?.call(reason);
-            break;
-
-          case 'car_select_failed':
-            final car = msg['car'] as String;
-            onCarSelectFailed?.call(car);
-            break;
-
-          default:
-            print("[MpClient] Tipo messaggio sconosciuto: $type");
-        }
-      },
-      onDone: () {
-        print("[MpClient] Connessione chiusa");
-      },
-      onError: (e) {
-        print("[MpClient] Errore socket: $e");
-      },
-    );
+      print("[MpClient] Connesso a $ip:$port come $id");
+    } catch (e) {
+      print("[MpClient] Errore connessione: $e");
+      rethrow;
+    }
   }
 
-  void selectCar(String car) {
-    _send({'type': MpMessageType.carSelect, 'id': id, 'car': car});
+  void _handle(String raw) {
+    try {
+      final msg = jsonDecode(raw);
+      final type = msg['type'];
+
+      switch (type) {
+        case MpMessageType.lobbyUpdate:
+          if (onLobbyUpdate != null) {
+            onLobbyUpdate!(msg['lobby'] as Map<String, dynamic>);
+          }
+          break;
+
+        case MpMessageType.circuitSelect:
+          if (onCircuitSelect != null) {
+            onCircuitSelect!(msg['circuit'] as String);
+          }
+          break;
+
+        case 'car_select_failed':
+          if (onCarSelectFailed != null) {
+            onCarSelectFailed!(msg['car'] as String);
+          }
+          break;
+
+        case 'lobby_closed':
+          if (onLobbyClosed != null) {
+            onLobbyClosed!(msg['reason'] as String);
+          }
+          break;
+
+        default:
+          print("[MpClient] Messaggio sconosciuto: $type");
+      }
+    } catch (e) {
+      print("[MpClient] Errore gestione messaggio: $e");
+    }
   }
 
-  void sendState(Map<String, dynamic> stateData) {
-    _send({'type': MpMessageType.stateUpdate, 'data': stateData});
+  void selectCar(String carName) {
+    if (_socket != null) {
+      _socket!.write(jsonEncode({
+        'type': MpMessageType.carSelect,
+        'id': id,
+        'car': carName,
+      }));
+      print("[MpClient] Inviata selezione auto: $carName");
+    }
+  }
+
+  // NUOVO: Metodo per liberare l'auto
+  void freeCar() {
+    if (_socket != null) {
+      try {
+        _socket!.write(jsonEncode({
+          'type': 'free_car',
+          'id': id,
+        }));
+        print("[MpClient] Inviato messaggio free_car al server");
+      } catch (e) {
+        print("[MpClient] Errore invio free_car: $e");
+      }
+    }
   }
 
   void leave() {
-    _send({'type': MpMessageType.leave, 'id': id});
-    _sock?.destroy();
+    if (_socket != null) {
+      _socket!.write(jsonEncode({
+        'type': MpMessageType.leave,
+        'id': id,
+      }));
+      _socket!.close();
+    }
+    _pingTimer?.cancel();
+    print("[MpClient] Disconnesso dalla lobby");
   }
 
-  void _send(Map<String, dynamic> msg) {
-    _sock?.add(utf8.encode(jsonEncode(msg)));
-  }
-
-  // Nel metodo listenForLobbies, aggiorna il parsing del messaggio UDP
-  void listenForLobbies(
-    void Function(
-      String id,
-      String ip,
-      int port,
-      int playerCount,
-      int maxPlayers,
-    )
-    onFound,
-  ) async {
-    final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 4041);
-    socket.broadcastEnabled = true;
-
-    socket.listen((event) {
-      if (event == RawSocketEvent.read) {
-        Datagram? dg;
-        while ((dg = socket.receive()) != null) {
-          try {
-            final msg = jsonDecode(utf8.decode(dg!.data));
-            final id = msg['id'] as String;
-            final port = msg['port'] as int;
-            final ip = dg!.address.address;
-            final playerCount = msg['playerCount'] as int? ?? 0; // ← AGGIUNTO
-            final maxPlayers = msg['maxPlayers'] as int? ?? 4; // ← AGGIUNTO
-
-            onFound(id, ip, port, playerCount, maxPlayers);
-          } catch (e) {
-            print("[MpClient] Errore parsing UDP: $e");
-          }
-        }
+  void _startPing() {
+    _pingTimer = Timer.periodic(Duration(seconds: 10), (timer) {
+      if (_socket != null) {
+        _socket!.write(jsonEncode({
+          'type': 'ping',
+          'id': id,
+        }));
       }
     });
+  }
+
+  void _onDisconnect() {
+    print("[MpClient] Disconnesso dal server");
+    _pingTimer?.cancel();
+    if (onLobbyClosed != null) {
+      onLobbyClosed!('disconnected');
+    }
+  }
+
+  void _onError(error) {
+    print("[MpClient] Errore socket: $error");
+    _pingTimer?.cancel();
+  }
+
+  void listenForLobbies(Function(String id, String ip, int port, int playerCount, int maxPlayers) onFound) {
+    this.onLobbyFound = onFound;
+    
+    RawDatagramSocket.bind(InternetAddress.anyIPv4, 4041).then((socket) {
+      socket.listen((RawSocketEvent event) {
+        if (event == RawSocketEvent.read) {
+          final datagram = socket.receive();
+          if (datagram != null) {
+            try {
+              final message = utf8.decode(datagram.data);
+              final data = jsonDecode(message);
+              
+              if (data['id'] != null) {
+                final id = data['id'] as String;
+                final ip = datagram.address.address;
+                final port = data['port'] as int;
+                final playerCount = data['playerCount'] as int? ?? 0;
+                final maxPlayers = data['maxPlayers'] as int? ?? 4;
+                
+                if (onLobbyFound != null) {
+                  onLobbyFound!(id, ip, port, playerCount, maxPlayers);
+                }
+              }
+            } catch (e) {
+              print("[MpClient] Errore parsing broadcast: $e");
+            }
+          }
+        }
+      });
+    });
+  }
+
+  void sendStateUpdate(Map<String, dynamic> stateData) {
+    if (_socket != null) {
+      _socket!.write(jsonEncode({
+        'type': MpMessageType.stateUpdate,
+        'data': stateData,
+      }));
+    }
   }
 }
