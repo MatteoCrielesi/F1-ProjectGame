@@ -999,31 +999,30 @@ class _GamePageState extends State<GamePage_1> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    "Seleziona la tua scuderia",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  //Text(
+                  //  "Seleziona la tua scuderia",
+                  //  style: TextStyle(
+                  //    color: Colors.white,
+                  //    fontSize: 24,
+                  //    fontWeight: FontWeight.bold,
+                  //  ),
+                  //),
                   const SizedBox(height: 20),
 
-                  // AGGIUNTA: Messaggio informativo
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    margin: EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue),
-                    ),
-                    child: Text(
-                      "La tua auto precedente è stata liberata",
-                      style: TextStyle(color: Colors.blueAccent, fontSize: 14),
-                    ),
-                  ),
-
+                  //// AGGIUNTA: Messaggio informativo
+                  //Container(
+                  //  padding: EdgeInsets.all(12),
+                  //  margin: EdgeInsets.only(bottom: 16),
+                  //  decoration: BoxDecoration(
+                  //    color: Colors.blue.withOpacity(0.2),
+                  //    borderRadius: BorderRadius.circular(8),
+                  //    border: Border.all(color: Colors.blue),
+                  //  ),
+                  //  child: Text(
+                  //    "La tua auto precedente è stata liberata",
+                  //    style: TextStyle(color: Colors.blueAccent, fontSize: 14),
+                  //  ),
+                  //),
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,
@@ -1073,53 +1072,63 @@ class _GamePageState extends State<GamePage_1> {
                           });
                         },
                         child: Container(
-                          width: 120,
-                          height: 140,
+                          width: 100,
+                          height: 120,
                           decoration: BoxDecoration(
                             color: isTaken
                                 ? Colors.grey.withOpacity(0.3)
                                 : car.color.withOpacity(isSelected ? 1.0 : 0.7),
+                            border: isTaken
+                                ? Border.all(color: Colors.red, width: 2.0)
+                                : null,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected
-                                  ? Colors.yellow
-                                  : isTaken
-                                  ? Colors.red
-                                  : Colors.white,
-                              width: isSelected ? 3 : 2,
-                            ),
-                            boxShadow: [
-                              if (isSelected)
-                                BoxShadow(
-                                  color: Colors.yellow.withOpacity(0.5),
-                                  blurRadius: 8,
-                                  spreadRadius: 2,
-                                ),
-                            ],
+                            //border: Border.all(
+                            //  color: isSelected
+                            //      ? Colors.yellow
+                            //      : isTaken
+                            //      ? Colors.red
+                            //      : Colors.white,
+                            //  width: isSelected ? 3 : 2,
+                            //),
+                            //boxShadow: [
+                            //  if (isSelected)
+                            //    BoxShadow(
+                            //      color: Colors.yellow.withOpacity(0.5),
+                            //      blurRadius: 8,
+                            //      spreadRadius: 2,
+                            //    ),
+                            //],
                           ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               if (car.logoPath.isNotEmpty)
-                                Container(
-                                  height: 60,
-                                  padding: const EdgeInsets.all(4),
-                                  child: ColorFiltered(
-                                    colorFilter: isTaken
-                                        ? ColorFilter.mode(
-                                            Colors.grey,
-                                            BlendMode.saturation,
-                                          )
-                                        : ColorFilter.mode(
-                                            Colors.transparent,
-                                            BlendMode.srcIn,
-                                          ),
-                                    child: Image.asset(
-                                      car.logoPath,
-                                      fit: BoxFit.contain,
-                                    ),
+                                SizedBox(
+                                  height: 50,
+                                  child: Image.asset(
+                                    car.logoPath,
+                                    fit: BoxFit.contain,
                                   ),
                                 ),
+                              //Container(
+                              //  height: 50,
+                              //  padding: const EdgeInsets.all(4),
+                              //  child: ColorFiltered(
+                              //    colorFilter: isTaken
+                              //        ? ColorFilter.mode(
+                              //            Colors.grey,
+                              //            BlendMode.saturation,
+                              //          )
+                              //        : ColorFilter.mode(
+                              //            Colors.transparent,
+                              //            BlendMode.srcIn,
+                              //          ),
+                              //    child: Image.asset(
+                              //      car.logoPath,
+                              //      fit: BoxFit.contain,
+                              //    ),
+                              //  ),
+                              //),
                               const SizedBox(height: 8),
                               Text(
                                 car.name,
@@ -1130,24 +1139,24 @@ class _GamePageState extends State<GamePage_1> {
                                 ),
                                 textAlign: TextAlign.center,
                               ),
-                              if (isTaken)
-                                const Text(
-                                  "OCCUPATA",
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              if (isSelected)
-                                const Text(
-                                  "SELEZIONATA",
-                                  style: TextStyle(
-                                    color: Colors.yellow,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                              //if (isTaken)
+                              //  const Text(
+                              //    "OCCUPATA",
+                              //    style: TextStyle(
+                              //      color: Colors.red,
+                              //      fontSize: 10,
+                              //      fontWeight: FontWeight.bold,
+                              //    ),
+                              //  ),
+                              //if (isSelected)
+                              //  const Text(
+                              //    "SELEZIONATA",
+                              //    style: TextStyle(
+                              //      color: Colors.yellow,
+                              //      fontSize: 10,
+                              //      fontWeight: FontWeight.bold,
+                              //    ),
+                              //  ),
                             ],
                           ),
                         ),
@@ -1155,29 +1164,29 @@ class _GamePageState extends State<GamePage_1> {
                     }).toList(),
                   ),
                   const SizedBox(height: 20),
-                  if (_takenCars.isNotEmpty) ...[
-                    Text(
-                      "Scuderie già selezionate:",
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: _takenCars.map((carName) {
-                        final car = allCars.firstWhere(
-                          (c) => c.name == carName,
-                          orElse: () => allCars.first,
-                        );
-                        return Chip(
-                          backgroundColor: car.color,
-                          label: Text(
-                            carName,
-                            style: TextStyle(color: Colors.white, fontSize: 12),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
+                  //if (_takenCars.isNotEmpty) ...[
+                  //  Text(
+                  //    "Scuderie già selezionate:",
+                  //    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  //  ),
+                  //  const SizedBox(height: 8),
+                  //  Wrap(
+                  //    spacing: 8,
+                  //    children: _takenCars.map((carName) {
+                  //      final car = allCars.firstWhere(
+                  //        (c) => c.name == carName,
+                  //        orElse: () => allCars.first,
+                  //      );
+                  //      return Chip(
+                  //        backgroundColor: car.color,
+                  //        label: Text(
+                  //          carName,
+                  //          style: TextStyle(color: Colors.white, fontSize: 12),
+                  //        ),
+                  //      );
+                  //    }).toList(),
+                  //  ),
+                  //],
                 ],
               ),
             ),
