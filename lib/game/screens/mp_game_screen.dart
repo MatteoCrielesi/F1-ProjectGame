@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
 import '../local/mp_server.dart';
@@ -55,6 +57,17 @@ class _MpGameScreenState extends State<MpGameScreen> {
   // Stato multiplayer
   Map<String, Map<String, dynamic>> _playersState = {};
   bool _gameStarted = false;
+  
+  // Timer e stato gioco (simile a GameScreen)
+  bool _timerRunning = false;
+  int _elapsedCentis = 0;
+  Timer? _countdownTimer;
+  bool _gameOver = false;
+  bool _crashState = false;
+  bool _victoryState = false;
+  
+  // Classifica in tempo reale
+  List<Map<String, dynamic>> _ranking = [];
 
   @override
   void initState() {
@@ -140,6 +153,9 @@ class _MpGameScreenState extends State<MpGameScreen> {
       _logger.i("Pista caricata, aggiornamento UI");
       setState(() {});
     });
+
+    // Inizializza timer simile a GameScreen
+    _startTimer();
   }
 
   void _updateLobbyState(Map<String, dynamic> lobbyMap) {
@@ -174,6 +190,9 @@ class _MpGameScreenState extends State<MpGameScreen> {
           }
         }
       }
+      
+      // Aggiorna classifica
+      _updateRanking();
     });
   }
 
@@ -182,8 +201,58 @@ class _MpGameScreenState extends State<MpGameScreen> {
     if (playerId != widget.playerId) {
       setState(() {
         _playersState[playerId] = stateData;
+        _updateRanking();
       });
     }
+  }
+
+  void _updateRanking() {
+    // Crea lista con tutti i giocatori (locale + remoti)
+    List<Map<String, dynamic>> allPlayers = [];
+    
+    // Aggiungi giocatore locale
+    allPlayers.add({
+      'id': widget.playerId,
+      'name': widget.mode == MpMode.host ? 'Host' : 'Player',
+      'car': widget.carModel.name,
+      'lap': gameController.playerLap,
+      'disqualified': gameController.disqualified,
+      'isLocal': true,
+    });
+    
+    // Aggiungi giocatori remoti
+    _playersState.forEach((playerId, state) {
+      allPlayers.add({
+        'id': playerId,
+        'name': state['car'] ?? 'Player',
+        'car': state['car'],
+        'lap': state['lap'] ?? 0,
+        'disqualified': state['disqualified'] ?? false,
+        'isLocal': false,
+      });
+    });
+    
+    // Ordina per: 1) Lap (discendente), 2) Disqualified (false prima)
+    allPlayers.sort((a, b) {
+      final lapA = a['lap'] as int;
+      final lapB = b['lap'] as int;
+      final disqualifiedA = a['disqualified'] as bool;
+      final disqualifiedB = b['disqualified'] as bool;
+      
+      if (lapA != lapB) {
+        return lapB.compareTo(lapA); // Lap più alto prima
+      }
+      
+      if (disqualifiedA != disqualifiedB) {
+        return disqualifiedA ? 1 : -1; // Non squalificati prima
+      }
+      
+      return 0;
+    });
+    
+    setState(() {
+      _ranking = allPlayers;
+    });
   }
 
   void _notifyServerImFree() {
@@ -201,15 +270,80 @@ class _MpGameScreenState extends State<MpGameScreen> {
     if (!mounted) return;
     _gameStarted = true;
     gameController.startGame();
+    _startTimer();
+  }
+
+  // Timer functions (simili a GameScreen)
+  void _startTimer() {
+    if (!mounted) return;
+
+    _countdownTimer?.cancel();
+    _elapsedCentis = 0;
+    _timerRunning = true;
+    _gameOver = false;
+    _crashState = false;
+    _victoryState = false;
+
+    gameController.respawn();
+
+    _countdownTimer = Timer.periodic(const Duration(milliseconds: 10), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      setState(() => _elapsedCentis++);
+
+      if (gameController.disqualified || gameController.gameComplete) {
+        _stopTimer();
+      }
+    });
+  }
+
+  void _stopTimer() {
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
+
+    if (!mounted) return;
+
+    try {
+      setState(() {
+        _timerRunning = false;
+      });
+    } catch (e) {
+      debugPrint("setState ignorato: $e");
+    }
+  }
+
+  void _resetGame() {
+    _stopTimer();
+    _elapsedCentis = 0;
+    _gameOver = false;
+    _crashState = false;
+    _victoryState = false;
+    gameController.respawn();
+  }
+
+  String _formatTime(int centis) {
+    final minutes = centis ~/ 6000;
+    final seconds = (centis % 6000) ~/ 100;
+    final cs = centis % 100;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}.${cs.toString().padLeft(2, '0')}';
   }
 
   @override
   void dispose() {
     _logger.i("MpGameScreen dispose");
+    _stopTimer();
     gameController.disposeController();
     client?.leave();
     server?.close();
     super.dispose();
+  }
+
+  bool _isPhone(BuildContext context) {
+    final shortestSide = MediaQuery.of(context).size.shortestSide;
+    return shortestSide < 600;
   }
 
   @override
@@ -220,103 +354,296 @@ class _MpGameScreenState extends State<MpGameScreen> {
       _notifyServerImFree();
     });
 
+    final orientation = MediaQuery.of(context).orientation;
+    final isPhone = _isPhone(context);
+    final isDesktop = !isPhone;
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Multiplayer: ${widget.circuit.displayName}"),
-        backgroundColor: Colors.red[700],
-        foregroundColor: Colors.white,
-        actions: [
-          if (!_gameStarted)
-            IconButton(
-              icon: Icon(Icons.play_arrow),
-              onPressed: startGame,
-              tooltip: "Avvia partita",
-            ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Informazioni lobby
-          if (latestLobbyState != null) _buildLobbyView(latestLobbyState!),
-
-          // Area di gioco principale
-          Expanded(
-            child: Stack(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Column(
               children: [
-                // Circuito SVG
-                Positioned.fill(
-                  child: SvgPicture.asset(
-                    widget.circuit.svgPath,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-
-                // Paint personalizzato per track e players
-                Positioned.fill(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return CustomPaint(
-                        size: Size(constraints.maxWidth, constraints.maxHeight),
-                        painter: _MpTrackPainter(
-                          gameController.trackPoints,
-                          gameController.spawnPoint,
-                          gameController.carPosition,
-                          _playersState,
-                          widget.circuit,
-                          widget.carModel,
-                          canvasWidth: constraints.maxWidth,
-                          canvasHeight: constraints.maxHeight,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                // Controlli di gioco
-                if (_gameStarted)
-                  Positioned(
-                    bottom: 20,
-                    right: 20,
-                    child: MpGameControls(
-                      controller: gameController,
-                      controlsEnabled:
-                          _gameStarted && !gameController.disqualified,
-                      isLandscape: true,
-                      isLeftSide: false,
-                      showBothButtons: true,
-                    ),
-                  ),
-
-                // Informazioni partita
-                Positioned(
-                  top: 10,
-                  left: 10,
-                  child: Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Lap: ${gameController.playerLap}",
-                          style: TextStyle(color: Colors.white, fontSize: 14),
-                        ),
-                        Text(
-                          "Speed: ${gameController.speed.toStringAsFixed(1)}",
-                          style: TextStyle(color: Colors.white, fontSize: 14),
-                        ),
-                        Text(
-                          "Players: ${_playersState.length + 1}",
-                          style: TextStyle(color: Colors.white, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ),
+                Container(height: 3, color: const Color(0xFFE10600)),
+                Expanded(
+                  child: orientation == Orientation.landscape
+                      ? _buildLandscapeLayout(isDesktop)
+                      : _buildPortraitLayout(context, isDesktop),
                 ),
               ],
+            ),
+            if (gameController.disqualified) _buildCrashMask(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- Maschere e UI (simili a GameScreen) ---
+  Widget _buildCrashMask() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withOpacity(0.8),
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              "Ti sei schiantato!",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => _resetGame(),
+              child: const Text("Riprova"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- Layout Landscape e Portrait (simili a GameScreen) ---
+  Widget _buildLandscapeLayout(bool isDesktop) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Row(
+          children: [
+            // TABELLA CLASSIFICA (sostituisce la tabella tempi)
+            isDesktop
+                ? Container(
+                    width: 250,
+                    padding: const EdgeInsets.all(12),
+                    child: _buildRankingTable(),
+                  )
+                : Container(
+                    width: 180,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: _buildCompactRanking(),
+                  ),
+            
+            // AREA GIOCO PRINCIPALE
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: _buildTrackWithOverlays(),
+              ),
+            ),
+            
+            // CONTROLLI
+            Container(
+              width: 100,
+              padding: const EdgeInsets.all(12),
+              child: MpGameControls(
+                controller: gameController,
+                controlsEnabled: _gameStarted && !gameController.disqualified,
+                isLandscape: true,
+                isLeftSide: false,
+                showBothButtons: true,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPortraitLayout(BuildContext context, bool isDesktop) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenHeight = constraints.maxHeight;
+        final isSmallScreen = screenHeight < 500;
+
+        return Column(
+          children: [
+            // AREA GIOCO PRINCIPALE
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: _buildTrackWithOverlays(),
+              ),
+            ),
+            
+            // INFO E CONTROLLI
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                children: [
+                  // INFO COMPATTE
+                  if (!isDesktop)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            if (widget.carModel.logoPath.isNotEmpty)
+                              Image.asset(
+                                widget.carModel.logoPath,
+                                width: 24,
+                                height: 24,
+                                fit: BoxFit.contain,
+                              ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Time: ${_formatTime(_elapsedCentis)}',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isSmallScreen ? 14 : 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Lap: ${gameController.playerLap}',
+                                  style: TextStyle(
+                                    color: Colors.grey[300],
+                                    fontSize: isSmallScreen ? 12 : 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        // CLASSIFICA COMPATTA
+                        _buildCompactRanking(),
+                      ],
+                    ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // CONTROLLI
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: MpGameControls(
+                      controller: gameController,
+                      controlsEnabled: _gameStarted && !gameController.disqualified,
+                      isLandscape: false,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // --- TABELLA CLASSIFICA (nuova) ---
+  Widget _buildRankingTable() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.25),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Titolo
+          const Text(
+            'CLASSIFICA',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // Intestazione
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Pos', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              Text('Pilota', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              Text('Lap', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              Text('Stato', style: TextStyle(color: Colors.white70, fontSize: 12)),
+            ],
+          ),
+          const Divider(color: Colors.white24),
+          
+          // Lista giocatori
+          Expanded(
+            child: ListView.builder(
+              itemCount: _ranking.length,
+              itemBuilder: (context, index) {
+                final player = _ranking[index];
+                final isLocal = player['isLocal'] as bool;
+                final isDisqualified = player['disqualified'] as bool;
+                
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isLocal ? widget.carModel.color.withOpacity(0.3) : Colors.transparent,
+                    border: isLocal ? Border.all(color: widget.carModel.color) : null,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Posizione
+                      Text(
+                        '${index + 1}°',
+                        style: TextStyle(
+                          color: _getPositionColor(index + 1),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                      
+                      // Nome pilota
+                      Expanded(
+                        child: Text(
+                          player['name'] ?? 'Player',
+                          style: TextStyle(
+                            color: isDisqualified ? Colors.red : Colors.white,
+                            fontSize: 12,
+                            fontWeight: isLocal ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      
+                      // Lap
+                      Text(
+                        '${player['lap']}',
+                        style: TextStyle(
+                          color: isDisqualified ? Colors.red : Colors.greenAccent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      
+                      // Stato
+                      Icon(
+                        isDisqualified ? Icons.warning : Icons.check_circle,
+                        color: isDisqualified ? Colors.red : Colors.green,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -324,53 +651,147 @@ class _MpGameScreenState extends State<MpGameScreen> {
     );
   }
 
-  Widget _buildLobbyView(Map<String, dynamic> lobby) {
-    _logger.v("Build lobby view: $lobby");
-    final players = lobby['players'] as List<dynamic>;
-    final cars = lobby['cars'] as Map<String, dynamic>;
-
+  Widget _buildCompactRanking() {
     return Container(
-      padding: EdgeInsets.all(12),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
-        border: Border.all(color: const Color.fromARGB(255, 145, 145, 145)),
+        color: Colors.black.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            "Lobby: ${lobby['id']}  (${players.length}/${lobby['maxPlayers']})",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          const Text(
+            'Rank',
+            style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: players.map((p) {
-              final pid = p['id'];
-              final name = p['name'];
-              final car = p['car'];
-              final isReady = car != null;
-
-              return Container(
-                padding: EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: isReady ? Colors.green[50] : Colors.grey[100],
-                  border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  "$name${car != null ? ' ($car)' : ''}",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isReady ? Colors.green[800] : Colors.grey[600],
+          const SizedBox(height: 4),
+          for (int i = 0; i < min(3, _ranking.length); i++)
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${i + 1}°',
+                    style: TextStyle(
+                      color: _getPositionColor(i + 1),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-              );
-            }).toList(),
-          ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _ranking[i]['name'] ?? 'Player',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: _ranking[i]['isLocal'] ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  Color _getPositionColor(int position) {
+    switch (position) {
+      case 1: return Colors.yellow;
+      case 2: return Colors.grey;
+      case 3: return Colors.orange;
+      default: return Colors.white;
+    }
+  }
+
+  // --- TRACK CON OVERLAYS (simile a GameScreen) ---
+  Widget _buildTrackWithOverlays() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final maxHeight = constraints.maxHeight;
+
+        return Stack(
+          children: [
+            // Circuito SVG
+            Positioned.fill(
+              child: SvgPicture.asset(
+                widget.circuit.svgPath,
+                fit: BoxFit.contain,
+              ),
+            ),
+            
+            // Paint personalizzato per track e players
+            Positioned.fill(
+              child: CustomPaint(
+                size: Size(maxWidth, maxHeight),
+                painter: _MpTrackPainter(
+                  gameController.trackPoints,
+                  gameController.spawnPoint,
+                  gameController.carPosition,
+                  _playersState,
+                  widget.circuit,
+                  widget.carModel,
+                  canvasWidth: maxWidth,
+                  canvasHeight: maxHeight,
+                ),
+              ),
+            ),
+            
+            // Overlay info partita
+            Positioned(
+              top: 10,
+              left: 10,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Lap: ${gameController.playerLap}",
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                    Text(
+                      "Speed: ${gameController.speed.toStringAsFixed(1)}",
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                    Text(
+                      "Time: ${_formatTime(_elapsedCentis)}",
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Pulsante start (se non iniziato)
+            if (!_gameStarted)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withOpacity(0.7),
+                  alignment: Alignment.center,
+                  child: ElevatedButton(
+                    onPressed: startGame,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    ),
+                    child: const Text(
+                      "START RACE",
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -404,12 +825,8 @@ class _MpTrackPainter extends CustomPainter {
     final scaleY = canvasHeight / circuit.viewBoxHeight;
     final scale = min(scaleX, scaleY);
 
-    final offsetX =
-        (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
-        circuit.viewBoxX * scale;
-    final offsetY =
-        (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
-        circuit.viewBoxY * scale;
+    final offsetX = (canvasWidth - circuit.viewBoxWidth * scale) / 2 - circuit.viewBoxX * scale;
+    final offsetY = (canvasHeight - circuit.viewBoxHeight * scale) / 2 - circuit.viewBoxY * scale;
 
     // Disegna la track
     final trackPaint = Paint()
@@ -449,19 +866,7 @@ class _MpTrackPainter extends CustomPainter {
         final px = (state['x'] as num).toDouble() * scale + offsetX;
         final py = (state['y'] as num).toDouble() * scale + offsetY;
 
-        // Disegna cerchio per l'auto
         canvas.drawCircle(Offset(px, py), 8.0, carPaint);
-
-        // Etichetta con nome giocatore
-        // final textPainter = TextPainter(
-        //   text: TextSpan(
-        //     text: carName,
-        //     style: TextStyle(color: Colors.white, fontSize: 10),
-        //   ),
-        //   textDirection: TextDirection.ltr,
-        // );
-        // textPainter.layout();
-        // textPainter.paint(canvas, Offset(px - textPainter.width / 2, py - 15));
       }
     });
 
@@ -487,7 +892,6 @@ class _MpTrackPainter extends CustomPainter {
   }
 
   Color _getCarColor(String carName) {
-    // Mappa colori di default per auto conosciute
     final colorMap = {
       'Red Bull': Colors.blue,
       'Ferrari': Colors.red,
