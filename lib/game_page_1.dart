@@ -186,8 +186,14 @@ class _GamePageState extends State<GamePage_1> {
 
       await server.start(startPort: 4040);
 
+      // GENERA L'ID UNA VOLTA SOLA E USALO OVUNQUE
       _playerId = "host_${DateTime.now().millisecondsSinceEpoch}";
-      lobby.players[_playerId!] = MpPlayer(id: _playerId!, name: "Host");
+
+      // AGGIUNGI IL PLAYER USANDO IL METODO CORRETTO
+      lobby.addPlayer(
+        _playerId!,
+        "Host",
+      ); // Usa addPlayer invece di accedere direttamente alla mappa
 
       server.setCircuit(_selectedCircuit!.id);
       server.announceLobby();
@@ -206,10 +212,13 @@ class _GamePageState extends State<GamePage_1> {
         _server = server;
         _lobby = lobby;
         _isHost = true;
-        _playerId = "host_${DateTime.now().millisecondsSinceEpoch}";
+        // _playerId è già impostato sopra
         _lobbyStep = false;
         _creatingLobby = false;
       });
+
+      // FORZA UN BROADCAST INIZIALE DELLA LOBBY
+      server.broadcastLobby();
     } catch (e) {
       print("Errore nella creazione della lobby: $e");
       setState(() {
@@ -999,7 +1008,7 @@ class _GamePageState extends State<GamePage_1> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // AGGIUNTA: Messaggio informativo
                   Container(
                     padding: EdgeInsets.all(12),
@@ -1011,13 +1020,10 @@ class _GamePageState extends State<GamePage_1> {
                     ),
                     child: Text(
                       "La tua auto precedente è stata liberata",
-                      style: TextStyle(
-                        color: Colors.blueAccent,
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.blueAccent, fontSize: 14),
                     ),
                   ),
-                  
+
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,

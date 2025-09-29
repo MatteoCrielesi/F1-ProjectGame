@@ -4,7 +4,7 @@ import 'package:f1_project/game/models/car.dart';
 class MpPlayer {
   final String id;
   String name;
-  String? car;       // auto attuale selezionata
+  String? car; // auto attuale selezionata
 
   // Stato dinamico di gioco
   double? x;
@@ -49,7 +49,9 @@ class MpLobby {
       return;
     }
     players[playerId] = MpPlayer(id: playerId, name: playerName);
-    print("[MpLobby] Player $playerId aggiunto -> players attuali: ${players.keys}");
+    print(
+      "[MpLobby] Player $playerId aggiunto -> players attuali: ${players.keys}",
+    );
   }
 
   /// Libera l'auto corrente del player (quando torna alla selezione)
@@ -60,15 +62,23 @@ class MpLobby {
       cars[carToFree] = false;
       carAssignments.remove(carToFree);
       player.car = null;
-      print("[MpLobby] $playerId ha liberato $carToFree -> auto ora disponibile");
+      print(
+        "[MpLobby] $playerId ha liberato $carToFree -> auto ora disponibile",
+      );
     }
   }
 
   /// Prova ad assegnare un'auto - LOGICA SEMPLIFICATA
   bool tryAssignCar(String playerId, String newCar) {
+    print(
+      "[MpLobby] tryAssignCar chiamato: playerId=$playerId, newCar=$newCar",
+    );
+    print("[MpLobby] Players disponibili: ${players.keys}");
+
     final player = players[playerId];
     if (player == null) {
-      print("[MpLobby] tryAssignCar: Player $playerId non trovato");
+      print("[MpLobby] ERRORE: Player $playerId non trovato nella lobby!");
+      print("[MpLobby] Players attuali: ${players.keys}");
       return false;
     }
 
@@ -81,7 +91,9 @@ class MpLobby {
 
     // Se l'auto è occupata da qualcun altro, non puoi prenderla
     if (currentOwner != null && currentOwner != playerId) {
-      print("[MpLobby] $playerId ha provato a prendere $newCar -> già occupata da $currentOwner");
+      print(
+        "[MpLobby] $playerId ha provato a prendere $newCar -> già occupata da $currentOwner",
+      );
       return false;
     }
 
@@ -94,14 +106,16 @@ class MpLobby {
     // LIBERA L'AUTO PRECEDENTE se ne aveva una diversa
     if (player.car != null && player.car != newCar) {
       _freeCar(player.car!);
-      print("[MpLobby] $playerId ha liberato ${player.car} prima di prendere $newCar");
+      print(
+        "[MpLobby] $playerId ha liberato ${player.car} prima di prendere $newCar",
+      );
     }
 
     // ASSEGNA LA NUOVA AUTO
     player.car = newCar;
     cars[newCar] = true;
     carAssignments[newCar] = playerId;
-    
+
     print("[MpLobby] $playerId ha preso $newCar -> assegnazione completata");
     print("[MpLobby] Auto occupate: ${takenCars()}");
     return true;
@@ -117,7 +131,7 @@ class MpLobby {
   /// Verifica se un'auto è selezionabile dal player
   bool isCarSelectable(String playerId, String carName) {
     final currentOwner = carAssignments[carName];
-    
+
     // Se è occupata da qualcun altro -> non selezionabile
     if (currentOwner != null && currentOwner != playerId) {
       return false;
@@ -140,7 +154,9 @@ class MpLobby {
       print("[MpLobby] $playerId ha lasciato ${player.car} -> auto liberata");
     }
     players.remove(playerId);
-    print("[MpLobby] Giocatore $playerId rimosso. Auto occupate: ${takenCars()}");
+    print(
+      "[MpLobby] Giocatore $playerId rimosso. Auto occupate: ${takenCars()}",
+    );
   }
 
   List<String> takenCars() {
