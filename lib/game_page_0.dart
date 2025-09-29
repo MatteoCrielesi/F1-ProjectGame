@@ -36,15 +36,6 @@ class _GamePageState extends State<GamePage_0> {
         id: "guest_${DateTime.now().millisecondsSinceEpoch}",
         name: "Player",
       );
-
-      _mpclient!.listenForLobbies((id, ip, port) {
-        final exists = _foundLobbies.any((l) => l['id'] == id);
-        if (!exists) {
-          setState(() {
-            _foundLobbies.add({'id': id, 'ip': ip, 'port': port});
-          });
-        }
-      });
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {

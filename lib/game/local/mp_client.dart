@@ -105,8 +105,16 @@ class MpClient {
     _sock?.add(utf8.encode(jsonEncode(msg)));
   }
 
+  // Nel metodo listenForLobbies, aggiorna il parsing del messaggio UDP
   void listenForLobbies(
-    void Function(String id, String ip, int port) onFound,
+    void Function(
+      String id,
+      String ip,
+      int port,
+      int playerCount,
+      int maxPlayers,
+    )
+    onFound,
   ) async {
     final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 4041);
     socket.broadcastEnabled = true;
@@ -120,7 +128,10 @@ class MpClient {
             final id = msg['id'] as String;
             final port = msg['port'] as int;
             final ip = dg!.address.address;
-            onFound(id, ip, port);
+            final playerCount = msg['playerCount'] as int? ?? 0; // ← AGGIUNTO
+            final maxPlayers = msg['maxPlayers'] as int? ?? 4; // ← AGGIUNTO
+
+            onFound(id, ip, port, playerCount, maxPlayers);
           } catch (e) {
             print("[MpClient] Errore parsing UDP: $e");
           }

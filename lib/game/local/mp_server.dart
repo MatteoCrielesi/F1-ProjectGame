@@ -137,13 +137,22 @@ class MpServer {
     }
   }
 
+  // Nel metodo announceLobby(), modifica il messaggio UDP
   void announceLobby() async {
     final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
     socket.broadcastEnabled = true;
 
     Timer.periodic(const Duration(seconds: 2), (_) {
       if (_server == null) return;
-      final msg = jsonEncode({'id': lobby.id, 'port': _server!.port});
+
+      // Aggiungi informazioni sui giocatori al messaggio UDP
+      final msg = jsonEncode({
+        'id': lobby.id,
+        'port': _server!.port,
+        'playerCount': lobby.players.length, // ← AGGIUNTO
+        'maxPlayers': lobby.maxPlayers, // ← AGGIUNTO
+      });
+
       try {
         socket.send(utf8.encode(msg), InternetAddress('255.255.255.255'), 4041);
       } catch (e) {
@@ -209,6 +218,7 @@ class MpServer {
     print("[MpServer] Server chiuso");
   }
 
+  // Aggiungi questo metodo alla classe MpServer
   void closeWithNotification() {
     // Invia un messaggio di notifica a tutti i client prima di chiudere
     final closeMsg = {'type': 'lobby_closed', 'reason': 'host_left'};
