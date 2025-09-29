@@ -8,6 +8,8 @@ import 'package:logger/logger.dart';
 import '../models/circuit.dart';
 import '../models/car.dart';
 
+void Function(Map<String, dynamic> state)? onStateUpdate;
+
 class MpGameController extends ChangeNotifier {
   // Logger globale
   final Logger _logger = Logger(
@@ -130,7 +132,9 @@ class MpGameController extends ChangeNotifier {
     _previousPlayerIndex = _playerIndex;
     _playerLap = 0;
     _startIndex = _playerIndex;
-    _logger.i("Respawn effettuato allo spawn point, index=$_playerIndex, lap=$_playerLap");
+    _logger.i(
+      "Respawn effettuato allo spawn point, index=$_playerIndex, lap=$_playerLap",
+    );
   }
 
   void tick() {
@@ -177,9 +181,13 @@ class MpGameController extends ChangeNotifier {
     if (_playerIndex < 0) _playerIndex = 0;
     _playerIndex %= _trackPoints.length;
 
-    _logger.v("_updatePlayer fine, playerIndex=$_playerIndex, previousIndex=$_previousPlayerIndex, lap=$_playerLap");
+    _logger.v(
+      "_updatePlayer fine, playerIndex=$_playerIndex, previousIndex=$_previousPlayerIndex, lap=$_playerLap",
+    );
 
-    if (_startIndex != null && _previousPlayerIndex < _startIndex! && _playerIndex >= _startIndex!) {
+    if (_startIndex != null &&
+        _previousPlayerIndex < _startIndex! &&
+        _playerIndex >= _startIndex!) {
       _playerLap += 1;
       _logger.i("Lap completata: $_playerLap");
       onLapCompleted?.call(_playerLap);
@@ -225,7 +233,9 @@ class MpGameController extends ChangeNotifier {
     double optimalSpeed = maxSpeed * (1.0 - curveSeverity * 1.2);
     optimalSpeed = optimalSpeed.clamp(0.5, 2.0);
 
-    _logger.d("Curve physics index=$index, deltaAngle=${deltaAngle.toStringAsFixed(3)}, optimalSpeed=${optimalSpeed.toStringAsFixed(2)}, currentSpeed=${currentSpeed.toStringAsFixed(2)}");
+    _logger.d(
+      "Curve physics index=$index, deltaAngle=${deltaAngle.toStringAsFixed(3)}, optimalSpeed=${optimalSpeed.toStringAsFixed(2)}, currentSpeed=${currentSpeed.toStringAsFixed(2)}",
+    );
 
     if (currentSpeed > optimalSpeed && isPlayer) {
       final safeIndex = (index - 5).clamp(0, _trackPoints.length - 1);
@@ -279,6 +289,7 @@ class MpGameController extends ChangeNotifier {
   void _maybeSendState() {
     final now = DateTime.now().millisecondsSinceEpoch;
     if (now - _lastSent > 100) {
+      // Invia ogni 100ms
       final state = {
         'id': carModel.name,
         'x': carPosition.dx,

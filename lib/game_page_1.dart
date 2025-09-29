@@ -5,6 +5,7 @@ import 'package:f1_project/game/local/mp_client.dart';
 import 'package:f1_project/game/local/mp_lobby.dart';
 import 'package:f1_project/game/local/mp_server.dart';
 import 'package:f1_project/game/saves/game_records.dart';
+import 'package:f1_project/game/screens/mp_game_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'game/screens/game_screen.dart';
@@ -51,6 +52,9 @@ class _GamePageState extends State<GamePage_1> {
   bool _gameOver = false;
   bool _crashState = false;
   bool _victoryState = false;
+
+  String? _joinedLobbyId;
+  String? _joinedHostAddress;
 
   bool _dialogShown = false;
 
@@ -943,6 +947,8 @@ class _GamePageState extends State<GamePage_1> {
                                   _mpclient = client;
                                   _isHost = false;
                                   _playerId = client.id;
+                                  _joinedLobbyId = lobby['id'];
+                                  _joinedHostAddress = lobby['ip'];
                                 });
                               } catch (e) {
                                 print("Errore durante la connessione: $e");
@@ -1194,13 +1200,18 @@ class _GamePageState extends State<GamePage_1> {
         ],
       );
     } else {
-      return GameScreen(
-        key: _gameScreenKey,
+      // Determine the mode based on whether we're host or client
+      final MpMode mode = _isHost ? MpMode.host : MpMode.client;
+
+      return MpGameScreen(
+        mode: _isHost ? MpMode.host : MpMode.client,
+        lobbyId: _isHost
+            ? _lobby?.id ?? "local_lobby"
+            : _joinedLobbyId ?? "joined_lobby",
+        hostAddress: _isHost ? "localhost" : _joinedHostAddress ?? "",
         circuit: _selectedCircuit!,
-        car: _selectedTeam!,
-        elapsedCentis: _elapsedCentis,
-        onGameFinished: (lapTimes) {},
-        onGameStateChanged: _handleGameState,
+        carModel: _selectedTeam!,
+        playerId: _playerId!, // Aggiungi questo
       );
     }
   }

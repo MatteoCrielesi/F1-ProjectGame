@@ -6,6 +6,9 @@ import '../local/mp_lobby.dart';
 import '../local/mp_game_controller.dart';
 import '../models/circuit.dart';
 import '../models/car.dart';
+import '../local/mp_game_controls.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'dart:math';
 
 enum MpMode { host, client, none }
 
@@ -15,6 +18,7 @@ class MpGameScreen extends StatefulWidget {
   final String hostAddress;
   final Circuit circuit;
   final CarModel carModel;
+  final String playerId;
 
   const MpGameScreen({
     Key? key,
@@ -23,6 +27,7 @@ class MpGameScreen extends StatefulWidget {
     this.hostAddress = "",
     required this.circuit,
     required this.carModel,
+    required this.playerId,
   }) : super(key: key);
 
   @override
@@ -47,6 +52,10 @@ class _MpGameScreenState extends State<MpGameScreen> {
   Map<String, dynamic>? latestLobbyState;
   List<String> _takenCars = [];
 
+  // Stato multiplayer
+  Map<String, Map<String, dynamic>> _playersState = {};
+  bool _gameStarted = false;
+
   @override
   void initState() {
     super.initState();
@@ -65,18 +74,14 @@ class _MpGameScreenState extends State<MpGameScreen> {
       server = MpServer(lobby: lobbyModel!);
       server!.onLobbyChange = (lobbyMap) {
         _logger.d("Aggiornamento lobby ricevuto dal server: $lobbyMap");
-        setState(() {
-          latestLobbyState = lobbyMap;
-          // Aggiorna lista auto occupate
-          if (lobbyMap['cars'] is Map) {
-            final carsMap = Map<String, bool>.from(lobbyMap['cars'] as Map);
-            _takenCars = carsMap.entries
-                .where((entry) => entry.value == true)
-                .map((entry) => entry.key)
-                .toList();
-          }
-        });
+        _updateLobbyState(lobbyMap);
       };
+
+      server!.onStateBroadcast = (stateData) {
+        _logger.d("Stato broadcast ricevuto: $stateData");
+        _updatePlayerState(stateData);
+      };
+
       server!.start();
       _logger.i("Server avviato");
 
@@ -90,31 +95,17 @@ class _MpGameScreenState extends State<MpGameScreen> {
       };
     } else if (widget.mode == MpMode.client) {
       _logger.i("Modalità client selezionata");
-      client = MpClient(
-        id: "client_${DateTime.now().millisecondsSinceEpoch}",
-        name: "PlayerClient",
-      );
+      client = MpClient(id: widget.playerId, name: "PlayerClient");
 
       client!.onLobbyUpdate = (lobbyMap) {
         _logger.d("Aggiornamento lobby ricevuto dal client: $lobbyMap");
-        setState(() {
-          latestLobbyState = lobbyMap;
-          // Aggiorna lista auto occupate
-          if (lobbyMap['cars'] is Map) {
-            final carsMap = Map<String, bool>.from(lobbyMap['cars'] as Map);
-            _takenCars = carsMap.entries
-                .where((entry) => entry.value == true)
-                .map((entry) => entry.key)
-                .toList();
-          }
-        });
+        _updateLobbyState(lobbyMap);
       };
 
-      // RIMOSSO: onStateUpdate non esiste nel client
-      // client!.onStateUpdate = (state) {
-      //   _logger.d("Aggiornamento stato ricevuto dal server: $state");
-      //   // aggiornamento degli altri giocatori
-      // };
+      client!.onStateUpdate = (state) {
+        _logger.d("Aggiornamento stato ricevuto dal server: $state");
+        _updatePlayerState(state);
+      };
 
       client!.onCarSelectFailed = (carName) {
         _logger.w("Selezione auto $carName fallita - già occupata");
@@ -151,7 +142,50 @@ class _MpGameScreenState extends State<MpGameScreen> {
     });
   }
 
-  /// NOTIFICA IL SERVER CHE STAI LIBERANDO L'AUTO
+  void _updateLobbyState(Map<String, dynamic> lobbyMap) {
+    setState(() {
+      latestLobbyState = lobbyMap;
+
+      // Aggiorna lista auto occupate
+      if (lobbyMap['cars'] is Map) {
+        final carsMap = Map<String, bool>.from(lobbyMap['cars'] as Map);
+        _takenCars = carsMap.entries
+            .where((entry) => entry.value == true)
+            .map((entry) => entry.key)
+            .toList();
+      }
+
+      // Aggiorna stati giocatori dalla lobby
+      if (lobbyMap['players'] is List) {
+        final players = lobbyMap['players'] as List<dynamic>;
+        for (var playerData in players) {
+          if (playerData is Map<String, dynamic>) {
+            final playerId = playerData['id'] as String;
+            if (playerId != widget.playerId) {
+              _playersState[playerId] = {
+                'x': playerData['x'],
+                'y': playerData['y'],
+                'car': playerData['car'],
+                'speed': playerData['speed'],
+                'lap': playerData['lap'],
+                'disqualified': playerData['disqualified'],
+              };
+            }
+          }
+        }
+      }
+    });
+  }
+
+  void _updatePlayerState(Map<String, dynamic> stateData) {
+    final playerId = stateData['id'];
+    if (playerId != widget.playerId) {
+      setState(() {
+        _playersState[playerId] = stateData;
+      });
+    }
+  }
+
   void _notifyServerImFree() {
     if (widget.mode == MpMode.host) {
       lobbyModel?.freePlayerCar("host");
@@ -161,6 +195,12 @@ class _MpGameScreenState extends State<MpGameScreen> {
       client?.freeCar();
       _logger.i("Client ha inviato free_car al server");
     }
+  }
+
+  void startGame() {
+    if (!mounted) return;
+    _gameStarted = true;
+    gameController.startGame();
   }
 
   @override
@@ -175,96 +215,108 @@ class _MpGameScreenState extends State<MpGameScreen> {
   @override
   Widget build(BuildContext context) {
     _logger.v("Build MpGameScreen");
-    
-    // NOTIFICA IL SERVER CHE STAI LIBERANDO L'AUTO QUANDO ENTRi IN QUESTA SCHERMATA
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _notifyServerImFree();
     });
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Multiplayer Game: ${widget.mode}"),
+        title: Text("Multiplayer: ${widget.circuit.displayName}"),
         backgroundColor: Colors.red[700],
         foregroundColor: Colors.white,
+        actions: [
+          if (!_gameStarted)
+            IconButton(
+              icon: Icon(Icons.play_arrow),
+              onPressed: startGame,
+              tooltip: "Avvia partita",
+            ),
+        ],
       ),
       body: Column(
         children: [
-          // AGGIUNTA: Messaggio informativo
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.2),
-              border: Border.all(color: Colors.blue),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          // Informazioni lobby
+          if (latestLobbyState != null) _buildLobbyView(latestLobbyState!),
+
+          // Area di gioco principale
+          Expanded(
+            child: Stack(
               children: [
-                Icon(Icons.info, color: Colors.blueAccent, size: 16),
-                SizedBox(width: 8),
-                Text(
-                  "La tua auto precedente è stata liberata",
-                  style: TextStyle(
-                    color: Colors.blueAccent,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+                // Circuito SVG
+                Positioned.fill(
+                  child: SvgPicture.asset(
+                    widget.circuit.svgPath,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+
+                // Paint personalizzato per track e players
+                Positioned.fill(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return CustomPaint(
+                        size: Size(constraints.maxWidth, constraints.maxHeight),
+                        painter: _MpTrackPainter(
+                          gameController.trackPoints,
+                          gameController.spawnPoint,
+                          gameController.carPosition,
+                          _playersState,
+                          widget.circuit,
+                          widget.carModel,
+                          canvasWidth: constraints.maxWidth,
+                          canvasHeight: constraints.maxHeight,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // Controlli di gioco
+                if (_gameStarted)
+                  Positioned(
+                    bottom: 20,
+                    right: 20,
+                    child: MpGameControls(
+                      controller: gameController,
+                      controlsEnabled:
+                          _gameStarted && !gameController.disqualified,
+                      isLandscape: true,
+                      isLeftSide: false,
+                      showBothButtons: true,
+                    ),
+                  ),
+
+                // Informazioni partita
+                Positioned(
+                  top: 10,
+                  left: 10,
+                  child: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Lap: ${gameController.playerLap}",
+                          style: TextStyle(color: Colors.white, fontSize: 14),
+                        ),
+                        Text(
+                          "Speed: ${gameController.speed.toStringAsFixed(1)}",
+                          style: TextStyle(color: Colors.white, fontSize: 14),
+                        ),
+                        Text(
+                          "Players: ${_playersState.length + 1}",
+                          style: TextStyle(color: Colors.white, fontSize: 14),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
-            ),
-          ),
-          
-          if (latestLobbyState != null) _buildLobbyView(latestLobbyState!),
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                _logger.d("Tap rilevato sul gioco");
-                if (widget.mode == MpMode.host) {
-                  _logger.i("Host avvia il gioco");
-                  gameController.startGame();
-                }
-              },
-              child: Container(
-                color: Colors.black12,
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Rendering del gioco multiplayer",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        "Posizione auto: (${gameController.carPosition.dx.toStringAsFixed(1)}, ${gameController.carPosition.dy.toStringAsFixed(1)})",
-                        style: TextStyle(fontSize: 14),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        "Modalità: ${widget.mode}",
-                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                      ),
-                      SizedBox(height: 20),
-                      if (_takenCars.isNotEmpty) ...[
-                        Text(
-                          "Auto occupate:",
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          children: _takenCars.map((carName) {
-                            return Chip(
-                              label: Text(carName),
-                              backgroundColor: Colors.red[100],
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
             ),
           ),
         ],
@@ -278,7 +330,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
     final cars = lobby['cars'] as Map<String, dynamic>;
 
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.grey[100],
         border: Border.all(color: const Color.fromARGB(255, 145, 145, 145)),
@@ -290,114 +342,168 @@ class _MpGameScreenState extends State<MpGameScreen> {
             "Lobby: ${lobby['id']}  (${players.length}/${lobby['maxPlayers']})",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 12),
-          Text(
-            "Giocatori:",
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          ),
           SizedBox(height: 8),
           Wrap(
             spacing: 8,
-            runSpacing: 8,
+            runSpacing: 4,
             children: players.map((p) {
               final pid = p['id'];
               final name = p['name'];
               final car = p['car'];
-              return Card(
-                color: car != null ? Colors.green[50] : Colors.grey[100],
-                elevation: 2,
-                child: Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: car != null ? Colors.green[800] : Colors.grey[600],
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        "Auto: ${car ?? 'non scelta'}",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: car != null ? Colors.green[600] : Colors.grey[500],
-                        ),
-                      ),
-                    ],
-                  ),
+              final isReady = car != null;
+
+              return Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: isReady ? Colors.green[50] : Colors.grey[100],
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(6),
                 ),
-              );
-            }).toList(),
-          ),
-          SizedBox(height: 16),
-          Text(
-            "Seleziona auto:",
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          ),
-          SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: cars.entries.map((e) {
-              final car = e.key;
-              final occupied = e.value as bool;
-              final isTaken = _takenCars.contains(car);
-              
-              return ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: occupied ? Colors.grey[400] : Colors.blue[600],
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                onPressed: occupied
-                    ? null
-                    : () {
-                        _logger.d(
-                          "Click sul pulsante auto $car (occupied=$occupied)",
-                        );
-                        if (widget.mode == MpMode.client) {
-                          client?.selectCar(car);
-                          _logger.i("Client seleziona auto $car");
-                        } else if (widget.mode == MpMode.host) {
-                          final success = lobbyModel?.tryAssignCar("host", car) ?? false;
-                          if (success) {
-                            _logger.i("Host assegna auto $car a host");
-                            server?.broadcastLobby();
-                          } else {
-                            _logger.w("Host non può assegnare auto $car - già occupata");
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Impossibile selezionare $car!"),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        }
-                      },
                 child: Text(
-                  car,
+                  "$name${car != null ? ' ($car)' : ''}",
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                    color: isReady ? Colors.green[800] : Colors.grey[600],
                   ),
                 ),
               );
             }).toList(),
           ),
-          SizedBox(height: 12),
-          if (_takenCars.isNotEmpty) ...[
-            Text(
-              "Auto già selezionate: ${_takenCars.join(', ')}",
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-          ],
         ],
       ),
     );
   }
+}
+
+class _MpTrackPainter extends CustomPainter {
+  final List<Offset> points;
+  final Offset? spawnPoint;
+  final Offset localCarPosition;
+  final Map<String, Map<String, dynamic>> playersState;
+  final Circuit circuit;
+  final CarModel localCar;
+  final double canvasWidth;
+  final double canvasHeight;
+
+  _MpTrackPainter(
+    this.points,
+    this.spawnPoint,
+    this.localCarPosition,
+    this.playersState,
+    this.circuit,
+    this.localCar, {
+    required this.canvasWidth,
+    required this.canvasHeight,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.isEmpty) return;
+
+    final scaleX = canvasWidth / circuit.viewBoxWidth;
+    final scaleY = canvasHeight / circuit.viewBoxHeight;
+    final scale = min(scaleX, scaleY);
+
+    final offsetX =
+        (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
+        circuit.viewBoxX * scale;
+    final offsetY =
+        (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
+        circuit.viewBoxY * scale;
+
+    // Disegna la track
+    final trackPaint = Paint()
+      ..color = const Color.fromARGB(255, 78, 78, 78)
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke;
+
+    final path = Path()
+      ..moveTo(
+        points.first.dx * scale + offsetX,
+        points.first.dy * scale + offsetY,
+      );
+    for (final p in points.skip(1)) {
+      path.lineTo(p.dx * scale + offsetX, p.dy * scale + offsetY);
+    }
+    canvas.drawPath(path, trackPaint);
+
+    // Disegna spawn point
+    if (spawnPoint != null) {
+      final spawnPaint = Paint()..color = Colors.red;
+      const spawnRadius = 5.0;
+      final sx = spawnPoint!.dx * scale + offsetX;
+      final sy = spawnPoint!.dy * scale + offsetY;
+      canvas.drawCircle(Offset(sx, sy), spawnRadius, spawnPaint);
+    }
+
+    // Disegna le auto degli altri giocatori
+    playersState.forEach((playerId, state) {
+      if (state['x'] != null && state['y'] != null) {
+        final carName = state['car'] ?? 'Unknown';
+        final carColor = _getCarColor(carName);
+
+        final carPaint = Paint()
+          ..color = carColor
+          ..style = PaintingStyle.fill;
+
+        final px = (state['x'] as num).toDouble() * scale + offsetX;
+        final py = (state['y'] as num).toDouble() * scale + offsetY;
+
+        // Disegna cerchio per l'auto
+        canvas.drawCircle(Offset(px, py), 8.0, carPaint);
+
+        // Etichetta con nome giocatore
+        // final textPainter = TextPainter(
+        //   text: TextSpan(
+        //     text: carName,
+        //     style: TextStyle(color: Colors.white, fontSize: 10),
+        //   ),
+        //   textDirection: TextDirection.ltr,
+        // );
+        // textPainter.layout();
+        // textPainter.paint(canvas, Offset(px - textPainter.width / 2, py - 15));
+      }
+    });
+
+    // Disegna l'auto locale (sopra le altre)
+    if (localCarPosition != Offset.zero) {
+      final localCarPaint = Paint()
+        ..color = localCar.color
+        ..style = PaintingStyle.fill;
+
+      final px = localCarPosition.dx * scale + offsetX;
+      final py = localCarPosition.dy * scale + offsetY;
+
+      // Auto locale più grande
+      canvas.drawCircle(Offset(px, py), 10.0, localCarPaint);
+
+      // Bordo per distinguerla
+      final borderPaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      canvas.drawCircle(Offset(px, py), 10.0, borderPaint);
+    }
+  }
+
+  Color _getCarColor(String carName) {
+    // Mappa colori di default per auto conosciute
+    final colorMap = {
+      'Red Bull': Colors.blue,
+      'Ferrari': Colors.red,
+      'Mercedes': Colors.teal,
+      'McLaren': Colors.orange,
+      'Alpine': Colors.pink,
+      'Aston Martin': Colors.green,
+      'AlphaTauri': Colors.white,
+      'Alfa Romeo': Colors.red,
+      'Williams': Colors.blue,
+      'Haas': Colors.grey,
+    };
+
+    return colorMap[carName] ?? Colors.purple;
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
