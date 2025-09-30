@@ -55,15 +55,15 @@ class MpServer {
     switch (type) {
       case MpMessageType.join:
         {
-          final name = msg['name'];
-          
+          final name = msg['name'] ?? 'Player';
+
           // LIBERA L'AUTO PRECEDENTE quando un player si riconnette
           lobby.freePlayerCar(pid);
-          
+
           // Aggiungi il player alla lobby
           lobby.addPlayer(pid, name);
           _sockToPlayer[sock] = pid;
-          
+
           print("[MpServer] Player $pid ($name) si è unito alla lobby");
           broadcastLobby();
         }
@@ -101,7 +101,9 @@ class MpServer {
               'car': car,
               'reason': 'Auto già occupata',
             });
-            print("[MpServer] Player $pid non può prendere $car - già occupata");
+            print(
+              "[MpServer] Player $pid non può prendere $car - già occupata",
+            );
           }
         }
         break;
@@ -129,7 +131,9 @@ class MpServer {
             print("[MpServer] Player $pid ha liberato la sua auto (free_car)");
             broadcastLobby();
           } else {
-            print("[MpServer] ERRORE: Player $pid non autorizzato per free_car");
+            print(
+              "[MpServer] ERRORE: Player $pid non autorizzato per free_car",
+            );
           }
         }
         break;
@@ -181,16 +185,18 @@ class MpServer {
 
   void broadcastLobby() {
     final playersList = lobby.players.values
-        .map((p) => {
-          'id': p.id, 
-          'name': p.name, 
-          'car': p.car,
-          'x': p.x,
-          'y': p.y,
-          'speed': p.speed,
-          'lap': p.lap,
-          'disqualified': p.disqualified,
-        })
+        .map(
+          (p) => {
+            'id': p.id,
+            'name': p.name,
+            'car': p.car,
+            'x': p.x,
+            'y': p.y,
+            'speed': p.speed,
+            'lap': p.lap,
+            'disqualified': p.disqualified,
+          },
+        )
         .toList();
 
     final msg = {
@@ -205,28 +211,27 @@ class MpServer {
         'selectedCircuit': lobby.selectedCircuit,
       },
     };
-    
+
     _broadcast(msg);
     if (onLobbyChange != null) {
       onLobbyChange!(msg['lobby'] as Map<String, dynamic>);
     }
-    
-    print("[MpServer] Broadcast lobby stato - Players: ${playersList.length}, Auto occupate: ${lobby.takenCars()}");
+
+    print(
+      "[MpServer] Broadcast lobby stato - Players: ${playersList.length}, Auto occupate: ${lobby.takenCars()}",
+    );
   }
 
   void setCircuit(String circuitId) {
     lobby.setCircuit(circuitId);
-    final msg = {
-      'type': MpMessageType.circuitSelect, 
-      'circuit': circuitId
-    };
+    final msg = {'type': MpMessageType.circuitSelect, 'circuit': circuitId};
     _broadcast(msg);
     broadcastLobby();
   }
 
   void _broadcast(Map<String, dynamic> msg) {
     if (_sockToPlayer.isEmpty) return;
-    
+
     final bytes = utf8.encode(jsonEncode(msg));
     for (var sock in _sockToPlayer.keys) {
       try {
@@ -255,10 +260,7 @@ class MpServer {
   }
 
   void closeWithNotification() {
-    final closeMsg = {
-      'type': 'lobby_closed', 
-      'reason': 'host_left'
-    };
+    final closeMsg = {'type': 'lobby_closed', 'reason': 'host_left'};
     _broadcast(closeMsg);
 
     Timer(Duration(milliseconds: 100), () {

@@ -57,7 +57,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
   // Stato multiplayer
   Map<String, Map<String, dynamic>> _playersState = {};
   bool _gameStarted = false;
-  
+
   // Timer e stato gioco (simile a GameScreen)
   bool _timerRunning = false;
   int _elapsedCentis = 0;
@@ -65,7 +65,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
   bool _gameOver = false;
   bool _crashState = false;
   bool _victoryState = false;
-  
+
   // Classifica in tempo reale
   List<Map<String, dynamic>> _ranking = [];
 
@@ -178,78 +178,127 @@ class _MpGameScreenState extends State<MpGameScreen> {
           if (playerData is Map<String, dynamic>) {
             final playerId = playerData['id'] as String;
             if (playerId != widget.playerId) {
-              _playersState[playerId] = {
-                'x': playerData['x'],
-                'y': playerData['y'],
-                'car': playerData['car'],
-                'speed': playerData['speed'],
-                'lap': playerData['lap'],
-                'disqualified': playerData['disqualified'],
-              };
+              final carName = playerData['car'] as String?;
+              // VERIFICA SE IL NOME DELLA MACCHINA È VALIDO PRIMA DI AGGIUNGERE
+              if (carName != null && carName.isNotEmpty) {
+                try {
+                  final car = allCars.firstWhere((c) => c.name == carName);
+
+                  _playersState[playerId] = {
+                    'x': playerData['x'],
+                    'y': playerData['y'],
+                    'car': carName,
+                    'speed': playerData['speed'],
+                    'lap': playerData['lap'],
+                    'disqualified': playerData['disqualified'],
+                    'color': car.color,
+                    'name':
+                        playerData['name'] ??
+                        'Player', // AGGIUNGI IL NOME DEL GIOCATORE
+                  };
+                } catch (e) {
+                  _logger.w("Auto non trovata: $carName per player $playerId");
+                  // Non aggiungere player con auto non valida
+                }
+              }
             }
           }
         }
       }
-      
+
       // Aggiorna classifica
       _updateRanking();
     });
   }
 
+  // Modifica nel metodo _updatePlayerState
   void _updatePlayerState(Map<String, dynamic> stateData) {
     final playerId = stateData['id'];
     if (playerId != widget.playerId) {
-      setState(() {
-        _playersState[playerId] = stateData;
-        _updateRanking();
-      });
+      final carName = stateData['car'] as String?;
+      // VERIFICA SE IL NOME DELLA MACCHINA È VALIDO
+      if (carName != null && carName.isNotEmpty) {
+        try {
+          final car = allCars.firstWhere((c) => c.name == carName);
+
+          setState(() {
+            _playersState[playerId] = {
+              ...stateData,
+              'color': car.color,
+              'name':
+                  stateData['name'] ??
+                  'Player', // AGGIUNGI IL NOME DEL GIOCATORE
+            };
+            _updateRanking();
+          });
+        } catch (e) {
+          _logger.w(
+            "Auto non trovata nello state update: $carName per player $playerId",
+          );
+        }
+      }
     }
   }
 
   void _updateRanking() {
     // Crea lista con tutti i giocatori (locale + remoti)
     List<Map<String, dynamic>> allPlayers = [];
-    
+
     // Aggiungi giocatore locale
     allPlayers.add({
       'id': widget.playerId,
-      'name': widget.mode == MpMode.host ? 'Host' : 'Player',
+      'name': 'You', // O widget.carModel.name se preferisci
       'car': widget.carModel.name,
       'lap': gameController.playerLap,
       'disqualified': gameController.disqualified,
       'isLocal': true,
+      'color': widget.carModel.color,
+      'logoPath': widget.carModel.logoPath,
     });
-    
+
     // Aggiungi giocatori remoti
     _playersState.forEach((playerId, state) {
-      allPlayers.add({
-        'id': playerId,
-        'name': state['car'] ?? 'Player',
-        'car': state['car'],
-        'lap': state['lap'] ?? 0,
-        'disqualified': state['disqualified'] ?? false,
-        'isLocal': false,
-      });
+      final carName = state['car'] as String?;
+      if (carName != null && carName.isNotEmpty) {
+        try {
+          final car = allCars.firstWhere((c) => c.name == carName);
+
+          allPlayers.add({
+            'id': playerId,
+            'name': state['name'] ?? 'Player', // USA IL NOME DEL GIOCATORE
+            'car': carName,
+            'lap': state['lap'] ?? 0,
+            'disqualified': state['disqualified'] ?? false,
+            'isLocal': false,
+            'color': car.color,
+            'logoPath': car.logoPath,
+          });
+        } catch (e) {
+          _logger.w(
+            "Auto non valida in ranking: $carName per player $playerId",
+          );
+        }
+      }
     });
-    
+
     // Ordina per: 1) Lap (discendente), 2) Disqualified (false prima)
     allPlayers.sort((a, b) {
       final lapA = a['lap'] as int;
       final lapB = b['lap'] as int;
       final disqualifiedA = a['disqualified'] as bool;
       final disqualifiedB = b['disqualified'] as bool;
-      
+
       if (lapA != lapB) {
         return lapB.compareTo(lapA); // Lap più alto prima
       }
-      
+
       if (disqualifiedA != disqualifiedB) {
         return disqualifiedA ? 1 : -1; // Non squalificati prima
       }
-      
+
       return 0;
     });
-    
+
     setState(() {
       _ranking = allPlayers;
     });
@@ -430,7 +479,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
                     ),
                     child: _buildCompactRanking(),
                   ),
-            
+
             // AREA GIOCO PRINCIPALE
             Expanded(
               child: Padding(
@@ -438,7 +487,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
                 child: _buildTrackWithOverlays(),
               ),
             ),
-            
+
             // CONTROLLI
             Container(
               width: 100,
@@ -473,7 +522,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
                 child: _buildTrackWithOverlays(),
               ),
             ),
-            
+
             // INFO E CONTROLLI
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -520,9 +569,9 @@ class _MpGameScreenState extends State<MpGameScreen> {
                         _buildCompactRanking(),
                       ],
                     ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // CONTROLLI
                   Container(
                     width: double.infinity,
@@ -533,7 +582,8 @@ class _MpGameScreenState extends State<MpGameScreen> {
                     ),
                     child: MpGameControls(
                       controller: gameController,
-                      controlsEnabled: _gameStarted && !gameController.disqualified,
+                      controlsEnabled:
+                          _gameStarted && !gameController.disqualified,
                       isLandscape: false,
                     ),
                   ),
@@ -548,6 +598,8 @@ class _MpGameScreenState extends State<MpGameScreen> {
 
   // --- TABELLA CLASSIFICA (nuova) ---
   Widget _buildRankingTable() {
+    final totalLaps = 3;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -568,20 +620,43 @@ class _MpGameScreenState extends State<MpGameScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          
-          // Intestazione
+
+          // Intestazione con allineamento fisso
           const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Pos', style: TextStyle(color: Colors.white70, fontSize: 12)),
-              Text('Pilota', style: TextStyle(color: Colors.white70, fontSize: 12)),
-              Text('Lap', style: TextStyle(color: Colors.white70, fontSize: 12)),
-              Text('Stato', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              SizedBox(
+                width: 40,
+                child: Text(
+                  'Posto',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  'Scuderia',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ),
+              SizedBox(
+                width: 50,
+                child: Text(
+                  'Lap',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ),
+              SizedBox(
+                width: 50,
+                child: Text(
+                  'Status',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ),
             ],
           ),
           const Divider(color: Colors.white24),
-          
-          // Lista giocatori
+
+          // Lista giocatori con allineamento fisso
           Expanded(
             child: ListView.builder(
               itemCount: _ranking.length,
@@ -589,56 +664,101 @@ class _MpGameScreenState extends State<MpGameScreen> {
                 final player = _ranking[index];
                 final isLocal = player['isLocal'] as bool;
                 final isDisqualified = player['disqualified'] as bool;
-                
+                final teamColor = player['color'] as Color;
+                // Usa il metodo sicuro per ottenere il logoPath
+                final logoPath = _getSafeLogoPath(player);
+
                 return Container(
                   margin: const EdgeInsets.symmetric(vertical: 4),
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: isLocal ? widget.carModel.color.withOpacity(0.3) : Colors.transparent,
-                    border: isLocal ? Border.all(color: widget.carModel.color) : null,
+                    color: teamColor.withOpacity(0.7),
+                    border: isLocal
+                        ? Border.all(color: Colors.yellow, width: 2)
+                        : Border.all(color: teamColor.withOpacity(0.9)),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Posizione
-                      Text(
-                        '${index + 1}°',
-                        style: TextStyle(
-                          color: _getPositionColor(index + 1),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                      
-                      // Nome pilota
-                      Expanded(
+                      // Posto - colonna fissa
+                      SizedBox(
+                        width: 40,
                         child: Text(
-                          player['name'] ?? 'Player',
+                          '${index + 1}°',
                           style: TextStyle(
-                            color: isDisqualified ? Colors.red : Colors.white,
+                            color: _getPositionColor(index + 1),
+                            fontWeight: FontWeight.bold,
                             fontSize: 12,
-                            fontWeight: isLocal ? FontWeight.bold : FontWeight.normal,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      
-                      // Lap
-                      Text(
-                        '${player['lap']}',
-                        style: TextStyle(
-                          color: isDisqualified ? Colors.red : Colors.greenAccent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+
+                      // Logo scuderia - colonna espandibile
+                      Expanded(
+                        flex: 2,
+                        child: Container(
+                          height: 30,
+                          child: logoPath.isNotEmpty
+                              ? Image.asset(
+                                  logoPath,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    // Fallback se l'immagine non viene caricata
+                                    return Text(
+                                      player['name'] ?? 'Unknown',
+                                      style: TextStyle(
+                                        color: _getTextColorForBackground(
+                                          teamColor,
+                                        ),
+                                        fontSize: 12,
+                                        fontWeight: isLocal
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    );
+                                  },
+                                )
+                              : Text(
+                                  player['name'] ?? 'Unknown',
+                                  style: TextStyle(
+                                    color: _getTextColorForBackground(
+                                      teamColor,
+                                    ),
+                                    fontSize: 12,
+                                    fontWeight: isLocal
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                         ),
                       ),
-                      
-                      // Stato
-                      Icon(
-                        isDisqualified ? Icons.warning : Icons.check_circle,
-                        color: isDisqualified ? Colors.red : Colors.green,
-                        size: 16,
+
+                      // Lap - colonna fissa
+                      SizedBox(
+                        width: 50,
+                        child: Text(
+                          '${player['lap']}/$totalLaps',
+                          style: TextStyle(
+                            color: isDisqualified
+                                ? Colors.red
+                                : _getTextColorForBackground(teamColor),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+
+                      // Status - colonna fissa
+                      SizedBox(
+                        width: 50,
+                        child: Icon(
+                          isDisqualified ? Icons.warning : Icons.check_circle,
+                          color: isDisqualified ? Colors.red : Colors.green,
+                          size: 16,
+                        ),
                       ),
                     ],
                   ),
@@ -651,7 +771,23 @@ class _MpGameScreenState extends State<MpGameScreen> {
     );
   }
 
+  String _getSafeLogoPath(Map<String, dynamic> playerData) {
+    final carName = playerData['car'] as String?;
+    if (carName != null) {
+      try {
+        final car = allCars.firstWhere((c) => c.name == carName);
+        return car.logoPath;
+      } catch (e) {
+        // Se non trova la macchina, ritorna una stringa vuota
+        return '';
+      }
+    }
+    return '';
+  }
+
   Widget _buildCompactRanking() {
+    final totalLaps = 3;
+
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -663,15 +799,25 @@ class _MpGameScreenState extends State<MpGameScreen> {
         children: [
           const Text(
             'Rank',
-            style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 4),
           for (int i = 0; i < min(3, _ranking.length); i++)
             Container(
               margin: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              decoration: BoxDecoration(
+                color: _ranking[i]['color'].withOpacity(0.7),
+                borderRadius: BorderRadius.circular(4),
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Posizione
                   Text(
                     '${i + 1}°',
                     style: TextStyle(
@@ -680,13 +826,55 @@ class _MpGameScreenState extends State<MpGameScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 8),
+
+                  // Logo scuderia
+                  Container(
+                    width: 40,
+                    height: 20,
+                    child: _getSafeLogoPath(_ranking[i]).isNotEmpty
+                        ? Image.asset(
+                            _getSafeLogoPath(_ranking[i]),
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Text(
+                                _ranking[i]['name'] ?? 'Unknown',
+                                style: TextStyle(
+                                  color: _getTextColorForBackground(
+                                    _ranking[i]['color'],
+                                  ),
+                                  fontSize: 8,
+                                  fontWeight: _ranking[i]['isLocal']
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              );
+                            },
+                          )
+                        : Text(
+                            _ranking[i]['name'] ?? 'Unknown',
+                            style: TextStyle(
+                              color: _getTextColorForBackground(
+                                _ranking[i]['color'],
+                              ),
+                              fontSize: 8,
+                              fontWeight: _ranking[i]['isLocal']
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Lap
                   Text(
-                    _ranking[i]['name'] ?? 'Player',
+                    '${_ranking[i]['lap']}/$totalLaps',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: _getTextColorForBackground(_ranking[i]['color']),
                       fontSize: 10,
-                      fontWeight: _ranking[i]['isLocal'] ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
@@ -697,12 +885,24 @@ class _MpGameScreenState extends State<MpGameScreen> {
     );
   }
 
+  // Metodo per determinare il colore del testo in base al background
+  Color _getTextColorForBackground(Color backgroundColor) {
+    // Calcola la luminosità del colore di background
+    final brightness = backgroundColor.computeLuminance();
+    // Se il background è scuro, usa testo bianco, altrimenti nero
+    return brightness > 0.5 ? Colors.black : Colors.white;
+  }
+
   Color _getPositionColor(int position) {
     switch (position) {
-      case 1: return Colors.yellow;
-      case 2: return Colors.grey;
-      case 3: return Colors.orange;
-      default: return Colors.white;
+      case 1:
+        return Colors.yellow;
+      case 2:
+        return Colors.grey;
+      case 3:
+        return Colors.orange;
+      default:
+        return Colors.white;
     }
   }
 
@@ -722,7 +922,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
                 fit: BoxFit.contain,
               ),
             ),
-            
+
             // Paint personalizzato per track e players
             Positioned.fill(
               child: CustomPaint(
@@ -739,7 +939,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
                 ),
               ),
             ),
-            
+
             // Overlay info partita
             Positioned(
               top: 10,
@@ -769,7 +969,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
                 ),
               ),
             ),
-            
+
             // Pulsante start (se non iniziato)
             if (!_gameStarted)
               Positioned.fill(
@@ -780,11 +980,17 @@ class _MpGameScreenState extends State<MpGameScreen> {
                     onPressed: startGame,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
+                      ),
                     ),
                     child: const Text(
                       "START RACE",
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -825,8 +1031,12 @@ class _MpTrackPainter extends CustomPainter {
     final scaleY = canvasHeight / circuit.viewBoxHeight;
     final scale = min(scaleX, scaleY);
 
-    final offsetX = (canvasWidth - circuit.viewBoxWidth * scale) / 2 - circuit.viewBoxX * scale;
-    final offsetY = (canvasHeight - circuit.viewBoxHeight * scale) / 2 - circuit.viewBoxY * scale;
+    final offsetX =
+        (canvasWidth - circuit.viewBoxWidth * scale) / 2 -
+        circuit.viewBoxX * scale;
+    final offsetY =
+        (canvasHeight - circuit.viewBoxHeight * scale) / 2 -
+        circuit.viewBoxY * scale;
 
     // Disegna la track
     final trackPaint = Paint()
