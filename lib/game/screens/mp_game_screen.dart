@@ -214,7 +214,10 @@ class _MpGameScreenState extends State<MpGameScreen> {
   // Modifica nel metodo _updatePlayerState
   void _updatePlayerState(Map<String, dynamic> stateData) {
     final playerId = stateData['id'];
-    if (playerId != widget.playerId) {
+    final isLocal = stateData['isLocal'] == true;
+    
+    // Skip if this is a local player state (our own car)
+    if (!isLocal) {
       final carName = stateData['car'] as String?;
       // VERIFICA SE IL NOME DELLA MACCHINA È VALIDO
       if (carName != null && carName.isNotEmpty) {
@@ -1065,6 +1068,11 @@ class _MpTrackPainter extends CustomPainter {
 
     // Disegna le auto degli altri giocatori
     playersState.forEach((playerId, state) {
+      // Skip if this is the same car as the local car
+      if (state['car'] == localCar.name) {
+        return;
+      }
+      
       if (state['x'] != null && state['y'] != null) {
         final carName = state['car'] ?? 'Unknown';
         final carColor = _getCarColor(carName);

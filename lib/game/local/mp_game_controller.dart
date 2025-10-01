@@ -291,7 +291,9 @@ class MpGameController extends ChangeNotifier {
     if (now - _lastSent > 100) {
       // Invia ogni 100ms
       final state = {
-        'id': carModel.name,
+        'id': '${carModel.name}_${now % 10000}', // Unique ID combining car name and timestamp
+        'car': carModel.name, // Car model name for rendering
+        'isLocal': true, // Flag to identify local player
         'x': carPosition.dx,
         'y': carPosition.dy,
         'speed': speed,
