@@ -1,0 +1,46 @@
+name: Build Windows EXE and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Flutter pub get
+        shell: bash
+        run: flutter pub get
+
+      - name: Enable Windows
+        shell: bash
+        run: flutter config --enable-windows-desktop
+
+      - name: Build Windows Release
+        shell: bash
+        run: flutter build windows --release
+
+      - name: Compress Windows build
+        shell: pwsh
+        run: |
+          $src = "build/windows/x64/runner/Release"
+          $zip = "build/f1_project-windows.zip"
+          if (Test-Path $zip) { Remove-Item $zip }
+          Compress-Archive -Path "$src/*" -DestinationPath $zip
+
+      - name: Upload Release Asset (ZIP)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/f1_project-windows.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
