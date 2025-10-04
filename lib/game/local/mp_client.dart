@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:logger/logger.dart';
 
 import 'mp_messages.dart';
 
@@ -15,6 +16,15 @@ class MpClient {
   final String name;
   Socket? _socket;
   Timer? _pingTimer;
+
+  final Logger _logger = Logger(
+    printer: PrettyPrinter(
+      methodCount: 0,
+      colors: true,
+      printEmojis: true,
+      printTime: true,
+    ),
+  );
 
   OnLobbyUpdate? onLobbyUpdate;
   OnCircuitSelect? onCircuitSelect;
@@ -135,7 +145,7 @@ class MpClient {
   }
 
   void _onDisconnect() {
-    print("[MpClient] Disconnesso dal server");
+    _logger.w("[MpClient] Disconnesso dal server");
     _pingTimer?.cancel();
     if (onLobbyClosed != null) {
       onLobbyClosed!('disconnected');
@@ -143,7 +153,7 @@ class MpClient {
   }
 
   void _onError(error) {
-    print("[MpClient] Errore socket: $error");
+    _logger.e("[MpClient] Errore socket: $error");
     _pingTimer?.cancel();
   }
 
@@ -170,11 +180,12 @@ class MpClient {
                 final maxPlayers = data['maxPlayers'] as int? ?? 4;
 
                 if (onLobbyFound != null) {
+                  _logger.d("[MpClient] Lobby trovata id=$id ip=$ip port=$port players=$playerCount/$maxPlayers");
                   onLobbyFound!(id, ip, port, playerCount, maxPlayers);
                 }
               }
             } catch (e) {
-              print("[MpClient] Errore parsing broadcast: $e");
+              _logger.e("[MpClient] Errore parsing broadcast: $e");
             }
           }
         }
@@ -187,6 +198,7 @@ class MpClient {
       _socket!.write(
         jsonEncode({'type': MpMessageType.stateUpdate, 'data': stateData}),
       );
+      _logger.v("[MpClient] sendStateUpdate id=${stateData['id']} lap=${stateData['lap']} idx=${stateData['trackIndex']} x=${stateData['x']} y=${stateData['y']}");
     }
   }
 }

@@ -45,6 +45,7 @@ class MpGameController extends ChangeNotifier {
   int? _startIndex;
 
   int get playerLap => _playerLap;
+  int get playerIndex => _playerIndex;
 
   Offset get carPosition =>
       _trackPoints.isNotEmpty ? _trackPoints[_playerIndex] : Offset.zero;
@@ -138,7 +139,15 @@ class MpGameController extends ChangeNotifier {
   }
 
   void tick() {
-    _logger.v("Tick chiamato, playerIndex=$_playerIndex, speed=$speed");
+    // Log tick verbose solo in debug e ogni ~1s per evitare spam
+    if (kDebugMode) {
+      _tickLastLog ??= DateTime.now().millisecondsSinceEpoch;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (now - (_tickLastLog!) > 1000) {
+        _logger.v("Tick: idx=$_playerIndex speed=${speed.toStringAsFixed(2)} lap=$_playerLap disq=$disqualified");
+        _tickLastLog = now;
+      }
+    }
     if (_trackPoints.isEmpty || disqualified) {
       _logger.w("Tick ignorato (pista vuota o disqualified=$disqualified)");
       notifyListeners();
@@ -229,19 +238,50 @@ class MpGameController extends ChangeNotifier {
     const double minCurveAngle = 0.15;
     if (deltaAngle < minCurveAngle) return currentSpeed;
 
+    _logger.d(
+      "Curve detected: deltaAngle=${deltaAngle.toStringAsFixed(3)} speed=${currentSpeed.toStringAsFixed(2)}",
+    );
+
     double curveSeverity = deltaAngle / pi;
     double optimalSpeed = maxSpeed * (1.0 - curveSeverity * 1.2);
     optimalSpeed = optimalSpeed.clamp(0.5, 2.0);
 
-    _logger.d(
-      "Curve physics index=$index, deltaAngle=${deltaAngle.toStringAsFixed(3)}, optimalSpeed=${optimalSpeed.toStringAsFixed(2)}, currentSpeed=${currentSpeed.toStringAsFixed(2)}",
-    );
+    bool crash = false;
+    bool needRespawn = false;
 
-    if (currentSpeed > optimalSpeed && isPlayer) {
+    // Enhanced crash detection logic from single player
+    if (currentSpeed > 2.0 && deltaAngle > 0.3) {
+      crash = true;
+    } else if (currentSpeed > 2.3 && deltaAngle > 0.2) {
+      crash = true;
+    } else if (currentSpeed > 2.5) {
+      crash = true;
+    } else if (currentSpeed > optimalSpeed) {
+      needRespawn = true;
+    }
+
+    if (crash) {
+      if (isPlayer) {
+        _logger.w("Crash! Player disqualified.");
+        disqualified = true;
+        stop();
+        waitingForStart = false;
+        notifyListeners();
+      }
+      return 0;
+    }
+
+    if (needRespawn && isPlayer) {
       final safeIndex = (index - 5).clamp(0, _trackPoints.length - 1);
-      _logger.w("Velocità eccessiva in curva, minor respawn a $safeIndex");
       _minorRespawn(safeIndex);
       return 0;
+    }
+
+    // Speed reduction for curves
+    if (currentSpeed > optimalSpeed * 1.5) {
+      return currentSpeed * 0.4;
+    } else if (currentSpeed > optimalSpeed * 1.2) {
+      return currentSpeed * 0.7;
     }
 
     return currentSpeed;
@@ -298,12 +338,17 @@ class MpGameController extends ChangeNotifier {
         'y': carPosition.dy,
         'speed': speed,
         'lap': _playerLap,
+        'trackIndex': _playerIndex, // Add track position for accurate ranking
         'disqualified': disqualified,
         'ts': now,
       };
-      _logger.d("Invio stato multiplayer: $state");
+      if (kDebugMode) {
+        _logger.d("Invio stato multiplayer id=${state['id']} lap=${state['lap']} idx=${state['trackIndex']} x=${state['x']} y=${state['y']}");
+      }
       onStateUpdate?.call(state);
       _lastSent = now;
     }
   }
+
+  int? _tickLastLog;
 }

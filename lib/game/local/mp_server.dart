@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'mp_lobby.dart';
+import 'package:logger/logger.dart';
 import 'mp_messages.dart';
 
 typedef OnLobbyState = void Function(Map<String, dynamic> lobbyState);
@@ -12,6 +13,15 @@ class MpServer {
   final MpLobby lobby;
   ServerSocket? _server;
   final Map<Socket, String> _sockToPlayer = {};
+
+  final Logger _logger = Logger(
+    printer: PrettyPrinter(
+      methodCount: 0,
+      colors: true,
+      printEmojis: true,
+      printTime: true,
+    ),
+  );
 
   OnLobbyState? onLobbyChange;
   OnStateBroadcast? onStateBroadcast;
@@ -28,10 +38,10 @@ class MpServer {
         port++;
       }
     }
-    print("[MpServer] In ascolto sulla porta $port (lobby ${lobby.id})");
+    _logger.i("[MpServer] In ascolto sulla porta $port (lobby ${lobby.id})");
 
     _server!.listen((sock) {
-      print("[MpServer] Nuova connessione da ${sock.remoteAddress}");
+      _logger.i("[MpServer] Nuova connessione da ${sock.remoteAddress}");
       sock.listen(
         (data) => _handle(sock, utf8.decode(data)),
         onDone: () => _remove(sock),
@@ -45,7 +55,7 @@ class MpServer {
     try {
       msg = jsonDecode(raw);
     } catch (e) {
-      print("[MpServer] Errore parsing messaggio: $e");
+      _logger.e("[MpServer] Errore parsing messaggio: $e");
       return;
     }
 
@@ -64,7 +74,7 @@ class MpServer {
           lobby.addPlayer(pid, name);
           _sockToPlayer[sock] = pid;
 
-          print("[MpServer] Player $pid ($name) si è unito alla lobby");
+          _logger.i("[MpServer] Player $pid ($name) si è unito alla lobby");
           broadcastLobby();
         }
         break;
@@ -82,7 +92,7 @@ class MpServer {
         {
           lobby.removePlayer(pid);
           _sockToPlayer.remove(sock);
-          print("[MpServer] Player $pid ha lasciato la lobby");
+          _logger.w("[MpServer] Player $pid ha lasciato la lobby");
           broadcastLobby();
         }
         break;
@@ -93,7 +103,7 @@ class MpServer {
           bool ok = lobby.tryAssignCar(pid, car);
 
           if (ok) {
-            print("[MpServer] Player $pid ha selezionato l'auto $car");
+            _logger.i("[MpServer] Player $pid ha selezionato l'auto $car");
             broadcastLobby();
           } else {
             _sendTo(sock, {
@@ -101,9 +111,7 @@ class MpServer {
               'car': car,
               'reason': 'Auto già occupata',
             });
-            print(
-              "[MpServer] Player $pid non può prendere $car - già occupata",
-            );
+            _logger.w("[MpServer] Player $pid non può prendere $car - già occupata");
           }
         }
         break;
@@ -121,6 +129,7 @@ class MpServer {
             player.disqualified = data['disqualified'];
           }
           _broadcast({'type': MpMessageType.stateUpdate, 'data': data});
+          _logger.v("[MpServer] stateUpdate id=${data['id']} lap=${data['lap']} idx=${data['trackIndex']} x=${data['x']} y=${data['y']}");
         }
         break;
 
@@ -128,12 +137,10 @@ class MpServer {
         {
           if (_sockToPlayer[sock] == pid) {
             lobby.freePlayerCar(pid);
-            print("[MpServer] Player $pid ha liberato la sua auto (free_car)");
+            _logger.i("[MpServer] Player $pid ha liberato la sua auto (free_car)");
             broadcastLobby();
           } else {
-            print(
-              "[MpServer] ERRORE: Player $pid non autorizzato per free_car",
-            );
+            _logger.e("[MpServer] ERRORE: Player $pid non autorizzato per free_car");
           }
         }
         break;
@@ -145,7 +152,7 @@ class MpServer {
         break;
 
       default:
-        print("[MpServer] Messaggio tipo sconosciuto: $type");
+        _logger.w("[MpServer] Messaggio tipo sconosciuto: $type");
     }
   }
 
@@ -167,7 +174,7 @@ class MpServer {
       try {
         socket.send(utf8.encode(msg), InternetAddress('255.255.255.255'), 4041);
       } catch (e) {
-        print("[MpServer] Errore broadcast UDP: $e");
+        _logger.e("[MpServer] Errore broadcast UDP: $e");
       }
     });
   }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import '../local/mp_server.dart';
 import '../local/mp_client.dart';
@@ -68,6 +69,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
 
   // Classifica in tempo reale
   List<Map<String, dynamic>> _ranking = [];
+  List<Map<String, dynamic>> _previousRanking = [];
 
   @override
   void initState() {
@@ -86,12 +88,12 @@ class _MpGameScreenState extends State<MpGameScreen> {
       lobbyModel = MpLobby(id: widget.lobbyId);
       server = MpServer(lobby: lobbyModel!);
       server!.onLobbyChange = (lobbyMap) {
-        _logger.d("Aggiornamento lobby ricevuto dal server: $lobbyMap");
+        _logger.d("Lobby update (server) players=${(lobbyMap['players'] as List?)?.length ?? 0} cars=${(lobbyMap['cars'] as Map?)?.length ?? 0}");
         _updateLobbyState(lobbyMap);
       };
 
       server!.onStateBroadcast = (stateData) {
-        _logger.d("Stato broadcast ricevuto: $stateData");
+        _logger.v("State broadcast id=${stateData['id']} lap=${stateData['lap']} idx=${stateData['trackIndex']}");
         _updatePlayerState(stateData);
       };
 
@@ -103,7 +105,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
       _logger.d("Host locale aggiunto alla lobby");
 
       gameController.onStateUpdate = (state) {
-        _logger.d("Invio stato multiplayer dal controller al server: $state");
+        _logger.v("Send state (host) id=${state['id']} lap=${state['lap']} idx=${state['trackIndex']}");
         server!.onStateBroadcast?.call(state);
       };
     } else if (widget.mode == MpMode.client) {
@@ -111,12 +113,12 @@ class _MpGameScreenState extends State<MpGameScreen> {
       client = MpClient(id: widget.playerId, name: "PlayerClient");
 
       client!.onLobbyUpdate = (lobbyMap) {
-        _logger.d("Aggiornamento lobby ricevuto dal client: $lobbyMap");
+        _logger.d("Lobby update (client) players=${(lobbyMap['players'] as List?)?.length ?? 0} cars=${(lobbyMap['cars'] as Map?)?.length ?? 0}");
         _updateLobbyState(lobbyMap);
       };
 
       client!.onStateUpdate = (state) {
-        _logger.d("Aggiornamento stato ricevuto dal server: $state");
+        _logger.v("State update (client) id=${state['id']} lap=${state['lap']} idx=${state['trackIndex']}");
         _updatePlayerState(state);
       };
 
@@ -141,7 +143,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
       };
 
       gameController.onStateUpdate = (state) {
-        _logger.d("Invio stato multiplayer dal controller al server: $state");
+        _logger.v("Send state (client) id=${state['id']} lap=${state['lap']} idx=${state['trackIndex']}");
         client!.sendStateUpdate(state);
       };
 
@@ -216,9 +218,13 @@ class _MpGameScreenState extends State<MpGameScreen> {
     final playerId = stateData['id'];
     final isLocal = stateData['isLocal'] == true;
     
+    _logger.d("_updatePlayerState player=$playerId isLocal=$isLocal lap=${stateData['lap']} idx=${stateData['trackIndex']} car=${stateData['car']}");
+    
     // Skip if this is a local player state (our own car)
     if (!isLocal) {
       final carName = stateData['car'] as String?;
+      _logger.v("Processo player remoto $playerId car=$carName");
+      
       // VERIFICA SE IL NOME DELLA MACCHINA È VALIDO
       if (carName != null && carName.isNotEmpty) {
         try {
@@ -228,10 +234,9 @@ class _MpGameScreenState extends State<MpGameScreen> {
             _playersState[playerId] = {
               ...stateData,
               'color': car.color,
-              'name':
-                  stateData['name'] ??
-                  'Player', // AGGIUNGI IL NOME DEL GIOCATORE
+              'name': stateData['name'] ?? 'Player',
             };
+            _logger.d("Player remoto $playerId aggiunto. Totale players: ${_playersState.length}");
             _updateRanking();
           });
         } catch (e) {
@@ -240,6 +245,8 @@ class _MpGameScreenState extends State<MpGameScreen> {
           );
         }
       }
+    } else {
+      _logger.v("Skip player locale $playerId");
     }
   }
 
@@ -253,6 +260,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
       'name': 'You', // O widget.carModel.name se preferisci
       'car': widget.carModel.name,
       'lap': gameController.playerLap,
+      'trackIndex': gameController.playerIndex, // Add track position
       'disqualified': gameController.disqualified,
       'isLocal': true,
       'color': widget.carModel.color,
@@ -271,6 +279,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
             'name': state['name'] ?? 'Player', // USA IL NOME DEL GIOCATORE
             'car': carName,
             'lap': state['lap'] ?? 0,
+            'trackIndex': state['trackIndex'] ?? 0, // Add track position
             'disqualified': state['disqualified'] ?? false,
             'isLocal': false,
             'color': car.color,
@@ -284,27 +293,83 @@ class _MpGameScreenState extends State<MpGameScreen> {
       }
     });
 
-    // Ordina per: 1) Lap (discendente), 2) Disqualified (false prima)
+    // Enhanced sorting: 1) Lap (descending), 2) Track position within same lap (descending), 3) Disqualified (false first)
     allPlayers.sort((a, b) {
       final lapA = a['lap'] as int;
       final lapB = b['lap'] as int;
+      final trackIndexA = a['trackIndex'] as int;
+      final trackIndexB = b['trackIndex'] as int;
       final disqualifiedA = a['disqualified'] as bool;
       final disqualifiedB = b['disqualified'] as bool;
 
-      if (lapA != lapB) {
-        return lapB.compareTo(lapA); // Lap più alto prima
-      }
-
+      // First, sort by disqualification status (non-disqualified first)
       if (disqualifiedA != disqualifiedB) {
-        return disqualifiedA ? 1 : -1; // Non squalificati prima
+        return disqualifiedA ? 1 : -1;
       }
 
-      return 0;
+      // Then sort by lap (higher lap first)
+      if (lapA != lapB) {
+        return lapB.compareTo(lapA);
+      }
+
+      // Finally, sort by track position within the same lap (higher index = further ahead)
+      return trackIndexB.compareTo(trackIndexA);
     });
 
     setState(() {
+      // Store previous ranking for overtaking detection
+      _previousRanking = List.from(_ranking);
       _ranking = allPlayers;
+      
+      // Check for overtaking events
+      _detectOvertaking();
     });
+  }
+
+  void _detectOvertaking() {
+    if (_previousRanking.isEmpty || _ranking.isEmpty) return;
+
+    // Create maps for quick position lookup
+    Map<String, int> previousPositions = {};
+    Map<String, int> currentPositions = {};
+
+    for (int i = 0; i < _previousRanking.length; i++) {
+      previousPositions[_previousRanking[i]['id']] = i + 1;
+    }
+
+    for (int i = 0; i < _ranking.length; i++) {
+      currentPositions[_ranking[i]['id']] = i + 1;
+    }
+
+    // Check for position changes
+    for (String playerId in currentPositions.keys) {
+      if (previousPositions.containsKey(playerId)) {
+        int previousPos = previousPositions[playerId]!;
+        int currentPos = currentPositions[playerId]!;
+
+        if (previousPos > currentPos) {
+          // Player moved up in ranking (overtook someone)
+          final playerName = _ranking.firstWhere((p) => p['id'] == playerId)['name'];
+          _logger.i("$playerName overtook and moved from position $previousPos to $currentPos!");
+          
+          // You can add visual feedback here (e.g., show a notification)
+          _showOvertakingNotification(playerName, previousPos, currentPos);
+        }
+      }
+    }
+  }
+
+  void _showOvertakingNotification(String playerName, int fromPos, int toPos) {
+    // Optional: Show a brief notification about the overtaking
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$playerName moved from P$fromPos to P$toPos!'),
+          duration: const Duration(seconds: 2),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
   }
 
   void _notifyServerImFree() {
@@ -402,9 +467,6 @@ class _MpGameScreenState extends State<MpGameScreen> {
   Widget build(BuildContext context) {
     _logger.v("Build MpGameScreen");
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _notifyServerImFree();
-    });
 
     final orientation = MediaQuery.of(context).orientation;
     final isPhone = _isPhone(context);
@@ -939,6 +1001,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
                   widget.carModel,
                   canvasWidth: maxWidth,
                   canvasHeight: maxHeight,
+                  debugLogs: kDebugMode,
                 ),
               ),
             ),
@@ -1014,6 +1077,10 @@ class _MpTrackPainter extends CustomPainter {
   final CarModel localCar;
   final double canvasWidth;
   final double canvasHeight;
+  final bool debugLogs;
+
+  // Throttling per evitare spam in console (log ogni ~500ms)
+  static int _lastLogMs = 0;
 
   _MpTrackPainter(
     this.points,
@@ -1024,11 +1091,15 @@ class _MpTrackPainter extends CustomPainter {
     this.localCar, {
     required this.canvasWidth,
     required this.canvasHeight,
+    this.debugLogs = false,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     if (points.isEmpty) return;
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final shouldLog = debugLogs && (now - _lastLogMs > 500);
 
     final scaleX = canvasWidth / circuit.viewBoxWidth;
     final scaleY = canvasHeight / circuit.viewBoxHeight;
@@ -1067,45 +1138,166 @@ class _MpTrackPainter extends CustomPainter {
     }
 
     // Disegna le auto degli altri giocatori
+    if (shouldLog) {
+      print("[Painter] Remote players count: ${playersState.length} IDs=${playersState.keys.toList()}");
+    }
     playersState.forEach((playerId, state) {
+      if (shouldLog) {
+        print("[Painter] Checking player $playerId state lap=${state['lap']} idx=${state['trackIndex']} car=${state['car']}");
+      }
+      
       // Skip if this is the same car as the local car
       if (state['car'] == localCar.name) {
+        if (shouldLog) {
+          print("[Painter] Skipping player $playerId - same car as local: ${localCar.name}");
+        }
         return;
       }
       
       if (state['x'] != null && state['y'] != null) {
         final carName = state['car'] ?? 'Unknown';
+        final playerName = state['name'] ?? 'Player';
         final carColor = _getCarColor(carName);
-
-        final carPaint = Paint()
-          ..color = carColor
-          ..style = PaintingStyle.fill;
+        final isDisqualified = state['disqualified'] ?? false;
 
         final px = (state['x'] as num).toDouble() * scale + offsetX;
         final py = (state['y'] as num).toDouble() * scale + offsetY;
 
-        canvas.drawCircle(Offset(px, py), 8.0, carPaint);
+        if (shouldLog) {
+          final lapVal = state['lap'];
+          print("[Painter] Draw player=$playerId name=$playerName car=$carName pos=(${px.toStringAsFixed(1)},${py.toStringAsFixed(1)}) lap=${lapVal ?? 'n/a'} disq=$isDisqualified");
+        }
+
+        // Draw car shadow for depth
+        final shadowPaint = Paint()
+          ..color = Colors.black.withOpacity(0.3)
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(Offset(px + 1, py + 1), 9.0, shadowPaint);
+
+        // Draw main car body
+        final carPaint = Paint()
+          ..color = isDisqualified ? Colors.grey : carColor
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(Offset(px, py), 9.0, carPaint);
+
+        // Draw car border
+        final borderPaint = Paint()
+          ..color = isDisqualified ? Colors.red : Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2;
+        canvas.drawCircle(Offset(px, py), 9.0, borderPaint);
+
+        // Draw player name above car
+        final textPainter = TextPainter(
+          text: TextSpan(
+            text: playerName,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              shadows: [
+                Shadow(
+                  color: Colors.black,
+                  offset: Offset(1, 1),
+                  blurRadius: 2,
+                ),
+              ],
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        );
+        textPainter.layout();
+        textPainter.paint(
+          canvas,
+          Offset(px - textPainter.width / 2, py - 25),
+        );
+
+        // Draw lap indicator
+        final lap = state['lap'] ?? 0;
+        if (lap > 0) {
+          final lapTextPainter = TextPainter(
+            text: TextSpan(
+              text: 'L$lap',
+              style: TextStyle(
+                color: Colors.yellow,
+                fontSize: 8,
+                fontWeight: FontWeight.bold,
+                shadows: [
+                  Shadow(
+                    color: Colors.black,
+                    offset: Offset(1, 1),
+                    blurRadius: 2,
+                  ),
+                ],
+              ),
+            ),
+            textDirection: TextDirection.ltr,
+          );
+          lapTextPainter.layout();
+          lapTextPainter.paint(
+            canvas,
+            Offset(px - lapTextPainter.width / 2, py + 12),
+          );
+        }
+      } else {
+        if (shouldLog) {
+          print("[Painter] Player $playerId has null position: x=${state['x']}, y=${state['y']}");
+        }
       }
     });
 
+    if (shouldLog) {
+      _lastLogMs = now;
+    }
+
     // Disegna l'auto locale (sopra le altre)
     if (localCarPosition != Offset.zero) {
-      final localCarPaint = Paint()
-        ..color = localCar.color
-        ..style = PaintingStyle.fill;
-
       final px = localCarPosition.dx * scale + offsetX;
       final py = localCarPosition.dy * scale + offsetY;
 
-      // Auto locale più grande
-      canvas.drawCircle(Offset(px, py), 10.0, localCarPaint);
+      // Draw local car shadow for depth
+      final shadowPaint = Paint()
+        ..color = Colors.black.withOpacity(0.4)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(px + 1, py + 1), 11.0, shadowPaint);
 
-      // Bordo per distinguerla
+      // Draw main local car body
+      final localCarPaint = Paint()
+        ..color = localCar.color
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(px, py), 11.0, localCarPaint);
+
+      // Draw pulsing border for local car
       final borderPaint = Paint()
         ..color = Colors.white
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2;
-      canvas.drawCircle(Offset(px, py), 10.0, borderPaint);
+        ..strokeWidth = 3;
+      canvas.drawCircle(Offset(px, py), 11.0, borderPaint);
+
+      // Draw "YOU" label above local car
+      final youTextPainter = TextPainter(
+        text: TextSpan(
+          text: 'YOU',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            shadows: [
+              Shadow(
+                color: Colors.black,
+                offset: Offset(1, 1),
+                blurRadius: 3,
+              ),
+            ],
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      youTextPainter.layout();
+      youTextPainter.paint(
+        canvas,
+        Offset(px - youTextPainter.width / 2, py - 28),
+      );
     }
   }
 
