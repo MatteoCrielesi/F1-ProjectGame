@@ -264,7 +264,25 @@ void Win32Window::SetQuitOnClose(bool quit_on_close) {
 }
 
 bool Win32Window::OnCreate() {
-  // No-op; provided for subclasses.
+  // Explicitly set big and small window icons to ensure visibility.
+  HICON big_icon = static_cast<HICON>(
+      LoadImage(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_APP_ICON),
+                IMAGE_ICON, GetSystemMetrics(SM_CXICON),
+                GetSystemMetrics(SM_CYICON), 0));
+  if (big_icon) {
+    SendMessage(window_handle_, WM_SETICON, ICON_BIG,
+                reinterpret_cast<LPARAM>(big_icon));
+  }
+
+  HICON small_icon = static_cast<HICON>(
+      LoadImage(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_APP_ICON),
+                IMAGE_ICON, GetSystemMetrics(SM_CXSMICON),
+                GetSystemMetrics(SM_CYSMICON), 0));
+  if (small_icon) {
+    SendMessage(window_handle_, WM_SETICON, ICON_SMALL,
+                reinterpret_cast<LPARAM>(small_icon));
+  }
+
   return true;
 }
 

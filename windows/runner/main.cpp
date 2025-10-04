@@ -1,6 +1,7 @@
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
+#include <shobjidl.h>
 
 #include "flutter_window.h"
 #include "utils.h"
@@ -23,6 +24,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
       GetCommandLineArguments();
 
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
+
+  // Set AppUserModelID to ensure proper icon association in taskbar/Start.
+  // Use CompanyName.ProductName format matching Runner.rc metadata.
+  SetCurrentProcessExplicitAppUserModelID(L"com.example.f1_project");
 
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);

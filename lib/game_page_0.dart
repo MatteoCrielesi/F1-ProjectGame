@@ -55,6 +55,7 @@ class _GamePageState extends State<GamePage_0> {
   bool _timerRunning = false;
   int _elapsedCentis = 0;
   Timer? _countdownTimer;
+  late Stopwatch _stopwatch;
   int? _lastSelectedIndex;
   bool _lobbyStep = false;
   MpServer? _server;
@@ -84,6 +85,7 @@ class _GamePageState extends State<GamePage_0> {
 
     _countdownTimer?.cancel();
     _elapsedCentis = 0;
+    _stopwatch = Stopwatch()..start();
     _timerRunning = true;
     _gameOver = false;
     _crashState = false;
@@ -91,13 +93,15 @@ class _GamePageState extends State<GamePage_0> {
 
     _gameScreenKey.currentState?.respawnCarAndReset();
 
-    _countdownTimer = Timer.periodic(const Duration(milliseconds: 10), (timer) {
+    _countdownTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
       if (!mounted || _gameScreenKey.currentState == null) {
         timer.cancel();
         return;
       }
-
-      setState(() => _elapsedCentis++);
+      final nextCentis = _stopwatch.elapsedMilliseconds ~/ 10;
+      if (nextCentis != _elapsedCentis) {
+        setState(() => _elapsedCentis = nextCentis);
+      }
 
       if (_gameScreenKey.currentState!.controller.disqualified ||
           _gameScreenKey.currentState!.controller.gameComplete) {
@@ -118,6 +122,10 @@ class _GamePageState extends State<GamePage_0> {
 
   void _stopTimer() {
     _countdownTimer?.cancel();
+    if (_stopwatch.isRunning) {
+      _stopwatch.stop();
+      _stopwatch.reset();
+    }
     _countdownTimer = null;
 
     if (!mounted) return;
@@ -161,6 +169,7 @@ class _GamePageState extends State<GamePage_0> {
     const double centralWidgetHeight = 40;
     final isPortrait =
         MediaQuery.of(context).orientation == Orientation.portrait;
+    final bool isGameActive = _selectedCircuit != null && _teamSelected;
 
     return Scaffold(
       body: Stack(
@@ -194,7 +203,7 @@ class _GamePageState extends State<GamePage_0> {
                 Padding(
                   padding: EdgeInsets.fromLTRB(
                     16,
-                    isPortrait ? 14 : 1,
+                    isPortrait ? 22 : 8,
                     16,
                     isPortrait ? 10 : 0,
                   ),
@@ -204,59 +213,50 @@ class _GamePageState extends State<GamePage_0> {
                       // Lato sinistro: back + logo + titolo
                       Row(
                         children: [
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white10,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              padding: const EdgeInsets.all(8),
-                              minimumSize: const Size(36, 36),
-                            ),
-                            onPressed: () {
-                              if (_selectedCircuit == null) {
-                                // Sei nella schermata scelta circuiti → vai a dashboard
-                                Navigator.pop(context);
-                              } else if (!_teamSelected) {
-                                // Sei nella schermata scelta scuderie → torna ai circuiti
-                                _lastSelectedIndex = allCircuits.indexOf(
-                                  _selectedCircuit!,
-                                );
-                                setState(() {
-                                  _selectedCircuit = null;
-                                  _currentPage = _lastSelectedIndex!;
-                                });
-                                WidgetsBinding.instance.addPostFrameCallback((
-                                  _,
-                                ) {
-                                  _pageController.jumpToPage(
-                                    _lastSelectedIndex!,
-                                  );
-                                });
-                              } else {
-                                // Sei nel gioco → torna alla scelta scuderia
-                                _resetGame();
-                                setState(() {
-                                  _teamSelected = false;
-                                  _selectedTeam = null;
-                                });
-                              }
-                            },
-                            child: Icon(
-                              _selectedCircuit == null
-                                  ? Icons
-                                        .arrow_back // se scegli il circuito → pulsante home
-                                  : _selectedCircuit != null &&
-                                        _teamSelected == false
-                                  ? Icons
-                                        .arrow_back // se scegli la scuderia → back ai circuiti
-                                  : Icons
-                                        .arrow_back, // se sei in gioco → torna alla scuderia
-                              size: 20,
-                            ),
-                          ),
+                          // Nascondi la freccia back quando stai scegliendo il circuito
+                          _selectedCircuit == null
+                              ? const SizedBox.shrink()
+                              : ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white10,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    padding: const EdgeInsets.all(8),
+                                    minimumSize: const Size(36, 36),
+                                  ),
+                                  onPressed: () {
+                                    if (_selectedCircuit == null) {
+                                      // Sei nella schermata scelta circuiti → vai a dashboard
+                                      Navigator.pop(context);
+                                    } else if (!_teamSelected) {
+                                      // Sei nella schermata scelta scuderie → torna ai circuiti
+                                      _lastSelectedIndex = allCircuits.indexOf(
+                                        _selectedCircuit!,
+                                      );
+                                      setState(() {
+                                        _selectedCircuit = null;
+                                        _currentPage = _lastSelectedIndex!;
+                                      });
+                                      WidgetsBinding.instance
+                                          .addPostFrameCallback((_,) {
+                                        _pageController.jumpToPage(
+                                          _lastSelectedIndex!,
+                                        );
+                                      });
+                                    } else {
+                                      // Sei nel gioco → torna alla scelta scuderia
+                                      _resetGame();
+                                      setState(() {
+                                        _teamSelected = false;
+                                        _selectedTeam = null;
+                                      });
+                                    }
+                                  },
+                                  child: const Icon(Icons.arrow_back, size: 20),
+                                ),
 
                           const SizedBox(width: 12),
                           SvgPicture.asset('assets/f1_logo.svg', height: 24),
@@ -351,21 +351,23 @@ class _GamePageState extends State<GamePage_0> {
                           width: centralWidgetWidth,
                           height: centralWidgetHeight,
                           child: _teamSelected
-                              ? !_timerRunning && !_gameOver
-                                    ? StartLights(
+                              ? (!_timerRunning && !_gameOver
+                                  ? Center(
+                                      child: StartLights(
                                         showStartButton: true,
                                         onSequenceComplete: () {
                                           if (_gameScreenKey
                                                   .currentState
                                                   ?.mounted ??
-                                              false) {
+                                            false) {
                                             _gameScreenKey.currentState!
                                                 .startGame();
                                           }
                                           _startTimer();
                                         },
-                                      )
-                                    : Container(
+                                      ),
+                                    )
+                                  : Container(
                                         alignment: Alignment.center,
                                         decoration: BoxDecoration(
                                           color: Colors.white.withOpacity(0.06),
@@ -385,12 +387,21 @@ class _GamePageState extends State<GamePage_0> {
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
-                                      )
+                                      ))
                               : const SizedBox.shrink(),
                         ),
                     ],
                   ),
                 ),
+                // Riga rossa inferiore sotto l'header, visibile solo fuori dal gioco
+                if (!isGameActive)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 0),
+                    child: SizedBox(
+                      height: 3,
+                      child: ColoredBox(color: Color(0xFFE10600)),
+                    ),
+                  ),
 
                 // 👇 Solo in verticale: start/timer + nome circuito
                 if (isPortrait && _selectedCircuit != null)
@@ -403,21 +414,23 @@ class _GamePageState extends State<GamePage_0> {
                           width: centralWidgetWidth,
                           height: centralWidgetHeight,
                           child: _teamSelected
-                              ? !_timerRunning && !_gameOver
-                                    ? StartLights(
+                              ? (!_timerRunning && !_gameOver
+                                  ? Center(
+                                      child: StartLights(
                                         showStartButton: true,
                                         onSequenceComplete: () {
                                           if (_gameScreenKey
                                                   .currentState
                                                   ?.mounted ??
-                                              false) {
+                                            false) {
                                             _gameScreenKey.currentState!
                                                 .startGame();
                                           }
                                           _startTimer();
                                         },
-                                      )
-                                    : Container(
+                                      ),
+                                    )
+                                  : Container(
                                         alignment: Alignment.center,
                                         decoration: BoxDecoration(
                                           color: Colors.white.withOpacity(0.06),
@@ -437,7 +450,7 @@ class _GamePageState extends State<GamePage_0> {
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
-                                      )
+                                      ))
                               : const SizedBox.shrink(),
                         ),
                         Text(
@@ -452,6 +465,18 @@ class _GamePageState extends State<GamePage_0> {
                     ),
                   ),
 
+                // Spazio simmetrico sopra la linea inferiore (solo portrait e fuori dal gioco)
+                if (isPortrait && !isGameActive && _selectedCircuit != null)
+                  const SizedBox(height: 8),
+                // Linea rossa inferiore: visibile solo fuori dal gioco
+                if (!isGameActive)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 0),
+                    child: SizedBox(
+                      height: 3,
+                      child: ColoredBox(color: Color(0xFFE10600)),
+                    ),
+                  ),
                 const SizedBox(height: 20),
                 Expanded(child: _buildContentArea(context)),
               ],

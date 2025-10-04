@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:f1_project/dashboard.dart';
+//import 'package:f1_project/dashboard.dart';
+import 'package:f1_project/game_page_0.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'start_lights.dart';
@@ -103,7 +104,8 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                                 if (!mounted) return;
                                 Navigator.of(context).pushReplacement(
                                   MaterialPageRoute(
-                                    builder: (_) => const DashboardPage(),
+                                    //builder: (_) => const DashboardPage(),
+                                    builder: (_) => const GamePage_0(selectedType: 'challenge',),
                                   ),
                                 );
                               },

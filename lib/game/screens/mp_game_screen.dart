@@ -63,6 +63,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
   bool _timerRunning = false;
   int _elapsedCentis = 0;
   Timer? _countdownTimer;
+  late Stopwatch _stopwatch;
   bool _gameOver = false;
   bool _crashState = false;
   bool _victoryState = false;
@@ -396,6 +397,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
 
     _countdownTimer?.cancel();
     _elapsedCentis = 0;
+    _stopwatch = Stopwatch()..start();
     _timerRunning = true;
     _gameOver = false;
     _crashState = false;
@@ -403,13 +405,15 @@ class _MpGameScreenState extends State<MpGameScreen> {
 
     gameController.respawn();
 
-    _countdownTimer = Timer.periodic(const Duration(milliseconds: 10), (timer) {
+    _countdownTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
       }
-
-      setState(() => _elapsedCentis++);
+      final nextCentis = _stopwatch.elapsedMilliseconds ~/ 10;
+      if (nextCentis != _elapsedCentis) {
+        setState(() => _elapsedCentis = nextCentis);
+      }
 
       if (gameController.disqualified || gameController.gameComplete) {
         _stopTimer();
@@ -419,6 +423,10 @@ class _MpGameScreenState extends State<MpGameScreen> {
 
   void _stopTimer() {
     _countdownTimer?.cancel();
+    if (_stopwatch.isRunning) {
+      _stopwatch.stop();
+      _stopwatch.reset();
+    }
     _countdownTimer = null;
 
     if (!mounted) return;
@@ -479,7 +487,6 @@ class _MpGameScreenState extends State<MpGameScreen> {
           children: [
             Column(
               children: [
-                Container(height: 3, color: const Color(0xFFE10600)),
                 Expanded(
                   child: orientation == Orientation.landscape
                       ? _buildLandscapeLayout(isDesktop)
@@ -978,7 +985,8 @@ class _MpGameScreenState extends State<MpGameScreen> {
         final maxWidth = constraints.maxWidth;
         final maxHeight = constraints.maxHeight;
 
-        return Stack(
+        return RepaintBoundary(
+          child: Stack(
           children: [
             // Circuito SVG
             Positioned.fill(
@@ -1062,6 +1070,7 @@ class _MpGameScreenState extends State<MpGameScreen> {
                 ),
               ),
           ],
+        ),
         );
       },
     );

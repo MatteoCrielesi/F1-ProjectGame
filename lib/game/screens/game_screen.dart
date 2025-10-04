@@ -1,8 +1,11 @@
 import 'dart:math';
 import 'package:f1_project/game/saves/game_records.dart';
+import 'package:f1_project/game/screens/game_screen.dart' as _keyFocusNode;
 import 'package:f1_project/game_page_1.dart';
+import 'package:f1_project/game_page_0.dart';
 import 'package:f1_project/dashboard.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../controllers/game_controller.dart';
 import '../models/circuit.dart';
@@ -39,6 +42,8 @@ class GameScreenState extends State<GameScreen> {
   final List<int> _lapTimes = [];
   Orientation? _currentOrientation;
   bool _gameStarted = false;
+  final FocusNode _keyFocusNode = FocusNode();
+  final Set<LogicalKeyboardKey> _pressedKeys = {};
 
   void _notifyGameState() {
     widget.onGameStateChanged?.call(_crashState, _raceFinished);
@@ -192,6 +197,8 @@ class GameScreenState extends State<GameScreen> {
 
   @override
   void dispose() {
+    // Dispose del FocusNode usato dal RawKeyboardListener per evitare leak
+    _keyFocusNode.dispose();
     controller.disposeController();
     super.dispose();
   }
@@ -199,6 +206,32 @@ class GameScreenState extends State<GameScreen> {
   bool _isPhone(BuildContext context) {
     final shortestSide = MediaQuery.of(context).size.shortestSide;
     return shortestSide < 600;
+  }
+
+  void _handleKey(RawKeyEvent ev) {
+    // Gestione input tastiera per Web/Desktop
+    final key = ev.logicalKey;
+    final isDown = ev is RawKeyDownEvent;
+
+    if (isDown) {
+      _pressedKeys.add(key);
+    } else {
+      _pressedKeys.remove(key);
+    }
+
+    // Aggiorna stati dei controlli
+    final accel = _pressedKeys.contains(LogicalKeyboardKey.arrowUp) ||
+        _pressedKeys.contains(LogicalKeyboardKey.keyW);
+    final brake = _pressedKeys.contains(LogicalKeyboardKey.arrowDown) ||
+        _pressedKeys.contains(LogicalKeyboardKey.keyS);
+
+    if (controller.acceleratePressed != accel ||
+        controller.brakePressed != brake) {
+      setState(() {
+        controller.acceleratePressed = accel;
+        controller.brakePressed = brake;
+      });
+    }
   }
 
   @override
@@ -224,23 +257,27 @@ class GameScreenState extends State<GameScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                Container(height: 3, color: const Color(0xFFE10600)),
-                Expanded(
-                  child: orientation == Orientation.landscape
-                      ? _buildLandscapeLayout(totalTime, isDesktop)
-                      : _buildPortraitLayout(totalTime, context, isDesktop),
-                ),
-              ],
-            ),
-            if (controller.disqualified) _buildCrashMask(),
-            if (_raceFinished && _selectedMode == 'challenge')
-              _buildVictoryMask(bestLapIndex, bestLapTime),
-          ],
+      body: RawKeyboardListener(
+        focusNode: _keyFocusNode,
+        autofocus: true,
+        onKey: _handleKey,
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  Expanded(
+                    child: orientation == Orientation.landscape
+                        ? _buildLandscapeLayout(totalTime, isDesktop)
+                        : _buildPortraitLayout(totalTime, context, isDesktop),
+                  ),
+                ],
+              ),
+              if (controller.disqualified) _buildCrashMask(),
+              if (_raceFinished && _selectedMode == 'challenge')
+                _buildVictoryMask(bestLapIndex, bestLapTime),
+            ],
+          ),
         ),
       ),
     );
@@ -277,25 +314,25 @@ class GameScreenState extends State<GameScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (_) =>
-                          const GamePage_1(selectedType: 'challenge'),
+                          const GamePage_0(selectedType: 'challenge'),
                     ),
                   );
                 });
               },
               child: const Text("Torna alla scelta pista"),
             ),
-            ElevatedButton(
-              onPressed: () {
-                resetGame();
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const DashboardPage()),
-                  );
-                });
-              },
-              child: const Text("Torna alla dashboard"),
-            ),
+            // ElevatedButton(
+            //   onPressed: () {
+            //     resetGame();
+            //     WidgetsBinding.instance.addPostFrameCallback((_) {
+            //       Navigator.pushReplacement(
+            //         context,
+            //         MaterialPageRoute(builder: (_) => const DashboardPage()),
+            //       );
+            //     });
+            //   },
+            //   child: const Text("Torna alla dashboard"),
+            // ),
           ],
         ),
       ),
@@ -332,7 +369,10 @@ class GameScreenState extends State<GameScreen> {
               ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => resetGame(),
+              onPressed: () {
+                // Comportamento uguale a "Riprova": resetta e resta in pista
+                resetGame();
+              },
               child: const Text("Riscendi in pista"),
             ),
             const SizedBox(height: 12),
@@ -344,7 +384,7 @@ class GameScreenState extends State<GameScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (_) =>
-                          const GamePage_1(selectedType: 'challenge'),
+                          const GamePage_0(selectedType: 'challenge'),
                     ),
                   );
                 });
@@ -352,18 +392,18 @@ class GameScreenState extends State<GameScreen> {
               child: const Text("Torna alla scelta pista"),
             ),
             const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: () {
-                resetGame();
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const DashboardPage()),
-                  );
-                });
-              },
-              child: const Text("Torna alla dashboard"),
-            ),
+            // ElevatedButton(
+            //   onPressed: () {
+            //     resetGame();
+            //     WidgetsBinding.instance.addPostFrameCallback((_) {
+            //       Navigator.pushReplacement(
+            //         context,
+            //         MaterialPageRoute(builder: (_) => const DashboardPage()),
+            //       );
+            //     });
+            //   },
+            //   child: const Text("Torna alla dashboard"),
+            // ),
           ],
         ),
       ),
@@ -378,7 +418,7 @@ class GameScreenState extends State<GameScreen> {
           children: [
             isDesktop
                 ? Container(
-                    width: 200,
+                    width: 250,
                     padding: const EdgeInsets.all(12),
                     child: _buildLapTable(totalTime),
                   )
@@ -533,6 +573,12 @@ class GameScreenState extends State<GameScreen> {
                         ),
                       ],
                     ),
+                  if (isDesktop)
+                    Row(
+                      children: [
+                        Expanded(child: _buildLapTable(totalTime)),
+                      ],
+                    ),
                   const SizedBox(height: 16),
                   if (widget.showTouchControls)
                     Container(
@@ -568,17 +614,30 @@ class GameScreenState extends State<GameScreen> {
       ),
       child: Column(
         children: [
+          // Nome pista
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              widget.circuit.displayName,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
           if (widget.car.logoPath.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Image.asset(
                 widget.car.logoPath,
-                width: 60,
-                height: 60,
+                width: 120,
+                height: 120,
                 fit: BoxFit.contain,
               ),
             ),
-          for (int i = 0; i < 5; i++)
+          for (int i = 0; i < 3; i++)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
@@ -636,29 +695,31 @@ class GameScreenState extends State<GameScreen> {
         final maxWidth = constraints.maxWidth;
         final maxHeight = constraints.maxHeight;
 
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: SvgPicture.asset(
-                widget.circuit.svgPath,
-                fit: BoxFit.contain,
-              ),
-            ),
-            Positioned.fill(
-              child: CustomPaint(
-                size: Size(maxWidth, maxHeight),
-                painter: _TrackPainter(
-                  controller.trackPoints,
-                  controller.spawnPoint,
-                  controller.carPosition,
-                  widget.circuit,
-                  widget.car,
-                  canvasWidth: maxWidth,
-                  canvasHeight: maxHeight,
+        return RepaintBoundary(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: SvgPicture.asset(
+                  widget.circuit.svgPath,
+                  fit: BoxFit.contain,
                 ),
               ),
-            ),
-          ],
+              Positioned.fill(
+                child: CustomPaint(
+                  size: Size(maxWidth, maxHeight),
+                  painter: _TrackPainter(
+                    controller.trackPoints,
+                    controller.spawnPoint,
+                    controller.carPosition,
+                    widget.circuit,
+                    widget.car,
+                    canvasWidth: maxWidth,
+                    canvasHeight: maxHeight,
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -735,3 +796,5 @@ class _TrackPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
+
+// (rimosso) override di dispose fuori dalla classe

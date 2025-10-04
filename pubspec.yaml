@@ -14,6 +14,7 @@ dependencies:
   logger: ^2.6.1
   path_drawing: ^1.0.1
   path_provider: ^2.1.5
+  shared_preferences: ^2.3.2
   postgres: ^3.5.6
   svg_path_parser: ^1.1.2
 
@@ -21,7 +22,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  flutter_launcher_icons: ^0.14.4
+  flutter_launcher_icons: ^0.13.1
   flutter_native_splash: ^2.4.1
 
 
@@ -29,7 +30,16 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/f1_logo.png" 
+  image_path: "web/icons/Icon-512.png"
+  windows:
+    generate: true
+    image_path: "web/icons/Icon-512.png"
+  web:
+    generate: true
+    image_path: "web/icons/Icon-512.png"
+    background_color: "#FAFAFA"
+    theme_color: "#E10600"
+  remove_alpha_ios: true
 
 flutter_native_splash:
   color: "#FAFAFA"          # colore sfondo
