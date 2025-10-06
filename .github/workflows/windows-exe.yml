@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  build-windows:
+  build-windows-exe:
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -21,31 +21,31 @@ jobs:
         with:
           channel: stable
 
-      - name: Enable Windows Desktop
-        run: flutter config --enable-windows-desktop
-
       - name: Flutter pub get
         run: flutter pub get
 
       - name: Build Windows (Release)
         run: flutter build windows --release
 
-      - name: Zip Windows Release folder
+      - name: Archive Windows Release folder
         shell: pwsh
         run: |
-          $ReleaseDir = "build/windows/x64/runner/Release"
-          $ZipPath = "build/windows/F1ProjectGame-Windows.zip"
-          Compress-Archive -Path "$ReleaseDir/*" -DestinationPath $ZipPath -Force
+          $ReleasePath = "build/windows/x64/runner/Release"
+          $ZipPath = "build/windows/F1-ProjectGame-windows-release.zip"
+          if (!(Test-Path $ReleasePath)) { throw "Release folder not found: $ReleasePath" }
+          if (Test-Path $ZipPath) { Remove-Item $ZipPath }
+          Compress-Archive -Path "$ReleasePath/*" -DestinationPath $ZipPath
+          Write-Host "Created archive at $ZipPath"
 
-      - name: Upload artifact (ZIP)
+      - name: Upload artifact (Windows zip)
         uses: actions/upload-artifact@v4
         with:
           name: windows-exe
-          path: build/windows/F1ProjectGame-Windows.zip
+          path: build/windows/F1-ProjectGame-windows-release.zip
 
-      - name: Create Release and Upload ZIP
+      - name: Create Release and Upload Windows zip
         uses: softprops/action-gh-release@v2
         with:
-          files: build/windows/F1ProjectGame-Windows.zip
+          files: build/windows/F1-ProjectGame-windows-release.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

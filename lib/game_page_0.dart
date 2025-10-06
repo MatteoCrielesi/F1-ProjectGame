@@ -1,12 +1,26 @@
 import 'dart:async';
 import 'package:f1_project/game/saves/game_records.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'game/screens/game_screen.dart';
 import 'game/models/circuit.dart';
 import 'game/models/car.dart';
 import 'game/controllers/game_controller.dart';
 import 'start_lights.dart';
+
+// Abilita il drag con mouse/trackpad nelle viste scrollabili
+class _MouseTouchScrollBehavior extends MaterialScrollBehavior {
+  const _MouseTouchScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+      };
+}
 
 class GamePage_0 extends StatefulWidget {
   final String selectedType;
@@ -471,69 +485,95 @@ class _GamePageState extends State<GamePage_0> {
       // Circuit selection
       return Stack(
         children: [
-          PageView.builder(
-            controller: _pageController,
-            scrollDirection:
-                MediaQuery.of(context).orientation == Orientation.portrait
-                ? Axis.vertical
-                : Axis.horizontal,
-            itemCount: allCircuits.length,
-            onPageChanged: (index) => setState(() => _currentPage = index),
-            itemBuilder: (context, index) {
-              final circuit = allCircuits[index];
-              final double scale = (_currentPage == index) ? 1.0 : 0.85;
-              return AnimatedScale(
-                scale: scale,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOut,
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedCircuit = circuit;
-                      _currentPage = index;
-                      _preloadFuture = _preloadCircuit(circuit);
-                    });
-                  },
-                  child: SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.3,
-                    child: Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      color: const Color.fromARGB(120, 255, 6, 0),
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 8,
-                      ),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 6),
-                          Text(
-                            circuit.displayName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+          ScrollConfiguration(
+            behavior: _MouseTouchScrollBehavior(),
+            child: Listener(
+              onPointerSignal: (PointerSignalEvent event) {
+                if (event is PointerScrollEvent) {
+                  final bool isPortrait =
+                      MediaQuery.of(context).orientation == Orientation.portrait;
+                  // Usa la rotellina (o scroll) per cambiare pagina.
+                  final double delta = event.scrollDelta.dy != 0
+                      ? event.scrollDelta.dy
+                      : event.scrollDelta.dx;
+                  if (delta > 0) {
+                    _pageController.nextPage(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOut,
+                    );
+                  } else if (delta < 0) {
+                    _pageController.previousPage(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                }
+              },
+              child: PageView.builder(
+                controller: _pageController,
+                scrollDirection:
+                    MediaQuery.of(context).orientation == Orientation.portrait
+                    ? Axis.vertical
+                    : Axis.horizontal,
+                itemCount: allCircuits.length,
+                onPageChanged: (index) => setState(() => _currentPage = index),
+                itemBuilder: (context, index) {
+                  final circuit = allCircuits[index];
+                  final double scale = (_currentPage == index) ? 1.0 : 0.85;
+                  return AnimatedScale(
+                    scale: scale,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOut,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedCircuit = circuit;
+                          _currentPage = index;
+                          _preloadFuture = _preloadCircuit(circuit);
+                        });
+                      },
+                      child: SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.3,
+                        child: Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          const SizedBox(height: 4),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: FittedBox(
-                                fit: BoxFit.contain,
-                                child: SvgPicture.asset(circuit.svgPath),
+                          color: const Color.fromARGB(120, 255, 6, 0),
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 6),
+                              Text(
+                                circuit.displayName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 4),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12.0),
+                                  child: FittedBox(
+                                    fit: BoxFit.contain,
+                                    child: SvgPicture.asset(circuit.svgPath),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              );
-            },
+                  );
+                },
+              ),
+            ),
           ),
         ],
       );
