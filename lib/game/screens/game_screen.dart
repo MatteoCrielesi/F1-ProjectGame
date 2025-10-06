@@ -1,9 +1,7 @@
 import 'dart:math';
 import 'package:f1_project/game/saves/game_records.dart';
 import 'package:f1_project/game/screens/game_screen.dart' as _keyFocusNode;
-import 'package:f1_project/game_page_1.dart';
 import 'package:f1_project/game_page_0.dart';
-import 'package:f1_project/dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -220,9 +218,11 @@ class GameScreenState extends State<GameScreen> {
     }
 
     // Aggiorna stati dei controlli
-    final accel = _pressedKeys.contains(LogicalKeyboardKey.arrowUp) ||
+    final accel =
+        _pressedKeys.contains(LogicalKeyboardKey.arrowUp) ||
         _pressedKeys.contains(LogicalKeyboardKey.keyW);
-    final brake = _pressedKeys.contains(LogicalKeyboardKey.arrowDown) ||
+    final brake =
+        _pressedKeys.contains(LogicalKeyboardKey.arrowDown) ||
         _pressedKeys.contains(LogicalKeyboardKey.keyS);
 
     if (controller.acceleratePressed != accel ||
@@ -574,11 +574,7 @@ class GameScreenState extends State<GameScreen> {
                       ],
                     ),
                   if (isDesktop)
-                    Row(
-                      children: [
-                        Expanded(child: _buildLapTable(totalTime)),
-                      ],
-                    ),
+                    Row(children: [Expanded(child: _buildLapTable(totalTime))]),
                   const SizedBox(height: 16),
                   if (widget.showTouchControls)
                     Container(
@@ -635,6 +631,23 @@ class GameScreenState extends State<GameScreen> {
                 width: 120,
                 height: 120,
                 fit: BoxFit.contain,
+                // Nella scheda tempi:
+                // - McLaren e Sauber/Kick Sauber usano il colore della scuderia
+                // - Alpine usa un azzurro del logo, leggermente più chiaro di Williams
+                color: widget.car.name == "Alpine"
+                    ? const Color.fromARGB(255, 0, 120, 255)
+                    : (widget.car.name == "McLaren" ||
+                          widget.car.name == "Sauber" ||
+                          widget.car.name == "Kick Sauber")
+                    ? widget.car.color
+                    : null,
+                colorBlendMode:
+                    (widget.car.name == "McLaren" ||
+                        widget.car.name == "Alpine" ||
+                        widget.car.name == "Sauber" ||
+                        widget.car.name == "Kick Sauber")
+                    ? BlendMode.srcIn
+                    : null,
               ),
             ),
           for (int i = 0; i < 3; i++)

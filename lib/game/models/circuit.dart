@@ -30,7 +30,7 @@ class Circuit {
 const List<Circuit> allCircuits = [
   Circuit(
     id: 'abudhabi',
-    displayName: 'Abudhabi',
+    displayName: 'Abu Dhabi',
     svgPath: 'assets/circuiti/abudhabi.svg',
     maskPath: 'assets/circuiti/mask/abudhabi_mask.png',
     xPercentage: 0.44,
@@ -95,7 +95,7 @@ const List<Circuit> allCircuits = [
   ),
   Circuit(
     id: 'belgium',
-    displayName: 'Belgium',
+    displayName: 'Belgio',
     svgPath: 'assets/circuiti/belgium.svg',
     maskPath: 'assets/circuiti/mask/belgium_mask.png',
     xPercentage: 0.138,
@@ -108,7 +108,7 @@ const List<Circuit> allCircuits = [
   ),
   Circuit(
     id: 'brazil',
-    displayName: 'Brazil',
+    displayName: 'Brasile',
     svgPath: 'assets/circuiti/brazil.svg',
     maskPath: 'assets/circuiti/mask/brazil_mask.png',
     xPercentage: 0.315,
@@ -134,7 +134,7 @@ const List<Circuit> allCircuits = [
   ),
   Circuit(
     id: 'greatbritain',
-    displayName: 'Great Britain',
+    displayName: 'Gran Bretagna',
     svgPath: 'assets/circuiti/greatbritain.svg',
     maskPath: 'assets/circuiti/mask/greatbritain_mask.png',
     xPercentage: 0.615,
@@ -147,7 +147,7 @@ const List<Circuit> allCircuits = [
   ),
   Circuit(
     id: 'hungary',
-    displayName: 'Hungary',
+    displayName: 'Ungheria',
     svgPath: 'assets/circuiti/hungary.svg',
     maskPath: 'assets/circuiti/mask/hungary_mask.png',
     xPercentage: 0.71,
@@ -160,7 +160,7 @@ const List<Circuit> allCircuits = [
   ),
   Circuit(
     id: 'italyimola',
-    displayName: 'Italy Imola',
+    displayName: 'Imola',
     svgPath: 'assets/circuiti/italyimola.svg',
     maskPath: 'assets/circuiti/mask/italyimola_mask.png',
     xPercentage: 0.692,
@@ -173,7 +173,7 @@ const List<Circuit> allCircuits = [
   ),
   Circuit(
     id: 'italymonza',
-    displayName: 'Italy Monza',
+    displayName: 'Monza',
     svgPath: 'assets/circuiti/italymonza.svg',
     maskPath: 'assets/circuiti/mask/italymonza_mask.png',
     xPercentage: 0.805,
@@ -186,7 +186,7 @@ const List<Circuit> allCircuits = [
   ),
   Circuit(
     id: 'japan',
-    displayName: 'Japan',
+    displayName: 'Giappone',
     svgPath: 'assets/circuiti/japan.svg',
     maskPath: 'assets/circuiti/mask/japan_mask.png',
     xPercentage: 0.35,
@@ -199,7 +199,7 @@ const List<Circuit> allCircuits = [
   ),
   Circuit(
     id: 'mexico',
-    displayName: 'Mexico',
+    displayName: 'Messico',
     svgPath: 'assets/circuiti/mexico.svg',
     maskPath: 'assets/circuiti/mask/mexico_mask.png',
     xPercentage: 0.115,
@@ -225,7 +225,7 @@ const List<Circuit> allCircuits = [
   ),
   Circuit(
     id: 'netherlands',
-    displayName: 'Netherlands',
+    displayName: 'Olanda',
     svgPath: 'assets/circuiti/netherlands.svg',
     maskPath: 'assets/circuiti/mask/netherlands_mask.png',
     xPercentage: 0.095,
@@ -251,7 +251,7 @@ const List<Circuit> allCircuits = [
   ),
   Circuit(
     id: 'saudiarabia',
-    displayName: 'Saudi Arabia',
+    displayName: 'Arabia Saudita',
     svgPath: 'assets/circuiti/saudiarabia.svg',
     maskPath: 'assets/circuiti/mask/saudiarabia_mask.png',
     xPercentage: 0.808,
@@ -264,7 +264,7 @@ const List<Circuit> allCircuits = [
   ),
   Circuit(
     id: 'shanghai',
-    displayName: 'Shanghai',
+    displayName: 'Cina',
     svgPath: 'assets/circuiti/shanghai.svg',
     maskPath: 'assets/circuiti/mask/shanghai_mask.png',
     xPercentage: 0.31,
@@ -290,7 +290,7 @@ const List<Circuit> allCircuits = [
   ),
   Circuit(
     id: 'spain',
-    displayName: 'Spain',
+    displayName: 'Spagna',
     svgPath: 'assets/circuiti/spain.svg',
     maskPath: 'assets/circuiti/mask/spain_mask.png',
     xPercentage: 0.66,
@@ -303,7 +303,7 @@ const List<Circuit> allCircuits = [
   ),
   Circuit(
     id: 'usacota',
-    displayName: 'USA Cota',
+    displayName: 'USA',
     svgPath: 'assets/circuiti/usacota.svg',
     maskPath: 'assets/circuiti/mask/usacota_mask.png',
     xPercentage: 0.094,
@@ -316,7 +316,7 @@ const List<Circuit> allCircuits = [
   ),
   Circuit(
     id: 'usamiami',
-    displayName: 'USA Miami',
+    displayName: 'Miami',
     svgPath: 'assets/circuiti/usamiami.svg',
     maskPath: 'assets/circuiti/mask/usamiami_mask.png',
     xPercentage: 0.47,
@@ -329,7 +329,7 @@ const List<Circuit> allCircuits = [
   ),
   Circuit(
     id: 'usavegas',
-    displayName: 'USA Vegas',
+    displayName: 'Las Vegas',
     svgPath: 'assets/circuiti/usavegas.svg',
     maskPath: 'assets/circuiti/mask/usavegas_mask.png',
     xPercentage: 0.89,

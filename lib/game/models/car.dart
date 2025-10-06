@@ -17,12 +17,12 @@ const List<CarModel> allCars = [
   CarModel(
     name: "McLaren",
     logoPath: "assets/logos/mclaren_swoosh.png",
-    color: Color(0xFFFF8700),
+    color: Color.fromARGB(255, 255, 135, 0),
   ),
   CarModel(
     name: "Aston Martin",
     logoPath: "assets/logos/astonmartin.png",
-    color: Color(0xFF006F62),
+    color: Color.fromARGB(255, 0, 111, 98),
   ),
   CarModel(
     name: "Alpine",
@@ -37,22 +37,22 @@ const List<CarModel> allCars = [
   CarModel(
     name: "Mercedes",
     logoPath: "assets/logos/mercedes.png",
-    color: Color(0xFF00D2BE),
+    color: Color.fromARGB(255, 0, 210, 190),
   ),
   CarModel(
     name: "Red Bull Racing",
     logoPath: "assets/logos/RedBullDash.png",
-    color: Color(0xFF1E41FF),
+    color: Color.fromARGB(255, 0, 32, 91),
   ),
   CarModel(
     name: "Haas",
     logoPath: "assets/logos/haas.png",
-    color: Color(0xFFB6BABD),
+    color: Color.fromARGB(255, 182, 186, 189),
   ),
   CarModel(
     name: "Racing Bulls",
     logoPath: "assets/logos/racingbulls.png",
-    color: Color(0xFF00205B),
+    color: Color.fromARGB(255, 130, 146, 233),
   ),
   CarModel(
     name: "Kick Sauber",
@@ -62,6 +62,6 @@ const List<CarModel> allCars = [
   CarModel(
     name: "Williams",
     logoPath: "assets/logos/williams.png",
-    color: Color(0xFF005AFF),
+    color: Color.fromARGB(255, 0, 90, 255),
   ),
 ];
