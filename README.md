@@ -1,6 +1,15 @@
-# F1 Project Game
+# F1 Project Game 🏎️
 
-F1 Project Game è un gioco sviluppato in Flutter ispirato al mondo della Formula 1. Il progetto è multipiattaforma (Web, Android, Windows) e punta a offrire un’esperienza arcade accessibile e immediata.
+Un gioco Flutter dedicato alla Formula 1 con automazione completa per le release.
+
+## 🚀 Release Automatiche
+
+Questo progetto utilizza GitHub Actions per creare automaticamente release per:
+- **Android APK** - Compatibile con tutti i dispositivi Android
+- **Windows EXE** - Applicazione desktop per Windows
+- **Web App** - Disponibile su GitHub Pages
+
+F1 Project Game è un gioco sviluppato in Flutter ispirato al mondo della Formula 1. Il progetto è multipiattaforma (Web, Android, Windows) e punta a offrire un'esperienza arcade accessibile e immediata.
 
 Questo repository pubblico ospita:
 - Codice sorgente del gioco
