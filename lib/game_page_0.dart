@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:f1_project/game/saves/game_records.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -15,11 +16,11 @@ class _MouseTouchScrollBehavior extends MaterialScrollBehavior {
 
   @override
   Set<PointerDeviceKind> get dragDevices => {
-        PointerDeviceKind.touch,
-        PointerDeviceKind.mouse,
-        PointerDeviceKind.trackpad,
-        PointerDeviceKind.stylus,
-      };
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.stylus,
+  };
 }
 
 class GamePage_0 extends StatefulWidget {
@@ -146,6 +147,109 @@ class _GamePageState extends State<GamePage_0> {
     _gameScreenKey.currentState?.resetGame();
   }
 
+  void _showHelpDialog() {
+    // Rileva se il dispositivo è mobile o desktop
+    final bool isMobile =
+        defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.black87,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.help_outline, color: Colors.white, size: 24),
+              SizedBox(width: 8),
+              Text(
+                'Come Giocare',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildHelpSection(
+                  'Scelta Circuito',
+                  'Qui potrai scegliere il circuito che più preferisci! Sono disponibili tutti i circuiti ufficiali del Gran Premio F1 2025!',
+                ),
+                const SizedBox(height: 16),
+                _buildHelpSection(
+                  'Scelta Scuderia',
+                  'Qui potrai scegliere la tua scuderia preferita! Puoi scegliere senza troppe preoccupazioni, le prestazioni di ogni scuderia sono uguali!',
+                ),
+                const SizedBox(height: 16),
+                _buildHelpSection(
+                  'Funzionamento del Gioco',
+                  isMobile
+                      ? 'Tramite il tasto START darai inizio al conto alla rovescia. Quando il timer partirà potrai muovere la macchina. Ad ogni nuovo tentativo ricorda di premere di nuovo START.\n Per guidare la tua vettura:\n -Tasto verde: Accelerazione tenendolo premuto. Lasciando il tasto la macchina rallenterà naturalmente;\n -Tasto rosso: Frenata più marcata e immediata.'
+                      : 'Tramite il tasto START darai inizio al conto alla rovescia. Quando il timer partirà potrai muovere la macchina. Ad ogni nuovo tentativo ricorda di premere di nuovo START.\n Per guidare la tua vettura:\n -Tasto [W] o Freccia in su: Accelerazione tenendolo premuto. Lasciando il tasto la macchina rallenterà naturalmente;\n -Tasto [S] o Freccia in giù: Frenata più marcata e immediata.',
+                ),
+                const SizedBox(height: 16),
+                _buildHelpSection(
+                  'Dinamiche di Gioco',
+                  'Durante la gara, il sistema implementa diverse meccaniche per rendere l\'esperienza più realistica. Se la velocità con cui si prende la curva è superiore a quella ottimale si attuerà un "micro respawn" e ci si ritroverà all\'inizio della curva, questo ti permetterà di continuare con una penalità di tempo. Tuttavia, se prendi una curva a velocità troppo eccessiva, la vettura si schianterà causando la squalifica immediata. L\'obiettivo è completare 3 giri consecutivi per terminare la gara.',
+                ),
+                const SizedBox(height: 16),
+                _buildHelpSection(
+                  'Consigli',
+                  'Per ottenere le migliori prestazioni, è fondamentale moderare la velocità nelle curve più strette per evitare crash. Il sistema di fisica del gioco rileva automaticamente le curve pericolose e applica le conseguenze appropriate. La strategia migliore è mantenere un ritmo costante piuttosto che alternare accelerazioni brusche e frenate improvvise.',
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Ho Capito!',
+                style: TextStyle(
+                  color: Color(0xFFE10600),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildHelpSection(String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Color(0xFFE10600),
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          content,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 14,
+            height: 1.4,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   void dispose() {
     _stopTimer();
@@ -192,7 +296,7 @@ class _GamePageState extends State<GamePage_0> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 🔝 Top bar
+                // Top bar
                 Padding(
                   padding: EdgeInsets.fromLTRB(
                     16,
@@ -201,7 +305,6 @@ class _GamePageState extends State<GamePage_0> {
                     isPortrait ? 10 : 0,
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       // Lato sinistro: back + logo + titolo
                       Row(
@@ -257,7 +360,64 @@ class _GamePageState extends State<GamePage_0> {
                         ],
                       ),
 
-                      // Lato destro: pulsante record
+                      // Spazio espandibile per spingere i pulsanti a destra
+                      const Expanded(child: SizedBox()),
+
+                      //  Solo in orizzontale: start/timer a destra come i pulsanti record/help
+                      if (!isPortrait && _selectedCircuit != null)
+                        SizedBox(
+                          width: centralWidgetWidth,
+                          height: centralWidgetHeight,
+                          child: _teamSelected
+                              ? (!_timerRunning && !_gameOver
+                                    ? Center(
+                                        child: StartLights(
+                                          showStartButton: true,
+                                          onSequenceComplete: () {
+                                            if (_gameScreenKey
+                                                    .currentState
+                                                    ?.mounted ??
+                                                false) {
+                                              _gameScreenKey.currentState!
+                                                  .startGame();
+                                            }
+                                            _startTimer();
+                                          },
+                                        ),
+                                      )
+                                    : Container(
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.06),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.white24,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          _formatTime(_elapsedCentis),
+                                          style: const TextStyle(
+                                            color: Colors.greenAccent,
+                                            fontFamily: 'monospace',
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ))
+                              : const SizedBox.shrink(),
+                        ),
+
+                      // Spazio tra start/timer e help (solo quando c'è il timer)
+                      if (!isPortrait && _selectedCircuit != null)
+                        const SizedBox(width: 8),
+
+                      // Spazio espandibile per spingere i pulsanti a destra (quando non c'è timer)
+                      if (isPortrait || _selectedCircuit == null)
+                        const Expanded(child: SizedBox()),
+
+                      // Pulsante Record - solo nella selezione circuiti
                       if (_selectedCircuit == null)
                         FutureBuilder(
                           future: GameRecords.get(allCircuits[_currentPage].id),
@@ -338,51 +498,26 @@ class _GamePageState extends State<GamePage_0> {
                           },
                         ),
 
-                      // 👉 Solo in orizzontale: start/timer accanto al titolo
-                      if (!isPortrait && _selectedCircuit != null)
-                        SizedBox(
-                          width: centralWidgetWidth,
-                          height: centralWidgetHeight,
-                          child: _teamSelected
-                              ? (!_timerRunning && !_gameOver
-                                    ? Center(
-                                        child: StartLights(
-                                          showStartButton: true,
-                                          onSequenceComplete: () {
-                                            if (_gameScreenKey
-                                                    .currentState
-                                                    ?.mounted ??
-                                                false) {
-                                              _gameScreenKey.currentState!
-                                                  .startGame();
-                                            }
-                                            _startTimer();
-                                          },
-                                        ),
-                                      )
-                                    : Container(
-                                        alignment: Alignment.center,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.06),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.white24,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          _formatTime(_elapsedCentis),
-                                          style: const TextStyle(
-                                            color: Colors.greenAccent,
-                                            fontFamily: 'monospace',
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ))
-                              : const SizedBox.shrink(),
+                      // Spazio tra i pulsanti
+                      if (_selectedCircuit == null) const SizedBox(width: 8),
+
+                      // Pulsante help sempre nell'angolo destro dell'header
+                      GestureDetector(
+                        onTap: _showHelpDialog,
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white10,
+                          ),
+                          child: const Icon(
+                            Icons.help_outline,
+                            size: 20,
+                            color: Colors.white,
+                          ),
                         ),
+                      ),
                     ],
                   ),
                 ),
@@ -491,7 +626,8 @@ class _GamePageState extends State<GamePage_0> {
               onPointerSignal: (PointerSignalEvent event) {
                 if (event is PointerScrollEvent) {
                   final bool isPortrait =
-                      MediaQuery.of(context).orientation == Orientation.portrait;
+                      MediaQuery.of(context).orientation ==
+                      Orientation.portrait;
                   // Usa la rotellina (o scroll) per cambiare pagina.
                   final double delta = event.scrollDelta.dy != 0
                       ? event.scrollDelta.dy
