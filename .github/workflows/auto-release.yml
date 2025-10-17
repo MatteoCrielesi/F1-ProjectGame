@@ -45,7 +45,7 @@ jobs:
         run: |
           python scripts/increment_version.py
           NEW_VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //')
-          VERSION_TAG="v${NEW_VERSION%+*}"
+          VERSION_TAG="v${NEW_VERSION}"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
           echo " Nuova versione: $NEW_VERSION"

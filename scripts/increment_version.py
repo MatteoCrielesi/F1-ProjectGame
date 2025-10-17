@@ -39,7 +39,7 @@ def increment_version():
     new_version = f"version: {version_name}+{new_version_code}"
     
     # Sostituisci la versione nel contenuto
-    new_content = re.sub(version_pattern, f"{version_name}+{new_version_code}", content)
+    new_content = re.sub(version_pattern, new_version, content)
     
     # Scrivi il file aggiornato
     with open(pubspec_path, 'w', encoding='utf-8') as file:
