@@ -15,7 +15,7 @@ def increment_version():
     pubspec_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'pubspec.yaml')
     
     if not os.path.exists(pubspec_path):
-        print(f"❌ File pubspec.yaml non trovato: {pubspec_path}")
+        print(f" File pubspec.yaml non trovato: {pubspec_path}")
         sys.exit(1)
     
     # Leggi il contenuto del file
@@ -27,7 +27,7 @@ def increment_version():
     match = re.search(version_pattern, content)
     
     if not match:
-        print("❌ Formato versione non trovato nel pubspec.yaml")
+        print(" Formato versione non trovato nel pubspec.yaml")
         print("   Formato atteso: version: X.Y.Z+N")
         sys.exit(1)
     
@@ -45,15 +45,15 @@ def increment_version():
     with open(pubspec_path, 'w', encoding='utf-8') as file:
         file.write(new_content)
     
-    print(f"✅ Versione aggiornata: {version_name}+{version_code} → {version_name}+{new_version_code}")
-    print(f"📁 File aggiornato: {pubspec_path}")
+    print(f" Versione aggiornata: {version_name}+{version_code} → {version_name}+{new_version_code}")
+    print(f" File aggiornato: {pubspec_path}")
     
     return f"{version_name}+{new_version_code}"
 
 if __name__ == "__main__":
     try:
         new_version = increment_version()
-        print(f"🚀 Nuova versione: {new_version}")
+        print(f" Nuova versione: {new_version}")
     except Exception as e:
-        print(f"❌ Errore: {e}")
+        print(f" Errore: {e}")
         sys.exit(1)
