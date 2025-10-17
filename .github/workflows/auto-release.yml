@@ -1,0 +1,182 @@
+name: Auto Release with Version Increment
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      increment_type:
+        description: 'Tipo di incremento versione'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+
+permissions:
+  contents: write
+
+jobs:
+  increment-version:
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+      version_tag: ${{ steps.version.outputs.version_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Increment Version
+        id: version
+        run: |
+          python scripts/increment_version.py
+          NEW_VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //')
+          VERSION_TAG="v${NEW_VERSION%+*}"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
+          echo "✅ Nuova versione: $NEW_VERSION"
+          echo "🏷️ Tag versione: $VERSION_TAG"
+
+      - name: Commit Version Update
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add pubspec.yaml
+          git commit -m "🔖 Bump version to ${{ steps.version.outputs.new_version }}" || exit 0
+          git push
+
+      - name: Create Tag
+        run: |
+          git tag ${{ steps.version.outputs.version_tag }}
+          git push origin ${{ steps.version.outputs.version_tag }}
+
+  build-android:
+    needs: increment-version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.increment-version.outputs.version_tag }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-${{ needs.increment-version.outputs.version_tag }}
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  build-windows:
+    needs: increment-version
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.increment-version.outputs.version_tag }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build Windows
+        run: flutter build windows --release
+
+      - name: Archive Windows Release
+        shell: pwsh
+        run: |
+          $ReleasePath = "build/windows/x64/runner/Release"
+          $ZipPath = "build/windows/F1-ProjectGame-windows-${{ needs.increment-version.outputs.version_tag }}.zip"
+          if (!(Test-Path $ReleasePath)) { throw "Release folder not found: $ReleasePath" }
+          if (Test-Path $ZipPath) { Remove-Item $ZipPath }
+          Compress-Archive -Path "$ReleasePath/*" -DestinationPath $ZipPath
+          Write-Host "Created archive at $ZipPath"
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe-${{ needs.increment-version.outputs.version_tag }}
+          path: build/windows/F1-ProjectGame-windows-${{ needs.increment-version.outputs.version_tag }}.zip
+
+  create-release:
+    needs: [increment-version, build-android, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.increment-version.outputs.version_tag }}
+
+      - name: Download Android APK
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apk-${{ needs.increment-version.outputs.version_tag }}
+          path: ./artifacts/
+
+      - name: Download Windows EXE
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-exe-${{ needs.increment-version.outputs.version_tag }}
+          path: ./artifacts/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.increment-version.outputs.version_tag }}
+          name: "Release ${{ needs.increment-version.outputs.version_tag }}"
+          body: |
+            🚀 **Nuova Release Automatica**
+            
+            **Versione:** ${{ needs.increment-version.outputs.new_version }}
+            **Tag:** ${{ needs.increment-version.outputs.version_tag }}
+            
+            ### 📦 Download
+            - **Android APK**: `app-release.apk`
+            - **Windows EXE**: `F1-ProjectGame-windows-${{ needs.increment-version.outputs.version_tag }}.zip`
+            
+            ### 🌐 Web Version
+            Disponibile su: [GitHub Pages](https://matteocrieles.github.io/F1-ProjectGame/)
+            
+            ---
+            *Release generata automaticamente da GitHub Actions*
+          files: |
+            ./artifacts/app-release.apk
+            ./artifacts/F1-ProjectGame-windows-${{ needs.increment-version.outputs.version_tag }}.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
